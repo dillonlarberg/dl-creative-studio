@@ -80,35 +80,64 @@ exports.processVideoCutdowns = functions.https.onCall(async (data) => {
         });
         const results = [];
         const timeToSeconds = (timeStr) => {
-            const parts = timeStr.split(':').map(Number);
-            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            if (!timeStr)
+                return 0;
+            functions.logger.debug(`Parsing time: ${timeStr}`);
+            const parts = timeStr.split(':').reverse().map(Number);
+            let seconds = 0;
+            if (parts[0])
+                seconds += parts[0]; // seconds
+            if (parts[1])
+                seconds += parts[1] * 60; // minutes
+            if (parts[2])
+                seconds += parts[2] * 3600; // hours
+            return seconds;
         };
         for (const cut of cuts) {
             const outputPath = path.join(tempDir, `output_${cut.id}.mp4`);
-            functions.logger.info(`Processing stitched cut for ${cut.length}s with ${cut.segments.length} segments.`);
+            functions.logger.info(`[FFmpeg] Processing cut: ${cut.id} | Length: ${cut.length}s | Segments: ${cut.segments.length}`);
             // 2. Perform FFmpeg stitching
             await new Promise((resolve, reject) => {
                 let command = (0, fluent_ffmpeg_1.default)(inputPath);
                 // Construct Complex Filter
-                // [0:v]trim=start=S:end=E,setpts=PTS-STARTPTS[v0]; [0:a]atrim=start=S:end=E,asetpts=PTS-STARTPTS[a0];
                 let filter = "";
                 let inputs = "";
                 cut.segments.forEach((seg, i) => {
                     const start = timeToSeconds(seg.start);
                     const end = timeToSeconds(seg.end);
+                    functions.logger.info(`[FFmpeg] Segment ${i}: ${seg.start} (${start}s) to ${seg.end} (${end}s)`);
                     filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS[v${i}]; `;
                     filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS[a${i}]; `;
                     inputs += `[v${i}][a${i}]`;
                 });
                 filter += `${inputs}concat=n=${cut.segments.length}:v=1:a=1[v][a]`;
+                functions.logger.debug(`[FFmpeg] Filter String: ${filter}`);
                 command
                     .complexFilter(filter)
                     .map('[v]')
                     .map('[a]')
+                    .outputOptions([
+                    '-c:v libx264',
+                    '-preset ultrafast',
+                    '-crf 23',
+                    '-c:a aac',
+                    '-b:a 128k',
+                    '-movflags +faststart'
+                ])
                     .output(outputPath)
-                    .on("end", resolve)
-                    .on("error", (err) => {
-                    console.error(`FFmpeg error for cut ${cut.id}:`, err);
+                    .on("start", (commandLine) => {
+                    functions.logger.info(`[FFmpeg] Spawned with command: ${commandLine}`);
+                })
+                    .on("progress", (progress) => {
+                    functions.logger.debug(`[FFmpeg] Processing: ${progress.percent}% done`);
+                })
+                    .on("end", () => {
+                    functions.logger.info(`[FFmpeg] Finished processing cut: ${cut.id}`);
+                    resolve(true);
+                })
+                    .on("error", (err, stdout, stderr) => {
+                    functions.logger.error(`[FFmpeg] Error: ${err.message}`);
+                    functions.logger.error(`[FFmpeg] stderr: ${stderr}`);
                     reject(err);
                 })
                     .run();
