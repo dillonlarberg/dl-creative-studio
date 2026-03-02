@@ -1,0 +1,19 @@
+# Node
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Nested git repo
+alli-design-system/
