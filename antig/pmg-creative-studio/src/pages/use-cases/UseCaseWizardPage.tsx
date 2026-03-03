@@ -338,38 +338,37 @@ export default function UseCaseWizardPage() {
                         const recco = (stepData.ai_reccos || []).find((r: any) => r.length === len);
 
                         // Handle multiple selections (array)
-                        if (Array.isArray(selections)) {
-                            if (selections.length === 0) return []; // Skip if nothing selected for this length
-                            return selections.map(id => {
-                                const opt = recco?.options?.find((o: any) => o.id === id);
-                                return {
-                                    id: crypto.randomUUID(),
-                                    length: len,
-                                    segments: opt?.segments || []
-                                };
-                            }).filter(cut => cut.segments.length > 0);
-                        }
+                        const selectionIds = Array.isArray(selections) ? selections : [selections];
+                        if (selectionIds.length === 0) return [];
 
-                        // Fallback for transition/legacy single selection
-                        const opt = recco?.options?.find((o: any) => o.id === selections) || recco?.options?.[0];
-                        return [{
-                            id: crypto.randomUUID(),
-                            length: len,
-                            segments: opt?.segments || []
-                        }];
-                    });
+                        return selectionIds.map(id => {
+                            const opt = recco?.options?.find((o: any) => o.id === id);
+                            if (!opt) return null;
+                            return {
+                                id: crypto.randomUUID(),
+                                length: len,
+                                segments: opt.segments || []
+                            };
+                        }).filter(Boolean);
+                    }) as any[];
 
-                    if (videoUrl && !stepData.final_cutdowns) {
+                    if (videoUrl && selectedCuts.length > 0) {
                         setIsLoading(true);
+                        // Visually move to the "process" step (the spinner indicator)
+                        setCurrentStep(nextStep);
+
                         try {
+                            console.log('[Alli-Studio] Starting video processing for', selectedCuts.length, 'cuts');
                             const results = await videoService.processCutdowns(videoUrl, selectedCuts);
+                            console.log('[Alli-Studio] Processing results received:', results.cutdowns?.length, 'assets');
+
                             const finalStepData = {
                                 ...updatedStepData,
                                 process: { ...stepData, final_cutdowns: results.cutdowns },
                                 download: { final_cutdowns: results.cutdowns }
                             };
 
-                            // Automatic transition to the download step
+                            // Update database with the processed results and advance to the download step
                             await creativeService.updateCreative(activeCreativeId!, {
                                 currentStep: nextStep + 1,
                                 stepData: finalStepData
@@ -377,10 +376,14 @@ export default function UseCaseWizardPage() {
 
                             const finalRecord = await creativeService.getCreative(activeCreativeId!);
                             if (finalRecord) setCreative(finalRecord);
+
+                            // Move to final download screen
                             setCurrentStep(nextStep + 1);
-                            setStepData(finalStepData.download || { final_cutdowns: results.cutdowns });
+                            setStepData(finalStepData.download);
                         } catch (err) {
-                            console.error('Processing failure:', err);
+                            console.error('[Alli-Studio] Video processing failed:', err);
+                            // Bounce back to reccos on failure
+                            setCurrentStep(nextStep - 1);
                         } finally {
                             setIsLoading(false);
                         }
@@ -1128,6 +1131,7 @@ export default function UseCaseWizardPage() {
                                                             <video
                                                                 src={cut.url}
                                                                 controls
+                                                                preload="metadata"
                                                                 className="w-full h-full object-contain"
                                                             />
                                                             <div className="absolute top-3 left-3 flex gap-2">

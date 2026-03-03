@@ -45,6 +45,7 @@ const os = __importStar(require("os"));
 const fs = __importStar(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const ffmpeg_static_1 = __importDefault(require("ffmpeg-static"));
+const storage_1 = require("firebase-admin/storage");
 if (ffmpeg_static_1.default) {
     fluent_ffmpeg_1.default.setFfmpegPath(ffmpeg_static_1.default);
 }
@@ -53,7 +54,12 @@ if (ffmpeg_static_1.default) {
  * This takes the 'config' (start/stop times for each desired cutdown)
  * and generates multiple stitched or cut MP4 files.
  */
-exports.processVideoCutdowns = functions.https.onCall(async (data) => {
+exports.processVideoCutdowns = functions
+    .runWith({
+    timeoutSeconds: 540,
+    memory: "2GB"
+})
+    .https.onCall(async (data) => {
     const { videoUrl, cuts } = data;
     if (!videoUrl || !cuts || cuts.length === 0) {
         throw new functions.https.HttpsError("invalid-argument", "Missing videoUrl or cut specifications.");
@@ -103,15 +109,25 @@ exports.processVideoCutdowns = functions.https.onCall(async (data) => {
                 let filter = "";
                 let inputs = "";
                 cut.segments.forEach((seg, i) => {
-                    const start = timeToSeconds(seg.start);
+                    const start = Math.max(0, timeToSeconds(seg.start));
                     const end = timeToSeconds(seg.end);
-                    functions.logger.info(`[FFmpeg] Segment ${i}: ${seg.start} (${start}s) to ${seg.end} (${end}s)`);
-                    filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS[v${i}]; `;
-                    filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS[a${i}]; `;
+                    if (end <= start) {
+                        functions.logger.warn(`[FFmpeg] Invalid segment ${i}: start ${start} >= end ${end}. Skipping.`);
+                        return;
+                    }
+                    functions.logger.info(`[FFmpeg] Segment ${i}: ${start}s to ${end}s`);
+                    // Standardize to 720p 30fps with 44.1k audio for robust concatenation
+                    filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1[v${i}]; `;
+                    filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,aresample=44100[a${i}]; `;
                     inputs += `[v${i}][a${i}]`;
                 });
-                filter += `${inputs}concat=n=${cut.segments.length}:v=1:a=1[v][a]`;
-                functions.logger.debug(`[FFmpeg] Filter String: ${filter}`);
+                const segmentCount = inputs.match(/\[v\d+\]/g)?.length || 0;
+                if (segmentCount === 0) {
+                    reject(new Error("No valid segments to process."));
+                    return;
+                }
+                filter += `${inputs}concat=n=${segmentCount}:v=1:a=1[v][a]`;
+                functions.logger.info(`[FFmpeg] Final Filter String: ${filter}`);
                 command
                     .complexFilter(filter)
                     .map('[v]')
@@ -146,7 +162,7 @@ exports.processVideoCutdowns = functions.https.onCall(async (data) => {
             const destination = `results/${cut.id}_${cut.length}s.mp4`;
             await bucket.upload(outputPath, { destination });
             const file = bucket.file(destination);
-            const [url] = await file.getSignedUrl({ action: 'read', expires: '03-01-2500' });
+            const url = await (0, storage_1.getDownloadURL)(file);
             results.push({ length: cut.length, url });
             // Cleanup
             fs.unlinkSync(outputPath);

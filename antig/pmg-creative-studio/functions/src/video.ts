@@ -85,18 +85,30 @@ export const processVideoCutdowns = functions
                     let inputs = "";
 
                     cut.segments.forEach((seg, i) => {
-                        const start = timeToSeconds(seg.start);
+                        const start = Math.max(0, timeToSeconds(seg.start));
                         const end = timeToSeconds(seg.end);
 
-                        functions.logger.info(`[FFmpeg] Segment ${i}: ${seg.start} (${start}s) to ${seg.end} (${end}s)`);
+                        if (end <= start) {
+                            functions.logger.warn(`[FFmpeg] Invalid segment ${i}: start ${start} >= end ${end}. Skipping.`);
+                            return;
+                        }
 
-                        filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS[v${i}]; `;
-                        filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS[a${i}]; `;
+                        functions.logger.info(`[FFmpeg] Segment ${i}: ${start}s to ${end}s`);
+
+                        // Standardize to 720p 30fps with 44.1k audio for robust concatenation
+                        filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1[v${i}]; `;
+                        filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,aresample=44100[a${i}]; `;
                         inputs += `[v${i}][a${i}]`;
                     });
 
-                    filter += `${inputs}concat=n=${cut.segments.length}:v=1:a=1[v][a]`;
-                    functions.logger.debug(`[FFmpeg] Filter String: ${filter}`);
+                    const segmentCount = inputs.match(/\[v\d+\]/g)?.length || 0;
+                    if (segmentCount === 0) {
+                        reject(new Error("No valid segments to process."));
+                        return;
+                    }
+
+                    filter += `${inputs}concat=n=${segmentCount}:v=1:a=1[v][a]`;
+                    functions.logger.info(`[FFmpeg] Final Filter String: ${filter}`);
 
                     command
                         .complexFilter(filter)
