@@ -127,3 +127,145 @@ export const getClientsProxy = functions.https.onRequest((req, res) => {
         }
     });
 });
+
+export const getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        res.setHeader('X-Proxy-Version', 'v5-uda');
+
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            res.status(401).send('No Authorization header');
+            return;
+        }
+
+        const clientSlug = req.query.clientSlug as string;
+        if (!clientSlug) {
+            res.status(400).send('Missing clientSlug query parameter');
+            return;
+        }
+
+        const modelName = 'creative_insights_data_export';
+        const queryUrl = `https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models/${modelName}/execute-query`;
+
+        // The exact sets of columns to try, in order of preference
+        const dimensionAttempts = [
+            ["ci_ad_id", "url", "creative_type", "platform"],
+            ["ad_id", "url", "creative_type", "platform"],
+            ["ci_ad_id", "url", "creative_type"],
+            ["ad_id", "url", "creative_type"]
+        ];
+
+        // Measures often help UDA resolve the correct aggregation table
+        const measureAttempts = [
+            ["impressions"],
+            []
+        ];
+
+        try {
+            console.log(`--- [UDA v2.1] SMART QUERY START for ${clientSlug} ---`);
+
+            let finalResponseData: any = null;
+            let successDims: string[] = [];
+
+            // Attempt Loop: Try different combinations in JSON format first
+            for (const dims of dimensionAttempts) {
+                for (const meas of measureAttempts) {
+                    try {
+                        console.log(`[UDA v2.1] Trying dims: ${dims.join(',')} | meas: ${meas.join(',')}`);
+                        const response = await axios.post(queryUrl, {
+                            dimensions: dims,
+                            measures: meas,
+                            limit: 500
+                        }, {
+                            headers: { 'Authorization': authHeader, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+                        });
+
+                        if (response.data.results && response.data.results.length > 0) {
+                            finalResponseData = response.data;
+                            successDims = dims;
+                            break;
+                        }
+                    } catch (e: any) {
+                        continue;
+                    }
+                }
+                if (finalResponseData) break;
+            }
+
+            // Fallback 2: CSV Format (Mirroring Python script which uses Accept: text/csv)
+            if (!finalResponseData) {
+                console.log(`[UDA v2.1] JSON yielded 0 items. Trying CSV fallback...`);
+                try {
+                    const csvResp = await axios.post(queryUrl, {
+                        dimensions: ["ad_id", "ci_ad_id", "url", "creative_type", "platform"],
+                        limit: 500
+                    }, {
+                        headers: { 'Authorization': authHeader, 'Accept': 'text/csv', 'Content-Type': 'application/json' }
+                    });
+
+                    if (csvResp.status === 200 && csvResp.data) {
+                        console.log(`[UDA v2.1] CSV Success - Parsing...`);
+                        const lines = (csvResp.data as string).split('\n');
+                        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                        const results = lines.slice(1).filter(l => l.trim()).map(line => {
+                            const values = line.split(',');
+                            const obj: any = {};
+                            headers.forEach((h, i) => {
+                                obj[h] = values[i]?.trim().replace(/^"|"$/g, '');
+                            });
+                            obj.__source = 'csv';
+                            return obj;
+                        });
+                        if (results.length > 0) {
+                            finalResponseData = { results };
+                            successDims = ["ad_id", "ci_ad_id", "url", "creative_type", "platform"];
+                        }
+                    }
+                } catch (csvError: any) {
+                    console.log(`[UDA v2.1] CSV Fallback failed: ${csvError.message}`);
+                }
+            }
+
+            // Fallback 3: Model Discovery (If we still have nothing)
+            if (!finalResponseData || finalResponseData.results?.length === 0) {
+                console.log(`[UDA v2.1] Total failure for ${modelName}. Discovery mode...`);
+                const modelsUrl = `https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models`;
+                const mResp = await axios.get(modelsUrl, { headers: { 'Authorization': authHeader } });
+                const models = Array.isArray(mResp.data) ? mResp.data : (mResp.data.results || []);
+                console.log(`[UDA v2.1] Available Models (first 10):`, JSON.stringify(models.map((m: any) => m.name).slice(0, 10)));
+
+                const alt = models.find((m: any) => m.name.includes('creative_insights') && m.name !== modelName);
+                if (alt) {
+                    console.log(`[UDA v2.1] Trying alternative model: ${alt.name}`);
+                    const r = await axios.post(`https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models/${alt.name}/execute-query`,
+                        { dimensions: ["ad_id", "url"], limit: 10 },
+                        { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } }
+                    );
+                    if (r.data.results?.length > 0) finalResponseData = r.data;
+                }
+            }
+
+            if (!finalResponseData) finalResponseData = { results: [] };
+
+            console.log(`[UDA v2.1] Final Count: ${finalResponseData.results?.length || 0} using dims: ${successDims.join(', ')}`);
+            res.status(200).send(finalResponseData);
+        } catch (error: any) {
+            const errorData = error.response?.data;
+            const errorStatus = error.response?.status;
+
+            console.error('--- [UDA v2.1] FINAL PROXY ERROR ---');
+            console.error('Status:', errorStatus);
+            console.error('Message:', error.message);
+            if (errorData) console.error('Data:', JSON.stringify(errorData));
+            console.error('Target URL:', queryUrl);
+            console.error('--- [UDA v2.1] END PROXY ERROR ---');
+
+            res.status(errorStatus || 500).send(errorData || { message: error.message });
+        }
+    });
+});

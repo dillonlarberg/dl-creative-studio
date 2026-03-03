@@ -1,16 +1,17 @@
 import { useParams, Link } from 'react-router-dom';
 import { USE_CASES } from '../../constants/useCases';
 import { cn } from '../../utils/cn';
-import { CheckIcon, ArrowLeftIcon, ArrowPathIcon, SparklesIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ArrowLeftIcon, ArrowPathIcon, SparklesIcon, ChevronUpDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { useState, useEffect } from 'react';
-import type { UseCaseId } from '../../types';
+import type { UseCaseId, CreativeAsset } from '../../types';
 import { clientAssetHouseService } from '../../services/clientAssetHouse';
 import type { ClientAssetHouse } from '../../services/clientAssetHouse';
 import { creativeService } from '../../services/creative';
 import type { CreativeRecord } from '../../services/creative';
 import { videoService } from '../../services/videoService';
+import { alliService } from '../../services/alli';
 import { storage } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
@@ -97,6 +98,13 @@ export default function UseCaseWizardPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [history, setHistory] = useState<CreativeRecord[]>([]);
     const [showHistory, setShowHistory] = useState(false);
+    const [videoSource, setVideoSource] = useState<'upload' | 'alli'>('upload');
+    const [alliAssets, setAlliAssets] = useState<CreativeAsset[]>([]);
+    const [platforms, setPlatforms] = useState<string[]>([]);
+    const [platformFilter, setPlatformFilter] = useState('all');
+    const [isFetchingAssets, setIsFetchingAssets] = useState(false);
+    const [assetPage, setAssetPage] = useState(1);
+    const ITEMS_PER_PAGE = 12; // 4 columns * 3 rows
 
     const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
 
@@ -108,6 +116,42 @@ export default function UseCaseWizardPage() {
             fetchStatus();
         }
     }, [client.slug]);
+
+    // Fetch Alli assets if source is 'alli'
+    useEffect(() => {
+        if (videoSource === 'alli' && client.slug && alliAssets.length === 0) {
+            fetchAlliAssets();
+        }
+    }, [videoSource, client.slug]);
+
+    const fetchAlliAssets = async () => {
+        setIsFetchingAssets(true);
+        try {
+            const assets = await alliService.getCreativeAssets(client.slug);
+            const videos = assets.filter(a => a.type === 'video');
+            setAlliAssets(videos);
+
+            // Extract unique platforms
+            const uniquePlatforms = Array.from(new Set(videos.map(v => v.platform).filter(Boolean))) as string[];
+            setPlatforms(uniquePlatforms);
+        } catch (err) {
+            console.error('[Alli-Assets] Fetch failed:', err);
+        } finally {
+            setIsFetchingAssets(false);
+        }
+    };
+
+    const filteredAssets = platformFilter === 'all'
+        ? alliAssets
+        : alliAssets.filter(a => a.platform === platformFilter);
+
+    const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE);
+    const paginatedAssets = filteredAssets.slice((assetPage - 1) * ITEMS_PER_PAGE, assetPage * ITEMS_PER_PAGE);
+
+    // Reset pagination when filter changes
+    useEffect(() => {
+        setAssetPage(1);
+    }, [platformFilter]);
 
     // Auto-trigger analysis if we land on AI reccos without results
     useEffect(() => {
@@ -319,7 +363,22 @@ export default function UseCaseWizardPage() {
                         setIsLoading(true);
                         try {
                             const results = await videoService.processCutdowns(videoUrl, selectedCuts);
-                            setStepData(prev => ({ ...prev, final_cutdowns: results.cutdowns }));
+                            const finalStepData = {
+                                ...updatedStepData,
+                                process: { ...stepData, final_cutdowns: results.cutdowns },
+                                download: { final_cutdowns: results.cutdowns }
+                            };
+
+                            // Automatic transition to the download step
+                            await creativeService.updateCreative(activeCreativeId!, {
+                                currentStep: nextStep + 1,
+                                stepData: finalStepData
+                            });
+
+                            const finalRecord = await creativeService.getCreative(activeCreativeId!);
+                            if (finalRecord) setCreative(finalRecord);
+                            setCurrentStep(nextStep + 1);
+                            setStepData(finalStepData.download || { final_cutdowns: results.cutdowns });
                         } catch (err) {
                             console.error('Processing failure:', err);
                         } finally {
@@ -589,84 +648,244 @@ export default function UseCaseWizardPage() {
                             {useCaseId === 'video-cutdown' && (
                                 <div className="mx-auto max-w-lg text-left">
                                     {steps[currentStep].id === 'upload' && (
-                                        <div className="space-y-4">
-                                            <label className="block text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Upload Base Video</label>
-                                            <label
-                                                htmlFor="video-upload"
-                                                className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-100 border-dashed rounded-2xl bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer relative"
-                                            >
-                                                {isLoading ? (
-                                                    <div className="space-y-3 text-center py-4">
-                                                        <ArrowPathIcon className="mx-auto h-10 w-10 text-blue-600 animate-spin" />
-                                                        <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Uploading to Studio Cloud...</p>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-1 text-center py-4">
-                                                        <SparklesIcon className="mx-auto h-12 w-12 text-gray-300" />
-                                                        <div className="flex text-sm text-gray-600 justify-center">
-                                                            <div className="relative font-black text-blue-600 hover:text-blue-500">
-                                                                <span>UPLOAD PRIMARY ASSET</span>
-                                                                <input
-                                                                    id="video-upload"
-                                                                    name="video-upload"
-                                                                    type="file"
-                                                                    className="sr-only"
-                                                                    accept="video/*"
-                                                                    onChange={async (e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) {
-                                                                            console.log(`[Upload] Starting for: ${file.name} (${file.size} bytes)`);
-                                                                            setIsLoading(true);
-                                                                            try {
-                                                                                const path = `uploads/${client.slug || 'anonymous'}/${Date.now()}_${file.name}`;
-                                                                                const storageRef = ref(storage, path);
+                                        <div className="space-y-6">
+                                            {/* Source Selection Tabs */}
+                                            <div className="flex p-1 bg-gray-100 rounded-2xl w-fit">
+                                                <button
+                                                    onClick={() => setVideoSource('upload')}
+                                                    className={cn(
+                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                        videoSource === 'upload' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                    )}
+                                                >
+                                                    Local Upload
+                                                </button>
+                                                <button
+                                                    onClick={() => setVideoSource('alli')}
+                                                    className={cn(
+                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                        videoSource === 'alli' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                    )}
+                                                >
+                                                    Alli Central
+                                                </button>
+                                            </div>
 
-                                                                                console.log(`[Upload] Path: ${path}`);
-                                                                                await uploadBytes(storageRef, file);
-                                                                                console.log(`[Upload] Bytes written.`);
+                                            {videoSource === 'upload' ? (
+                                                <>
+                                                    <label className="block text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Upload Base Video</label>
+                                                    <label
+                                                        htmlFor="video-upload"
+                                                        className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-100 border-dashed rounded-2xl bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer relative"
+                                                    >
+                                                        {isLoading ? (
+                                                            <div className="space-y-3 text-center py-4">
+                                                                <ArrowPathIcon className="mx-auto h-10 w-10 text-blue-600 animate-spin" />
+                                                                <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Uploading to Studio Cloud...</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-1 text-center py-4">
+                                                                <SparklesIcon className="mx-auto h-12 w-12 text-gray-300" />
+                                                                <div className="flex text-sm text-gray-600 justify-center">
+                                                                    <div className="relative font-black text-blue-600 hover:text-blue-500">
+                                                                        <span>UPLOAD PRIMARY ASSET</span>
+                                                                        <input
+                                                                            id="video-upload"
+                                                                            name="video-upload"
+                                                                            type="file"
+                                                                            className="sr-only"
+                                                                            accept="video/*"
+                                                                            onChange={async (e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) {
+                                                                                    console.log(`[Upload] Starting for: ${file.name} (${file.size} bytes)`);
+                                                                                    setIsLoading(true);
+                                                                                    try {
+                                                                                        const path = `uploads/${client.slug || 'anonymous'}/${Date.now()}_${file.name}`;
+                                                                                        const storageRef = ref(storage, path);
 
-                                                                                const url = await getDownloadURL(storageRef);
-                                                                                console.log(`[Upload] URL generated: ${url}`);
+                                                                                        console.log(`[Upload] Path: ${path}`);
+                                                                                        await uploadBytes(storageRef, file);
+                                                                                        console.log(`[Upload] Bytes written.`);
 
-                                                                                const newStepData = {
-                                                                                    ...stepData,
-                                                                                    videoName: file.name,
-                                                                                    videoSize: file.size,
-                                                                                    videoUrl: url
-                                                                                };
+                                                                                        const url = await getDownloadURL(storageRef);
+                                                                                        console.log(`[Upload] URL generated: ${url}`);
 
-                                                                                setStepData(newStepData);
+                                                                                        const newStepData = {
+                                                                                            ...stepData,
+                                                                                            videoName: file.name,
+                                                                                            videoSize: file.size,
+                                                                                            videoUrl: url
+                                                                                        };
 
-                                                                                // Immediate sync to Firestore
-                                                                                if (creativeId) {
-                                                                                    console.log(`[Upload] Syncing videoUrl to creative ${creativeId}`);
-                                                                                    await creativeService.updateCreative(creativeId, {
-                                                                                        stepData: {
-                                                                                            ...creative?.stepData,
-                                                                                            upload: newStepData
+                                                                                        setStepData(newStepData);
+
+                                                                                        // Immediate sync to Firestore
+                                                                                        if (creativeId) {
+                                                                                            console.log(`[Upload] Syncing videoUrl to creative ${creativeId}`);
+                                                                                            await creativeService.updateCreative(creativeId, {
+                                                                                                stepData: {
+                                                                                                    ...creative?.stepData,
+                                                                                                    upload: newStepData
+                                                                                                }
+                                                                                            });
+                                                                                            const updated = await creativeService.getCreative(creativeId);
+                                                                                            if (updated) {
+                                                                                                setCreative(updated);
+                                                                                                console.log(`[Upload] Firestore sync complete.`);
+                                                                                            }
                                                                                         }
-                                                                                    });
-                                                                                    const updated = await creativeService.getCreative(creativeId);
-                                                                                    if (updated) {
-                                                                                        setCreative(updated);
-                                                                                        console.log(`[Upload] Firestore sync complete.`);
+                                                                                    } catch (err: any) {
+                                                                                        console.error('[Upload] CRITICAL FAILURE:', err);
+                                                                                        alert(`Upload failed: ${err.message || 'Unknown error'}`);
+                                                                                    } finally {
+                                                                                        setIsLoading(false);
                                                                                     }
                                                                                 }
-                                                                            } catch (err: any) {
-                                                                                console.error('[Upload] CRITICAL FAILURE:', err);
-                                                                                alert(`Upload failed: ${err.message || 'Unknown error'}`);
-                                                                            } finally {
-                                                                                setIsLoading(false);
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                />
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">MP4, MOV • MAX 100MB</p>
                                                             </div>
-                                                        </div>
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">MP4, MOV • MAX 100MB</p>
+                                                        )}
+                                                    </label>
+                                                </>
+                                            ) : (
+                                                /* Alli Asset Browser */
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <label className="block text-sm font-black text-gray-900 uppercase tracking-widest">Select Video from Alli</label>
+
+                                                        {platforms.length > 0 && (
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => setPlatformFilter('all')}
+                                                                    className={cn(
+                                                                        "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                                                                        platformFilter === 'all' ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-200"
+                                                                    )}
+                                                                >
+                                                                    All
+                                                                </button>
+                                                                {platforms.map(p => (
+                                                                    <button
+                                                                        key={p}
+                                                                        onClick={() => setPlatformFilter(p)}
+                                                                        className={cn(
+                                                                            "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
+                                                                            platformFilter === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-200"
+                                                                        )}
+                                                                    >
+                                                                        {p}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </label>
+
+                                                    {isFetchingAssets ? (
+                                                        <div className="py-20 text-center space-y-4">
+                                                            <ArrowPathIcon className="h-10 w-10 mx-auto text-blue-600 animate-spin" />
+                                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connecting to Data Explorer...</p>
+                                                        </div>
+                                                    ) : filteredAssets.length > 0 ? (
+                                                        <div className="space-y-6">
+                                                            <div className="grid grid-cols-4 gap-3">
+                                                                {paginatedAssets.map((asset) => (
+                                                                    <div
+                                                                        key={asset.id}
+                                                                        onClick={async () => {
+                                                                            const newStepData = {
+                                                                                ...stepData,
+                                                                                videoName: asset.name || `alli_${asset.id}`,
+                                                                                videoUrl: asset.url,
+                                                                                source: 'alli',
+                                                                                assetId: asset.id
+                                                                            };
+                                                                            setStepData(newStepData);
+                                                                            if (creativeId) {
+                                                                                await creativeService.updateCreative(creativeId, {
+                                                                                    stepData: {
+                                                                                        ...creative?.stepData,
+                                                                                        upload: newStepData
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            const video = e.currentTarget.querySelector('video');
+                                                                            if (video) video.play().catch(() => { });
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            const video = e.currentTarget.querySelector('video');
+                                                                            if (video) {
+                                                                                video.pause();
+                                                                                video.currentTime = 0;
+                                                                            }
+                                                                        }}
+                                                                        className={cn(
+                                                                            "group relative bg-black rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
+                                                                            asset.platform?.toLowerCase().includes('youtube') ? "aspect-video" : "aspect-[9/16]",
+                                                                            stepData.videoUrl === asset.url ? "border-blue-600 ring-4 ring-blue-50" : "border-transparent hover:border-blue-400"
+                                                                        )}
+                                                                    >
+                                                                        <video
+                                                                            src={asset.url}
+                                                                            muted
+                                                                            loop
+                                                                            playsInline
+                                                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-300"
+                                                                        />
+                                                                        <div className="absolute inset-0 p-2 flex flex-col justify-end bg-gradient-to-t from-black/95 via-transparent to-transparent">
+                                                                            <p className="text-[7px] font-black text-white truncate uppercase tracking-widest leading-tight">
+                                                                                {asset.platform || 'General'}
+                                                                            </p>
+                                                                            <p className="text-[7px] font-bold text-blue-300 truncate tracking-tight">
+                                                                                {asset.id}
+                                                                            </p>
+                                                                        </div>
+                                                                        {stepData.videoUrl === asset.url && (
+                                                                            <div className="absolute top-1 right-1 bg-blue-600 rounded-full p-0.5 shadow-lg border border-white">
+                                                                                <CheckIcon className="h-2 w-2 text-white" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* Pagination Controls */}
+                                                            {totalPages > 1 && (
+                                                                <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+                                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">
+                                                                        Page {assetPage} of {totalPages}
+                                                                    </p>
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => setAssetPage(p => Math.max(1, p - 1))}
+                                                                            disabled={assetPage === 1}
+                                                                            className="p-1.5 rounded-md border border-gray-200 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+                                                                        >
+                                                                            <ChevronLeftIcon className="h-3 w-3 text-gray-600" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setAssetPage(p => Math.min(totalPages, p + 1))}
+                                                                            disabled={assetPage === totalPages}
+                                                                            className="p-1.5 rounded-md border border-gray-200 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+                                                                        >
+                                                                            <ChevronRightIcon className="h-3 w-3 text-gray-600" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No video assets found for this client</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             {stepData.videoUrl && (
                                                 <div className="mt-6 space-y-4">
                                                     <div className="flex items-center gap-2 text-green-600">
@@ -901,21 +1120,45 @@ export default function UseCaseWizardPage() {
                                                     <p className="text-[10px] text-green-700 font-bold uppercase tracking-widest">{(stepData.final_cutdowns || []).length} ASSETS READY FOR EXPORT</p>
                                                 </div>
                                             </div>
-                                            <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-xl">
-                                                {(stepData.final_cutdowns || []).map((cut: any, idx: number) => (
-                                                    <div key={idx} className="p-5 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-sm font-black text-gray-900 tracking-tight italic">{cut.length}s_variation_{idx + 1}.mp4</span>
-                                                            <span className="text-[9px] text-blue-gray-400 uppercase font-black tracking-[0.15em] mt-1">AI Story-Stitched • High Resolution</span>
+                                            <div className="space-y-4">
+                                                {((stepData.final_cutdowns || creative?.stepData?.process?.final_cutdowns) || []).map((cut: any, idx: number) => (
+                                                    <div key={idx} className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all">
+                                                        {/* Video Preview Section */}
+                                                        <div className="aspect-video bg-black relative group">
+                                                            <video
+                                                                src={cut.url}
+                                                                controls
+                                                                className="w-full h-full object-contain"
+                                                            />
+                                                            <div className="absolute top-3 left-3 flex gap-2">
+                                                                <span className="bg-black/60 backdrop-blur-md px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-white/20">
+                                                                    {cut.length}s Cut
+                                                                </span>
+                                                                <span className="bg-blue-600 px-2 py-1 rounded text-[10px] font-black text-white uppercase tracking-widest border border-blue-400">
+                                                                    Variation {idx + 1}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <a
-                                                            href={cut.url}
-                                                            download
-                                                            target="_blank"
-                                                            className="rounded-xl bg-blue-50 px-5 py-2 text-[10px] font-black text-blue-600 border border-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-lg transition-all"
-                                                        >
-                                                            DOWNLOAD MP4
-                                                        </a>
+
+                                                        {/* Info & Download Section */}
+                                                        <div className="p-4 flex items-center justify-between bg-gray-50/50">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-black text-gray-900 tracking-tight italic">
+                                                                    {cut.length}s_variation_{idx + 1}.mp4
+                                                                </span>
+                                                                <span className="text-[9px] text-blue-gray-400 uppercase font-black tracking-[0.15em] mt-1">
+                                                                    AI Story-Stitched • High Resolution
+                                                                </span>
+                                                            </div>
+                                                            <a
+                                                                href={cut.url}
+                                                                download
+                                                                target="_blank"
+                                                                className="rounded-xl bg-blue-600 px-6 py-2.5 text-[10px] font-black text-white hover:bg-blue-700 hover:shadow-lg transition-all uppercase tracking-widest"
+                                                            >
+                                                                Download MP4
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

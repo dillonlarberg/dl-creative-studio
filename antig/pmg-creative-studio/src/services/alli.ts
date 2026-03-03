@@ -98,13 +98,39 @@ export class AlliService {
      * Uses the 'creative_insights_data_export' model
      */
     async getCreativeAssets(clientSlug: string): Promise<CreativeAsset[]> {
-        console.log(`Fetching assets for ${clientSlug}...`);
-        // Mock response for now - targeting this next
-        return [
-            { id: '1', url: 'https://placehold.co/600x600?text=Asset+1', type: 'image', name: 'Spring Hero' },
-            { id: '2', url: 'https://placehold.co/1080x1920?text=Asset+2', type: 'image', name: 'Story Ad' },
-            { id: '3', url: 'https://placehold.co/1200x628?text=Asset+3', type: 'image', name: 'Display Banner' },
-        ];
+        console.log(`Fetching assets for ${clientSlug} from Alli...`);
+        const token = await authService.getAccessToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const response = await fetch(`${PROXY_BASE}/getCreativeAssetsProxy?clientSlug=${clientSlug}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Data Explorer Error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        const results = data.results || (Array.isArray(data) ? data : []);
+
+        return results.map((item: any, idx: number) => {
+            const getValue = (key: string) => {
+                return item[key] || item[`creative_insights_data_export__${key}`];
+            };
+
+            const id = getValue('ci_ad_id') || getValue('ad_id') || `asset-${idx}`;
+            return {
+                id,
+                url: getValue('url'),
+                type: (getValue('creative_type') === 'video' ? 'video' : 'image') as 'video' | 'image',
+                name: id,
+                platform: getValue('platform')
+            };
+        }).filter((asset: CreativeAsset) => asset.url);
     }
 
     /**
