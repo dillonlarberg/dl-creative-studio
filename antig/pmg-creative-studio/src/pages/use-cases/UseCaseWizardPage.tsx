@@ -358,8 +358,9 @@ export default function UseCaseWizardPage() {
                         setCurrentStep(nextStep);
 
                         try {
-                            console.log('[Alli-Studio] Starting video processing for', selectedCuts.length, 'cuts');
-                            const results = await videoService.processCutdowns(videoUrl, selectedCuts);
+                            const platform = updatedStepData.upload?.platform || creative?.stepData?.upload?.platform || stepData.platform;
+                            console.log('[Alli-Studio] Starting video processing for', selectedCuts.length, 'cuts on', platform);
+                            const results = await videoService.processCutdowns(videoUrl, selectedCuts, platform);
                             console.log('[Alli-Studio] Processing results received:', results.cutdowns?.length, 'assets');
 
                             const finalStepData = {
@@ -804,7 +805,8 @@ export default function UseCaseWizardPage() {
                                                                                 videoName: asset.name || `alli_${asset.id}`,
                                                                                 videoUrl: asset.url,
                                                                                 source: 'alli',
-                                                                                assetId: asset.id
+                                                                                assetId: asset.id,
+                                                                                platform: asset.platform
                                                                             };
                                                                             setStepData(newStepData);
                                                                             if (creativeId) {

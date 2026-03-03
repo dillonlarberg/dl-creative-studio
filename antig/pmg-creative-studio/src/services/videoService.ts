@@ -33,9 +33,9 @@ export const videoService = {
         length: number,
         id: string,
         segments: Array<{ start: string, end: string }>
-    }>): Promise<any> {
+    }>, platform?: string): Promise<any> {
         const processCuts = httpsCallable(functions, "processVideoCutdowns");
-        const result = await processCuts({ videoUrl, cuts });
+        const result = await processCuts({ videoUrl, cuts, platform });
         return result.data;
     }
 };

@@ -30,10 +30,16 @@ export const processVideoCutdowns = functions
             segments: Array<{ start: string, end: string }>
         }>
     }) => {
-        const { videoUrl, cuts } = data;
+        const { videoUrl, cuts, platform } = data as any;
         if (!videoUrl || !cuts || cuts.length === 0) {
             throw new functions.https.HttpsError("invalid-argument", "Missing videoUrl or cut specifications.");
         }
+
+        const isYoutube = platform?.toLowerCase().includes("youtube");
+        const targetWidth = isYoutube ? 1280 : 720;
+        const targetHeight = isYoutube ? 720 : 1280;
+
+        functions.logger.info(`[FFmpeg] Platform: ${platform} | Target: ${targetWidth}x${targetHeight}`);
 
         const bucket = admin.storage().bucket();
         const tempDir = os.tmpdir();
@@ -84,7 +90,7 @@ export const processVideoCutdowns = functions
                     let filter = "";
                     let inputs = "";
 
-                    cut.segments.forEach((seg, i) => {
+                    cut.segments.forEach((seg: any, i: number) => {
                         const start = Math.max(0, timeToSeconds(seg.start));
                         const end = timeToSeconds(seg.end);
 
@@ -95,8 +101,8 @@ export const processVideoCutdowns = functions
 
                         functions.logger.info(`[FFmpeg] Segment ${i}: ${start}s to ${end}s`);
 
-                        // Standardize to 720p 30fps with 44.1k audio for robust concatenation
-                        filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,setsar=1[v${i}]; `;
+                        // Standardize to target platform aspect ratio
+                        filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},setsar=1[v${i}]; `;
                         filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,aresample=44100[a${i}]; `;
                         inputs += `[v${i}][a${i}]`;
                     });
