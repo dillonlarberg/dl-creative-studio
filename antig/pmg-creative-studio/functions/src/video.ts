@@ -20,7 +20,7 @@ if (ffmpegPath) {
 export const processVideoCutdowns = functions
     .runWith({
         timeoutSeconds: 540,
-        memory: "2GB"
+        memory: "4GB"
     })
     .https.onCall(async (data: {
         videoUrl: string,
@@ -46,12 +46,8 @@ export const processVideoCutdowns = functions
         const inputPath = path.join(tempDir, `input_${Date.now()}.mp4`);
 
         try {
-            // 1. Download base video
+            // 1. Download base video once
             functions.logger.info(`Downloading video from ${videoUrl} to ${inputPath}`);
-            // For simplicity, we assume we can wget or fetch the file bytes
-            // In a real Firebase Storage flow, we'd use bucket.file(path).download()
-            // If it's a signed URL, we can use axios.
-
             const response = await axios({
                 method: "GET",
                 url: videoUrl,
@@ -65,56 +61,40 @@ export const processVideoCutdowns = functions
                 writer.on("error", reject);
             });
 
-            const results = [];
-
             const timeToSeconds = (timeStr: string) => {
                 if (!timeStr) return 0;
-                functions.logger.debug(`Parsing time: ${timeStr}`);
                 const parts = timeStr.split(':').reverse().map(Number);
                 let seconds = 0;
-                if (parts[0]) seconds += parts[0];          // seconds
-                if (parts[1]) seconds += parts[1] * 60;     // minutes
-                if (parts[2]) seconds += parts[2] * 3600;   // hours
+                if (parts[0]) seconds += parts[0];
+                if (parts[1]) seconds += parts[1] * 60;
+                if (parts[2]) seconds += parts[2] * 3600;
                 return seconds;
             };
 
-            for (const cut of cuts) {
+            // 2. Process all cuts in parallel
+            const cutdownPromises = cuts.map(async (cut: any) => {
                 const outputPath = path.join(tempDir, `output_${cut.id}.mp4`);
-                functions.logger.info(`[FFmpeg] Processing cut: ${cut.id} | Length: ${cut.length}s | Segments: ${cut.segments.length}`);
+                functions.logger.info(`[FFmpeg] Starting parallel cut: ${cut.id} | Length: ${cut.length}s`);
 
-                // 2. Perform FFmpeg stitching
                 await new Promise((resolve, reject) => {
                     let command = ffmpeg(inputPath);
-
-                    // Construct Complex Filter
                     let filter = "";
                     let inputs = "";
 
                     cut.segments.forEach((seg: any, i: number) => {
                         const start = Math.max(0, timeToSeconds(seg.start));
                         const end = timeToSeconds(seg.end);
+                        if (end <= start) return;
 
-                        if (end <= start) {
-                            functions.logger.warn(`[FFmpeg] Invalid segment ${i}: start ${start} >= end ${end}. Skipping.`);
-                            return;
-                        }
-
-                        functions.logger.info(`[FFmpeg] Segment ${i}: ${start}s to ${end}s`);
-
-                        // Standardize to target platform aspect ratio
                         filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},setsar=1[v${i}]; `;
                         filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,aresample=44100[a${i}]; `;
                         inputs += `[v${i}][a${i}]`;
                     });
 
                     const segmentCount = inputs.match(/\[v\d+\]/g)?.length || 0;
-                    if (segmentCount === 0) {
-                        reject(new Error("No valid segments to process."));
-                        return;
-                    }
+                    if (segmentCount === 0) return reject(new Error("No valid segments."));
 
                     filter += `${inputs}concat=n=${segmentCount}:v=1:a=1[v][a]`;
-                    functions.logger.info(`[FFmpeg] Final Filter String: ${filter}`);
 
                     command
                         .complexFilter(filter)
@@ -129,21 +109,8 @@ export const processVideoCutdowns = functions
                             '-movflags +faststart'
                         ])
                         .output(outputPath)
-                        .on("start", (commandLine) => {
-                            functions.logger.info(`[FFmpeg] Spawned with command: ${commandLine}`);
-                        })
-                        .on("progress", (progress) => {
-                            functions.logger.debug(`[FFmpeg] Processing: ${progress.percent}% done`);
-                        })
-                        .on("end", () => {
-                            functions.logger.info(`[FFmpeg] Finished processing cut: ${cut.id}`);
-                            resolve(true);
-                        })
-                        .on("error", (err, stdout, stderr) => {
-                            functions.logger.error(`[FFmpeg] Error: ${err.message}`);
-                            functions.logger.error(`[FFmpeg] stderr: ${stderr}`);
-                            reject(err);
-                        })
+                        .on("end", () => resolve(true))
+                        .on("error", reject)
                         .run();
                 });
 
@@ -153,12 +120,13 @@ export const processVideoCutdowns = functions
                 const file = bucket.file(destination);
                 const url = await getDownloadURL(file);
 
-                results.push({ length: cut.length, url });
+                // Cleanup output file
+                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
 
-                // Cleanup
-                fs.unlinkSync(outputPath);
-            }
+                return { length: cut.length, url };
+            });
 
+            const results = await Promise.all(cutdownPromises);
             return { status: "success", cutdowns: results };
         } catch (err: any) {
             functions.logger.error("Video processing failed", err);
@@ -166,4 +134,31 @@ export const processVideoCutdowns = functions
         } finally {
             if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
         }
+    });
+
+/**
+ * Maintenance: Clear out all files in results/ and uploads/
+ * Use with caution.
+ */
+export const deleteStorageFiles = functions
+    .runWith({ timeoutSeconds: 540, memory: "1GB" })
+    .https.onCall(async (data, context) => {
+        // Simple security check: in a real app, check for admin role
+        // if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "...");
+
+        const bucket = admin.storage().bucket();
+        const folders = ["results/", "uploads/"];
+        let deletedCount = 0;
+
+        for (const folder of folders) {
+            functions.logger.info(`Cleaning up folder: ${folder}`);
+            const [files] = await bucket.getFiles({ prefix: folder });
+
+            for (const file of files) {
+                await file.delete();
+                deletedCount++;
+            }
+        }
+
+        return { status: "success", deletedCount };
     });

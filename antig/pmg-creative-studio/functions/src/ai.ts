@@ -75,17 +75,39 @@ export const analyzeVideoForCutdowns = functions
       ]
     }`;
 
-      // 4. Call Gemini
-      const result = await model.generateContent({
-        contents: [{
-          role: "user",
-          parts: [
-            { inlineData: { mimeType: "video/mp4", data: videoBase64 } },
-            { text: prompt }
-          ]
-        }],
-        generationConfig,
-      });
+      // 4. Call Gemini with retry logic
+      let result;
+      let lastError;
+      const maxRetries = 3;
+
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          result = await model.generateContent({
+            contents: [{
+              role: "user",
+              parts: [
+                { inlineData: { mimeType: "video/mp4", data: videoBase64 } },
+                { text: prompt }
+              ]
+            }],
+            generationConfig,
+          });
+          break; // Success!
+        } catch (err: any) {
+          lastError = err;
+          const status = err.status || (err.response ? err.response.status : null);
+
+          if ((status === 429 || status === 503) && i < maxRetries - 1) {
+            const delay = (i + 1) * 5000; // 5s, 10s prefix
+            functions.logger.warn(`Gemini busy/quota hit (attempt ${i + 1}/${maxRetries}). Retrying in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          throw err; // Stop for other errors or if out of retries
+        }
+      }
+
+      if (!result) throw lastError;
 
       const text = result.response.text();
       functions.logger.info("Gemini Raw Response:", text);

@@ -1,10 +1,9 @@
 import { useParams, Link } from 'react-router-dom';
 import { USE_CASES } from '../../constants/useCases';
 import { cn } from '../../utils/cn';
-import { CheckIcon, ArrowLeftIcon, ArrowPathIcon, SparklesIcon, ChevronUpDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
-import { useState, useEffect } from 'react';
+import { CheckIcon, ArrowLeftIcon, ArrowPathIcon, SparklesIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Transition } from '@headlessui/react';
+import { useState, useEffect, useRef } from 'react';
 import type { UseCaseId, CreativeAsset } from '../../types';
 import { clientAssetHouseService } from '../../services/clientAssetHouse';
 import type { ClientAssetHouse } from '../../services/clientAssetHouse';
@@ -98,13 +97,14 @@ export default function UseCaseWizardPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [history, setHistory] = useState<CreativeRecord[]>([]);
     const [showHistory, setShowHistory] = useState(false);
-    const [videoSource, setVideoSource] = useState<'upload' | 'alli'>('upload');
+    const [videoSource, setVideoSource] = useState<'upload' | 'alli'>('alli');
     const [alliAssets, setAlliAssets] = useState<CreativeAsset[]>([]);
+    const [assetDurations, setAssetDurations] = useState<Record<string, number>>({});
     const [platforms, setPlatforms] = useState<string[]>([]);
     const [platformFilter, setPlatformFilter] = useState('all');
     const [isFetchingAssets, setIsFetchingAssets] = useState(false);
     const [assetPage, setAssetPage] = useState(1);
-    const ITEMS_PER_PAGE = 12; // 4 columns * 3 rows
+    const ITEMS_PER_PAGE = 16; // 4 columns × 4 rows
 
     const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
 
@@ -153,28 +153,42 @@ export default function UseCaseWizardPage() {
         setAssetPage(1);
     }, [platformFilter]);
 
+    // Track if we've auto-triggered for the current creative + step combination
+    const autoTriggeredRef = useRef<string | null>(null);
+
     // Auto-trigger analysis if we land on AI reccos without results
     useEffect(() => {
         const step = steps[currentStep];
-        if (useCaseId === 'video-cutdown' && step?.id === 'ai-reccos' && !stepData.ai_reccos && !isLoading) {
+        const triggerKey = `${creativeId}_${currentStep}`;
+
+        if (
+            useCaseId === 'video-cutdown' &&
+            step?.id === 'ai-reccos' &&
+            !stepData.ai_reccos &&
+            !isLoading &&
+            autoTriggeredRef.current !== triggerKey
+        ) {
             const videoUrl = creative?.stepData?.upload?.videoUrl || creative?.stepData?.configure?.videoUrl;
             const lengths = creative?.stepData?.configure?.lengths || [15];
 
             if (videoUrl && creativeId) {
-                console.log('[Auto-Trigger] Starting missing AI analysis...');
+                console.log('[Auto-Trigger] Starting missing AI analysis for', triggerKey);
+                autoTriggeredRef.current = triggerKey;
                 const technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-pro-preview';
                 triggerAIAnalysis(creativeId, videoUrl, lengths, creative.stepData, technicalModel);
             }
         }
-    }, [currentStep, stepData.ai_reccos, creativeId, creative?.stepData, stepData.model]);
-
+    }, [currentStep, stepData.ai_reccos, creativeId, creative?.stepData, isLoading]);
     const triggerAIAnalysis = async (id: string, videoUrl: string, lengths: number[], existingStepData: any, modelName?: string) => {
-        const activeModel = modelName || 'Gemini 3 Pro Preview';
-        console.log(`[AI-Analysis] Triggering with URL: ${videoUrl}, Lengths: ${lengths}, Model: ${activeModel}`);
+        const activeTechnicalModel = modelName || 'gemini-3-pro-preview';
+        // Map back to a nice display name if possible
+        const displayModel = Object.keys(MODEL_MAPPING).find(k => MODEL_MAPPING[k] === activeTechnicalModel) || activeTechnicalModel;
+
+        console.log(`[AI-Analysis] Triggering with URL: ${videoUrl}, Lengths: ${lengths}, Model: ${activeTechnicalModel}`);
         setIsLoading(true);
         try {
-            const reccos = await videoService.getCutdownRecommendations(videoUrl, lengths, activeModel);
-            const newAIReccoData = { lengths, videoUrl, ai_reccos: reccos, model: activeModel };
+            const reccos = await videoService.getCutdownRecommendations(videoUrl, lengths, activeTechnicalModel);
+            const newAIReccoData = { lengths, videoUrl, ai_reccos: reccos, model: displayModel };
 
             // Update local state immediately if we're still on this step
             setStepData(prev => ({ ...prev, ...newAIReccoData }));
@@ -192,8 +206,24 @@ export default function UseCaseWizardPage() {
             if (fresh) setCreative(fresh);
         } catch (err) {
             console.error('[AI-Analysis] Gemini failure:', err);
+            alert(`AI Analysis Failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchHistory = async (): Promise<CreativeRecord[]> => {
+        if (!client.slug || !useCaseId) return [];
+        console.log(`[History] Fetching for slug: "${client.slug}", useCase: "${useCaseId}"`);
+        try {
+            const items = await creativeService.getClientCreatives(client.slug);
+            const relevant = items.filter(i => i.useCaseId === useCaseId);
+            console.log(`[History] Found ${items.length} total docs, ${relevant.length} relevant to ${useCaseId}`);
+            setHistory(relevant);
+            return relevant;
+        } catch (err) {
+            console.error('[History] Fetch failed:', err);
+            return [];
         }
     };
 
@@ -205,34 +235,33 @@ export default function UseCaseWizardPage() {
 
             if (useCaseId) {
                 // Fetch recent projects for this use case
-                const items = await creativeService.getClientCreatives(client.slug);
-                const relevant = items.filter(i => i.useCaseId === useCaseId);
-                setHistory(relevant);
+                await fetchHistory();
 
                 // Set default model for video-cutdown if not already set
                 if (useCaseId === 'video-cutdown' && !stepData.model) {
                     setStepData(prev => ({ ...prev, model: 'Gemini 3 Pro Preview' }));
                 }
 
-                // If there's a stored creativeId, resume it
+                // If there's a stored creativeId, resume it (unless it's already completed)
                 const storedId = localStorage.getItem(`creative_${client.slug}_${useCaseId}`);
+                let resumed = false;
                 if (storedId) {
                     const record = await creativeService.getCreative(storedId);
-                    if (record) {
+                    if (record && record.status !== 'completed') {
                         setCreativeId(storedId);
                         setCreative(record);
                         const lastStepId = steps[record.currentStep]?.id;
                         setStepData(record.stepData[lastStepId] || {});
                         setCurrentStep(record.currentStep);
-                        return;
+                        resumed = true;
+                    } else if (record?.status === 'completed') {
+                        // Project is done - clean up storage so we don't loop back to it
+                        localStorage.removeItem(`creative_${client.slug}_${useCaseId}`);
                     }
                 }
 
-                // If no stored session but we have history, show history screen first
-                if (relevant.length > 0) {
-                    setShowHistory(true);
-                } else {
-                    // Automatically start a new one if brand new
+                if (!resumed) {
+                    setShowHistory(false);
                     startNewProject();
                 }
             }
@@ -243,6 +272,17 @@ export default function UseCaseWizardPage() {
         }
     };
 
+    const clearActiveProject = () => {
+        localStorage.removeItem(`creative_${client.slug}_${useCaseId}`);
+        setCreativeId(null);
+        setCreative(null);
+        setStepData({});
+        setCurrentStep(0);
+        // If it's a standard flow, we might want to show history screen
+        if (useCaseId !== 'video-cutdown') {
+            setShowHistory(true);
+        }
+    };
     const startNewProject = async () => {
         if (!useCaseId) return;
         setIsLoading(true);
@@ -296,7 +336,9 @@ export default function UseCaseWizardPage() {
         setIsLoading(true);
         try {
             const nextStep = currentStep + 1;
-            const updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: stepData };
+            // Snapshot stepData NOW before any setState calls wipe it
+            const currentStepData = { ...stepData };
+            const updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
 
             await creativeService.updateCreative(activeCreativeId!, {
                 currentStep: nextStep,
@@ -323,25 +365,28 @@ export default function UseCaseWizardPage() {
 
                 if (currentStepId === 'configure') {
                     // Moving TO ai-reccos: Trigger Gemini analysis
-                    const lengths = stepData.lengths || [15, 30];
-                    const videoUrl = updatedStepData.upload?.videoUrl || creative?.stepData?.upload?.videoUrl || stepData.videoUrl;
+                    const lengths = currentStepData.lengths || [15, 30];
+                    const videoUrl = updatedStepData.upload?.videoUrl || creative?.stepData?.upload?.videoUrl || currentStepData.videoUrl;
 
                     if (videoUrl) {
-                        const technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-pro-preview';
+                        const technicalModel = currentStepData.model ? (MODEL_MAPPING[currentStepData.model] || currentStepData.model) : 'gemini-3-pro-preview';
                         triggerAIAnalysis(activeCreativeId!, videoUrl, lengths, updatedStepData, technicalModel);
                     }
                 } else if (currentStepId === 'ai-reccos') {
                     // Moving TO process: Trigger FFmpeg stitching
-                    const videoUrl = updatedStepData.upload?.videoUrl || creative?.stepData?.upload?.videoUrl || stepData.videoUrl;
-                    const selectedCuts = (stepData.lengths || []).flatMap((len: number) => {
-                        const selections = stepData[`selected_${len}`] || [];
-                        const recco = (stepData.ai_reccos || []).find((r: any) => r.length === len);
+                    // Use currentStepData (snapshotted before setState) so selections aren't lost
+                    const videoUrl = updatedStepData.upload?.videoUrl || creative?.stepData?.upload?.videoUrl || currentStepData.videoUrl;
+                    const lengths: number[] = currentStepData.lengths || creative?.stepData?.configure?.lengths || [];
+                    const aiReccos = currentStepData.ai_reccos || creative?.stepData?.['ai-reccos']?.ai_reccos || [];
 
-                        // Handle multiple selections (array)
+                    const selectedCuts = lengths.flatMap((len: number) => {
+                        const selections = currentStepData[`selected_${len}`] || [];
+                        const recco = aiReccos.find((r: any) => r.length === len);
+
                         const selectionIds = Array.isArray(selections) ? selections : [selections];
                         if (selectionIds.length === 0) return [];
 
-                        return selectionIds.map(id => {
+                        return selectionIds.map((id: any) => {
                             const opt = recco?.options?.find((o: any) => o.id === id);
                             if (!opt) return null;
                             return {
@@ -352,42 +397,58 @@ export default function UseCaseWizardPage() {
                         }).filter(Boolean);
                     }) as any[];
 
-                    if (videoUrl && selectedCuts.length > 0) {
-                        setIsLoading(true);
-                        // Visually move to the "process" step (the spinner indicator)
-                        setCurrentStep(nextStep);
+                    console.log('[Alli-Studio] lengths:', lengths, '| aiReccos count:', aiReccos.length, '| selectedCuts:', selectedCuts.length);
 
-                        try {
-                            const platform = updatedStepData.upload?.platform || creative?.stepData?.upload?.platform || stepData.platform;
-                            console.log('[Alli-Studio] Starting video processing for', selectedCuts.length, 'cuts on', platform);
-                            const results = await videoService.processCutdowns(videoUrl, selectedCuts, platform);
-                            console.log('[Alli-Studio] Processing results received:', results.cutdowns?.length, 'assets');
+                    if (!videoUrl) {
+                        console.error('[Alli-Studio] No video URL found for processing');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+                    if (selectedCuts.length === 0) {
+                        console.error('[Alli-Studio] No cuts selected — check that selections are being saved');
+                        alert('Please select at least one storyboard option before continuing.');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+                    setIsLoading(true);
+                    // Visually move to the "process" step (the spinner indicator)
+                    setCurrentStep(nextStep);
 
-                            const finalStepData = {
-                                ...updatedStepData,
-                                process: { ...stepData, final_cutdowns: results.cutdowns },
-                                download: { final_cutdowns: results.cutdowns }
-                            };
+                    try {
+                        const platform = updatedStepData.upload?.platform || creative?.stepData?.upload?.platform || stepData.platform;
+                        console.log('[Alli-Studio] Starting video processing for', selectedCuts.length, 'cuts on', platform);
+                        const results = await videoService.processCutdowns(videoUrl, selectedCuts, platform);
+                        console.log('[Alli-Studio] Processing results received:', results.cutdowns?.length, 'assets');
 
-                            // Update database with the processed results and advance to the download step
-                            await creativeService.updateCreative(activeCreativeId!, {
-                                currentStep: nextStep + 1,
-                                stepData: finalStepData
-                            });
+                        const finalStepData = {
+                            ...updatedStepData,
+                            process: { ...stepData, final_cutdowns: results.cutdowns },
+                            download: { final_cutdowns: results.cutdowns }
+                        };
 
-                            const finalRecord = await creativeService.getCreative(activeCreativeId!);
-                            if (finalRecord) setCreative(finalRecord);
+                        // Update database with the processed results and advance to the download step
+                        await creativeService.updateCreative(activeCreativeId!, {
+                            currentStep: nextStep + 1,
+                            status: 'completed',
+                            stepData: finalStepData
+                        });
 
-                            // Move to final download screen
-                            setCurrentStep(nextStep + 1);
-                            setStepData(finalStepData.download);
-                        } catch (err) {
-                            console.error('[Alli-Studio] Video processing failed:', err);
-                            // Bounce back to reccos on failure
-                            setCurrentStep(nextStep - 1);
-                        } finally {
-                            setIsLoading(false);
-                        }
+                        const finalRecord = await creativeService.getCreative(activeCreativeId!);
+                        if (finalRecord) setCreative(finalRecord);
+
+                        // Refresh history so it shows up in the "Board History" section immediately
+                        await fetchHistory();
+
+                        // Move to final download screen
+                        setCurrentStep(nextStep + 1);
+                        setStepData(finalStepData.download);
+                    } catch (err) {
+                        console.error('[Alli-Studio] Video processing failed:', err);
+                        alert(`Video Processing Failed: ${err instanceof Error ? err.message : String(err)}`);
+                        // Bounce back to reccos on failure
+                        setCurrentStep(nextStep - 1);
+                    } finally {
+                        setIsLoading(false);
                     }
                 }
             }
@@ -650,310 +711,359 @@ export default function UseCaseWizardPage() {
 
                             {/* VIDEO CUTDOWN WORKFLOW STEPS */}
                             {useCaseId === 'video-cutdown' && (
-                                <div className="mx-auto max-w-lg text-left">
+                                <div className="space-y-6">
                                     {steps[currentStep].id === 'upload' && (
-                                        <div className="space-y-6">
-                                            {/* Source Selection Tabs */}
-                                            <div className="flex p-1 bg-gray-100 rounded-2xl w-fit">
-                                                <button
-                                                    onClick={() => setVideoSource('upload')}
-                                                    className={cn(
-                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                                                        videoSource === 'upload' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                                                    )}
-                                                >
-                                                    Local Upload
-                                                </button>
-                                                <button
-                                                    onClick={() => setVideoSource('alli')}
-                                                    className={cn(
-                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                                                        videoSource === 'alli' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                                                    )}
-                                                >
-                                                    Alli Central
-                                                </button>
-                                            </div>
-
-                                            {videoSource === 'upload' ? (
-                                                <>
-                                                    <label className="block text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Upload Base Video</label>
-                                                    <label
-                                                        htmlFor="video-upload"
-                                                        className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-100 border-dashed rounded-2xl bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer relative"
-                                                    >
-                                                        {isLoading ? (
-                                                            <div className="space-y-3 text-center py-4">
-                                                                <ArrowPathIcon className="mx-auto h-10 w-10 text-blue-600 animate-spin" />
-                                                                <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Uploading to Studio Cloud...</p>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="space-y-1 text-center py-4">
-                                                                <SparklesIcon className="mx-auto h-12 w-12 text-gray-300" />
-                                                                <div className="flex text-sm text-gray-600 justify-center">
-                                                                    <div className="relative font-black text-blue-600 hover:text-blue-500">
-                                                                        <span>UPLOAD PRIMARY ASSET</span>
-                                                                        <input
-                                                                            id="video-upload"
-                                                                            name="video-upload"
-                                                                            type="file"
-                                                                            className="sr-only"
-                                                                            accept="video/*"
-                                                                            onChange={async (e) => {
-                                                                                const file = e.target.files?.[0];
-                                                                                if (file) {
-                                                                                    console.log(`[Upload] Starting for: ${file.name} (${file.size} bytes)`);
-                                                                                    setIsLoading(true);
-                                                                                    try {
-                                                                                        const path = `uploads/${client.slug || 'anonymous'}/${Date.now()}_${file.name}`;
-                                                                                        const storageRef = ref(storage, path);
-
-                                                                                        console.log(`[Upload] Path: ${path}`);
-                                                                                        await uploadBytes(storageRef, file);
-                                                                                        console.log(`[Upload] Bytes written.`);
-
-                                                                                        const url = await getDownloadURL(storageRef);
-                                                                                        console.log(`[Upload] URL generated: ${url}`);
-
-                                                                                        const newStepData = {
-                                                                                            ...stepData,
-                                                                                            videoName: file.name,
-                                                                                            videoSize: file.size,
-                                                                                            videoUrl: url
-                                                                                        };
-
-                                                                                        setStepData(newStepData);
-
-                                                                                        // Immediate sync to Firestore
-                                                                                        if (creativeId) {
-                                                                                            console.log(`[Upload] Syncing videoUrl to creative ${creativeId}`);
-                                                                                            await creativeService.updateCreative(creativeId, {
-                                                                                                stepData: {
-                                                                                                    ...creative?.stepData,
-                                                                                                    upload: newStepData
-                                                                                                }
-                                                                                            });
-                                                                                            const updated = await creativeService.getCreative(creativeId);
-                                                                                            if (updated) {
-                                                                                                setCreative(updated);
-                                                                                                console.log(`[Upload] Firestore sync complete.`);
-                                                                                            }
-                                                                                        }
-                                                                                    } catch (err: any) {
-                                                                                        console.error('[Upload] CRITICAL FAILURE:', err);
-                                                                                        alert(`Upload failed: ${err.message || 'Unknown error'}`);
-                                                                                    } finally {
-                                                                                        setIsLoading(false);
-                                                                                    }
-                                                                                }
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">MP4, MOV • MAX 100MB</p>
-                                                            </div>
-                                                        )}
-                                                    </label>
-                                                </>
-                                            ) : (
-                                                /* Alli Asset Browser */
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <label className="block text-sm font-black text-gray-900 uppercase tracking-widest">Select Video from Alli</label>
-
-                                                        {platforms.length > 0 && (
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => setPlatformFilter('all')}
-                                                                    className={cn(
-                                                                        "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                                                                        platformFilter === 'all' ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-200"
-                                                                    )}
-                                                                >
-                                                                    All
-                                                                </button>
-                                                                {platforms.map(p => (
-                                                                    <button
-                                                                        key={p}
-                                                                        onClick={() => setPlatformFilter(p)}
-                                                                        className={cn(
-                                                                            "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all",
-                                                                            platformFilter === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-200"
-                                                                        )}
-                                                                    >
-                                                                        {p}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                                            {/* LEFT COLUMN: Asset Library & Source Selection (8 cols) */}
+                                            <div className="lg:col-span-8 space-y-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex p-1 bg-gray-100 rounded-2xl w-fit">
+                                                        <button
+                                                            onClick={() => setVideoSource('alli')}
+                                                            className={cn(
+                                                                "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                                videoSource === 'alli' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                            )}
+                                                        >
+                                                            Alli Central
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setVideoSource('upload')}
+                                                            className={cn(
+                                                                "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                                videoSource === 'upload' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                            )}
+                                                        >
+                                                            Local Upload
+                                                        </button>
                                                     </div>
 
-                                                    {isFetchingAssets ? (
-                                                        <div className="py-20 text-center space-y-4">
-                                                            <ArrowPathIcon className="h-10 w-10 mx-auto text-blue-600 animate-spin" />
-                                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Connecting to Data Explorer...</p>
-                                                        </div>
-                                                    ) : filteredAssets.length > 0 ? (
-                                                        <div className="space-y-6">
-                                                            <div className="grid grid-cols-4 gap-3">
-                                                                {paginatedAssets.map((asset) => (
-                                                                    <div
-                                                                        key={asset.id}
-                                                                        onClick={async () => {
-                                                                            const newStepData = {
-                                                                                ...stepData,
-                                                                                videoName: asset.name || `alli_${asset.id}`,
-                                                                                videoUrl: asset.url,
-                                                                                source: 'alli',
-                                                                                assetId: asset.id,
-                                                                                platform: asset.platform
-                                                                            };
-                                                                            setStepData(newStepData);
-                                                                            if (creativeId) {
-                                                                                await creativeService.updateCreative(creativeId, {
-                                                                                    stepData: {
-                                                                                        ...creative?.stepData,
-                                                                                        upload: newStepData
-                                                                                    }
-                                                                                });
-                                                                            }
-                                                                        }}
-                                                                        onMouseEnter={(e) => {
-                                                                            const video = e.currentTarget.querySelector('video');
-                                                                            if (video) video.play().catch(() => { });
-                                                                        }}
-                                                                        onMouseLeave={(e) => {
-                                                                            const video = e.currentTarget.querySelector('video');
-                                                                            if (video) {
-                                                                                video.pause();
-                                                                                video.currentTime = 0;
-                                                                            }
-                                                                        }}
-                                                                        className={cn(
-                                                                            "group relative bg-black rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
-                                                                            asset.platform?.toLowerCase().includes('youtube') ? "aspect-video" : "aspect-[9/16]",
-                                                                            stepData.videoUrl === asset.url ? "border-blue-600 ring-4 ring-blue-50" : "border-transparent hover:border-blue-400"
-                                                                        )}
-                                                                    >
-                                                                        <video
-                                                                            src={asset.url}
-                                                                            muted
-                                                                            loop
-                                                                            playsInline
-                                                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-300"
-                                                                        />
-                                                                        <div className="absolute inset-0 p-2 flex flex-col justify-end bg-gradient-to-t from-black/95 via-transparent to-transparent">
-                                                                            <p className="text-[7px] font-black text-white truncate uppercase tracking-widest leading-tight">
-                                                                                {asset.platform || 'General'}
-                                                                            </p>
-                                                                            <p className="text-[7px] font-bold text-blue-300 truncate tracking-tight">
-                                                                                {asset.id}
-                                                                            </p>
-                                                                        </div>
-                                                                        {stepData.videoUrl === asset.url && (
-                                                                            <div className="absolute top-1 right-1 bg-blue-600 rounded-full p-0.5 shadow-lg border border-white">
-                                                                                <CheckIcon className="h-2 w-2 text-white" />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                                    {/* Compact Model Selector Moved Up */}
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Intelligence:</span>
+                                                        <select
+                                                            value={stepData.model || "Gemini 3 Pro Preview"}
+                                                            onChange={(e) => setStepData({ ...stepData, model: e.target.value })}
+                                                            className="text-[10px] font-black uppercase tracking-widest py-1.5 pl-3 pr-8 rounded-lg border-gray-200 bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
+                                                        >
+                                                            <option>Gemini 3 Pro Preview</option>
+                                                            <option disabled>OpenAI GPT-4o (Soon)</option>
+                                                            <option disabled>Claude 3.5 (Soon)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
 
-                                                            {/* Pagination Controls */}
-                                                            {totalPages > 1 && (
-                                                                <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-                                                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">
-                                                                        Page {assetPage} of {totalPages}
-                                                                    </p>
-                                                                    <div className="flex gap-1">
+                                                {videoSource === 'alli' ? (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Select Asset from Alli</h3>
+                                                            {platforms.length > 0 && (
+                                                                <div className="flex gap-1">
+                                                                    {['all', ...platforms].map(p => (
                                                                         <button
-                                                                            onClick={() => setAssetPage(p => Math.max(1, p - 1))}
-                                                                            disabled={assetPage === 1}
-                                                                            className="p-1.5 rounded-md border border-gray-200 disabled:opacity-30 hover:bg-gray-50 transition-colors"
+                                                                            key={p}
+                                                                            onClick={() => setPlatformFilter(p)}
+                                                                            className={cn(
+                                                                                "px-2 py-1 rounded text-[8px] font-black uppercase tracking-tighter border transition-all",
+                                                                                platformFilter === p ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-500 border-gray-100"
+                                                                            )}
                                                                         >
-                                                                            <ChevronLeftIcon className="h-3 w-3 text-gray-600" />
+                                                                            {p === 'all' ? 'All' : p}
                                                                         </button>
-                                                                        <button
-                                                                            onClick={() => setAssetPage(p => Math.min(totalPages, p + 1))}
-                                                                            disabled={assetPage === totalPages}
-                                                                            className="p-1.5 rounded-md border border-gray-200 disabled:opacity-30 hover:bg-gray-50 transition-colors"
-                                                                        >
-                                                                            <ChevronRightIcon className="h-3 w-3 text-gray-600" />
-                                                                        </button>
-                                                                    </div>
+                                                                    ))}
                                                                 </div>
                                                             )}
                                                         </div>
+
+                                                        {isFetchingAssets ? (
+                                                            <div className="py-20 text-center space-y-4 bg-gray-50 rounded-2xl border border-dashed border-gray-100">
+                                                                <ArrowPathIcon className="h-8 w-8 mx-auto text-blue-600 animate-spin" />
+                                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Querying API...</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-3">
+                                                                {/* Asset count */}
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                                    {filteredAssets.length} assets · Page {assetPage} of {totalPages}
+                                                                </p>
+
+                                                                {/* Grid — no clipping, pagination handles navigation */}
+                                                                <div className="grid grid-cols-4 gap-2">
+                                                                    {paginatedAssets.map((asset) => {
+                                                                        const assetHistory = history.filter(h => h.stepData.upload?.videoUrl === asset.url);
+                                                                        const runLengths = Array.from(new Set(assetHistory.flatMap(h => h.stepData.configure?.lengths || []))).sort((a, b) => a - b);
+
+                                                                        return (
+                                                                            <div
+                                                                                key={asset.id}
+                                                                                onClick={async () => {
+                                                                                    const newStepData = {
+                                                                                        ...stepData,
+                                                                                        videoName: asset.name || `alli_${asset.id}`,
+                                                                                        videoUrl: asset.url,
+                                                                                        source: 'alli',
+                                                                                        assetId: asset.id,
+                                                                                        platform: asset.platform
+                                                                                    };
+                                                                                    setStepData(newStepData);
+                                                                                    if (creativeId) {
+                                                                                        await creativeService.updateCreative(creativeId, {
+                                                                                            stepData: { ...creative?.stepData, upload: newStepData }
+                                                                                        });
+                                                                                    }
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    const video = e.currentTarget.querySelector('video');
+                                                                                    if (video) video.play().catch(() => { });
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    const video = e.currentTarget.querySelector('video');
+                                                                                    if (video) { video.pause(); video.currentTime = 0; }
+                                                                                }}
+                                                                                className={cn(
+                                                                                    "group relative bg-black rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
+                                                                                    asset.platform?.toLowerCase().includes('youtube') ? "aspect-video" : "aspect-[9/16]",
+                                                                                    stepData.videoUrl === asset.url ? "border-blue-600 ring-4 ring-blue-50" : "border-transparent hover:border-blue-400"
+                                                                                )}
+                                                                            >
+                                                                                <video
+                                                                                    src={asset.url}
+                                                                                    muted
+                                                                                    loop
+                                                                                    playsInline
+                                                                                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100"
+                                                                                    onLoadedMetadata={(e) => {
+                                                                                        const dur = (e.target as HTMLVideoElement).duration;
+                                                                                        if (dur && isFinite(dur)) {
+                                                                                            setAssetDurations(prev => ({ ...prev, [asset.id]: Math.round(dur) }));
+                                                                                        }
+                                                                                    }}
+                                                                                />
+
+                                                                                {/* History / cutdown badges */}
+                                                                                <div className="absolute top-1.5 left-1.5 flex flex-wrap gap-1 max-w-[85%]">
+                                                                                    {runLengths.map(len => (
+                                                                                        <span key={len} className="bg-blue-600/95 backdrop-blur-sm text-[11px] font-black text-white px-2.5 py-1 rounded border border-white/20 shadow-sm uppercase tracking-wider">
+                                                                                            {len}s
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+
+                                                                                <div className="absolute inset-0 p-2 flex flex-col justify-end bg-gradient-to-t from-black via-black/30 to-transparent">
+                                                                                    <div className="flex items-center justify-between gap-1">
+                                                                                        <p className="text-[9px] font-black text-white truncate uppercase tracking-wide">{asset.platform || 'General'}</p>
+                                                                                        {assetDurations[asset.id] !== undefined && (
+                                                                                            <span className="shrink-0 text-[10px] font-black text-white bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded">
+                                                                                                {assetDurations[asset.id]}s
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                                {stepData.videoUrl === asset.url && (
+                                                                                    <div className="absolute top-1 right-1 bg-blue-600 rounded-full p-0.5 shadow-lg border border-white">
+                                                                                        <CheckIcon className="h-2 w-2 text-white" />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                {/* Pagination bar */}
+                                                                {totalPages > 1 && (
+                                                                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                                                        <button
+                                                                            onClick={() => setAssetPage(p => Math.max(1, p - 1))}
+                                                                            disabled={assetPage === 1}
+                                                                            className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-[9px] font-black uppercase tracking-widest text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-all"
+                                                                        >
+                                                                            ← Prev
+                                                                        </button>
+                                                                        <div className="flex items-center gap-1">
+                                                                            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                                                                                let page: number;
+                                                                                if (totalPages <= 7) page = i + 1;
+                                                                                else if (assetPage <= 4) page = i + 1;
+                                                                                else if (assetPage >= totalPages - 3) page = totalPages - 6 + i;
+                                                                                else page = assetPage - 3 + i;
+                                                                                return (
+                                                                                    <button
+                                                                                        key={page}
+                                                                                        onClick={() => setAssetPage(page)}
+                                                                                        className={cn(
+                                                                                            "w-7 h-7 rounded-lg text-[9px] font-black transition-all",
+                                                                                            assetPage === page ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                                                                                        )}
+                                                                                    >
+                                                                                        {page}
+                                                                                    </button>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                        <button
+                                                                            onClick={() => setAssetPage(p => Math.min(totalPages, p + 1))}
+                                                                            disabled={assetPage === totalPages}
+                                                                            className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-[9px] font-black uppercase tracking-widest text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-all"
+                                                                        >
+                                                                            Next →
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4">
+                                                        <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Upload Local Asset</h3>
+                                                        <label className="flex flex-col items-center justify-center h-[200px] border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer">
+                                                            {isLoading ? (
+                                                                <ArrowPathIcon className="h-8 w-8 text-blue-600 animate-spin" />
+                                                            ) : (
+                                                                <div className="text-center">
+                                                                    <SparklesIcon className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                                                                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">Drop Primary File</p>
+                                                                </div>
+                                                            )}
+                                                            <input type="file" className="sr-only" accept="video/*" onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    setIsLoading(true);
+                                                                    try {
+                                                                        const storageRef = ref(storage, `uploads/${client.slug}/${Date.now()}_${file.name}`);
+                                                                        await uploadBytes(storageRef, file);
+                                                                        const url = await getDownloadURL(storageRef);
+                                                                        const newStepData = { ...stepData, videoName: file.name, videoUrl: url, source: 'local' };
+                                                                        setStepData(newStepData);
+                                                                        if (creativeId) {
+                                                                            await creativeService.updateCreative(creativeId, {
+                                                                                stepData: { ...creative?.stepData, upload: newStepData }
+                                                                            });
+                                                                        }
+                                                                    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+                                                                }
+                                                            }} />
+                                                        </label>
+                                                    </div>
+                                                )}
+
+                                                {/* Selected Asset Preview - Compact */}
+                                                {stepData.videoUrl && (
+                                                    <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                                        <div className="h-16 w-24 bg-black rounded-lg overflow-hidden shrink-0 border border-blue-200">
+                                                            <video src={stepData.videoUrl} className="w-full h-full object-cover" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1 truncate">{stepData.videoName}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[8px] font-black py-0.5 px-2 bg-blue-600 text-white rounded-full uppercase">Asset Locked</span>
+                                                                {stepData.platform && (
+                                                                    <span className="text-[8px] font-black py-0.5 px-2 bg-white text-blue-600 border border-blue-200 rounded-full uppercase">{stepData.platform}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={handleNext}
+                                                            className="px-6 py-2.5 bg-blue-600 text-[10px] font-black text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all uppercase tracking-widest"
+                                                        >
+                                                            Continue →
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* RIGHT COLUMN: Historic Runs (4 cols) */}
+                                            <div className="lg:col-span-4 space-y-4 border-l border-gray-50 pl-8">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Board History</h3>
+                                                    <button
+                                                        onClick={clearActiveProject}
+                                                        className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 bg-blue-50 px-3 py-1 rounded-full"
+                                                    >
+                                                        + Start New Build
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-3 max-h-[750px] overflow-y-auto pr-2 custom-scrollbar">
+                                                    {history.filter(h => h.status === 'completed').length > 0 ? (
+                                                        history.filter(h => h.status === 'completed').map(record => (
+                                                            <button
+                                                                key={record.id}
+                                                                onClick={() => resumeProject(record)}
+                                                                className={cn(
+                                                                    "group relative aspect-[9/16] rounded-2xl border-2 transition-all overflow-hidden bg-black",
+                                                                    creativeId === record.id
+                                                                        ? "border-blue-600 ring-4 ring-blue-50 shadow-lg"
+                                                                        : "border-gray-100 hover:border-blue-400 hover:shadow-md"
+                                                                )}
+                                                            >
+                                                                {/* Visual Preview */}
+                                                                <div className="absolute inset-0">
+                                                                    {record.stepData.upload?.videoUrl ? (
+                                                                        <video
+                                                                            src={record.stepData.upload.videoUrl}
+                                                                            className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-opacity duration-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="w-full h-full flex items-center justify-center">
+                                                                            <SparklesIcon className="h-6 w-6 text-gray-700" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Content Overlay */}
+                                                                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black via-black/20 to-transparent">
+                                                                    <p className="text-[10px] font-black text-white truncate uppercase tracking-[0.1em] mb-2 leading-tight drop-shadow-md">
+                                                                        {record.stepData.upload?.videoName?.replace(/\.[^/.]+$/, "") || `Untitled Project`}
+                                                                    </p>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {(record.stepData.configure?.lengths || []).map((l: number) => (
+                                                                            <span key={l} className="text-[8px] font-black px-2 py-0.5 rounded bg-blue-600 text-white border border-white/20 uppercase tracking-tighter shadow-lg">
+                                                                                {l}s
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Interactive Hover Indicator */}
+                                                                <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <div className="bg-white/95 backdrop-blur-sm p-3 rounded-full shadow-2xl scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                        <SparklesIcon className="h-4 w-4 text-blue-600" />
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        ))
                                                     ) : (
-                                                        <div className="py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No video assets found for this client</p>
+                                                        <div className="py-12 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-100">
+                                                            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest italic leading-relaxed">
+                                                                No creative boards<br />found for this client
+                                                            </p>
                                                         </div>
                                                     )}
                                                 </div>
-                                            )}
-                                            {stepData.videoUrl && (
-                                                <div className="mt-6 space-y-4">
-                                                    <div className="flex items-center gap-2 text-green-600">
-                                                        <CheckIcon className="h-5 w-5" />
-                                                        <p className="text-xs font-black uppercase tracking-widest animate-bounce">Asset Ready: {stepData.videoName}</p>
-                                                    </div>
-                                                    <div className="rounded-2xl overflow-hidden border border-gray-200 bg-black shadow-xl ring-4 ring-blue-50/50">
-                                                        <video
-                                                            src={stepData.videoUrl}
-                                                            controls
-                                                            className="w-full h-auto max-h-[500px] object-contain"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
 
-                                            <div className="mt-10 pt-8 border-t border-gray-100">
-                                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">AI Intelligence Engine</label>
-                                                <Listbox
-                                                    value={stepData.model || "Gemini 3 Pro Preview"}
-                                                    onChange={(val) => setStepData({ ...stepData, model: val })}
-                                                >
-                                                    <div className="relative mt-1">
-                                                        <ListboxButton className="relative w-full cursor-default rounded-xl bg-gray-50 py-4 pl-4 pr-10 text-left border border-gray-100 focus:outline-none sm:text-sm">
-                                                            <span className="block truncate font-bold text-gray-900">{stepData.model || "Gemini 3 Pro Preview"}</span>
-                                                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                                                <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-                                                            </span>
-                                                        </ListboxButton>
-                                                        <Transition as={Fragment} leave="transition ease-in duration-100" leaveFrom="opacity-100" leaveTo="opacity-0">
-                                                            <ListboxOptions className="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-base shadow-2xl ring-1 ring-black/5 focus:outline-none sm:text-sm">
-                                                                {[
-                                                                    { name: 'Gemini 3 Pro Preview', available: true },
-                                                                    { name: 'Gemini 1.5 Pro', available: true },
-                                                                    { name: 'OpenAI GPT-4o', available: false },
-                                                                    { name: 'Anthropic Claude 3.5', available: false }
-                                                                ].map((mod, i) => (
-                                                                    <ListboxOption
-                                                                        key={i}
-                                                                        disabled={!mod.available}
-                                                                        className={({ active, disabled }) =>
-                                                                            `relative cursor-default select-none py-3 pl-10 pr-4 ${active ? 'bg-blue-50 text-blue-900' : 'text-gray-900'} ${disabled ? 'opacity-30 grayscale cursor-not-allowed' : ''}`
-                                                                        }
-                                                                        value={mod.name}
-                                                                    >
-                                                                        {({ selected }) => (
-                                                                            <>
-                                                                                <span className={`block truncate ${selected ? 'font-black' : 'font-medium'}`}>
-                                                                                    {mod.name} {!mod.available && '(Coming Soon)'}
-                                                                                </span>
-                                                                                {selected ? (
-                                                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-blue-600">
-                                                                                        <CheckIcon className="h-4 w-4" aria-hidden="true" />
-                                                                                    </span>
-                                                                                ) : null}
-                                                                            </>
-                                                                        )}
-                                                                    </ListboxOption>
-                                                                ))}
-                                                            </ListboxOptions>
-                                                        </Transition>
-                                                    </div>
-                                                </Listbox>
+                                                <div className="pt-6 border-t border-gray-100">
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm("Are you sure you want to clear ALL test files? This cannot be undone.")) {
+                                                                setIsLoading(true);
+                                                                try {
+                                                                    const res = await videoService.clearStorage();
+                                                                    alert(`Success! Deleted ${res.deletedCount} files.`);
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    alert("Failed to clear storage.");
+                                                                } finally {
+                                                                    setIsLoading(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-red-100 bg-red-50/30 text-red-600 text-[9px] font-black uppercase tracking-widest hover:bg-red-50 transition-all"
+                                                    >
+                                                        <TrashIcon className="h-3 w-3" />
+                                                        Clear All Test Files
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -1016,7 +1126,7 @@ export default function UseCaseWizardPage() {
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest leading-none mb-1">Analysis Matrix Complete</p>
-                                                                    <p className="text-[9px] text-blue-700 font-bold uppercase tracking-widest leading-none">Insights synthesized by Gemini 1.5 Pro</p>
+                                                                    <p className="text-[9px] text-blue-700 font-bold uppercase tracking-widest leading-none">Insights synthesized by {stepData.model || creative?.stepData?.configure?.model || 'Gemini 3 Pro Preview'}</p>
                                                                 </div>
                                                             </div>
                                                             <span className="text-[9px] font-black py-1 px-3 bg-blue-600 text-white rounded-full tracking-[0.2em] uppercase">Ready</span>

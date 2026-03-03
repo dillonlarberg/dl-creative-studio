@@ -10,6 +10,7 @@ const PROXY_BASE = 'https://us-central1-automated-creative-e10d7.cloudfunctions.
 
 export class AlliService {
     private static instance: AlliService;
+    private assetCache: Record<string, CreativeAsset[]> = {};
 
     private constructor() { }
 
@@ -97,7 +98,12 @@ export class AlliService {
      * Fetches creative assets for a specific client
      * Uses the 'creative_insights_data_export' model
      */
-    async getCreativeAssets(clientSlug: string): Promise<CreativeAsset[]> {
+    async getCreativeAssets(clientSlug: string, forceRefresh = false): Promise<CreativeAsset[]> {
+        if (!forceRefresh && this.assetCache[clientSlug]) {
+            console.log(`Returning cached assets for ${clientSlug}...`);
+            return this.assetCache[clientSlug];
+        }
+
         console.log(`Fetching assets for ${clientSlug} from Alli...`);
         const token = await authService.getAccessToken();
         if (!token) throw new Error('Not authenticated');
@@ -117,7 +123,7 @@ export class AlliService {
         const data = await response.json();
         const results = data.results || (Array.isArray(data) ? data : []);
 
-        return results.map((item: any, idx: number) => {
+        const mapped = results.map((item: any, idx: number) => {
             const getValue = (key: string) => {
                 return item[key] || item[`creative_insights_data_export__${key}`];
             };
@@ -131,6 +137,9 @@ export class AlliService {
                 platform: getValue('platform')
             };
         }).filter((asset: CreativeAsset) => asset.url);
+
+        this.assetCache[clientSlug] = mapped;
+        return mapped;
     }
 
     /**

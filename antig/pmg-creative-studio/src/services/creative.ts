@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, getDoc, query, where, getDocs, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 
 export interface CreativeRecord {
     id: string;
@@ -47,11 +47,17 @@ export const creativeService = {
     async getClientCreatives(clientSlug: string): Promise<CreativeRecord[]> {
         const q = query(
             collection(db, 'creatives'),
-            where('clientSlug', '==', clientSlug),
-            orderBy('createdAt', 'desc')
+            where('clientSlug', '==', clientSlug)
         );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreativeRecord));
+        const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreativeRecord));
+
+        // Sort in JS to avoid index requirement
+        return items.sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA;
+        });
     },
 
     async simulateGeneration(id: string): Promise<void> {

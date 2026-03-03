@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from 'react';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
 import type { ClientAssetHouse } from '../services/clientAssetHouse';
+import { alliService } from '../services/alli';
 
 const iconMap: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
     ArrowsPointingOutIcon,
@@ -47,6 +48,10 @@ export default function CreatePage() {
         try {
             const data = await clientAssetHouseService.getAssetHouse(client.slug);
             setAssetHouse(data);
+
+            // Proactively ping Alli to warm the cache for video cutdowns
+            console.log(`[CreatePage] Proactively warming Alli cache for ${client.slug}`);
+            alliService.getCreativeAssets(client.slug).catch(err => console.error('[CreatePage] Cache warming failed:', err));
         } catch (err) {
             console.error(err);
         } finally {
