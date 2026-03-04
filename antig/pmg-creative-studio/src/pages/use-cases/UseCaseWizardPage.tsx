@@ -18,9 +18,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
     'image-resize': [
         { id: 'upload', name: 'Select Image' },
-        { id: 'sizes', name: 'Choose Sizes' },
-        { id: 'preview', name: 'Preview' },
-        { id: 'approve', name: 'Approve & Download' },
+        { id: 'preview', name: 'Instagram Story Preview' },
+        { id: 'download', name: 'Download' },
     ],
     'edit-image': [
         { id: 'select', name: 'Select Image' },
@@ -85,6 +84,57 @@ const MODEL_MAPPING: Record<string, string> = {
     'Gemini 1.5 Pro': 'gemini-1.5-pro',
 };
 
+const INSTAGRAM_STORY_WIDTH = 1080;
+const INSTAGRAM_STORY_HEIGHT = 1920;
+
+const resizeToInstagramStoryBlob = async (source: string | Blob): Promise<Blob> => {
+    const sourceBlob =
+        typeof source === 'string'
+            ? await (async () => {
+                const response = await fetch(source);
+                if (!response.ok) {
+                    throw new Error(`Failed to load image (${response.status})`);
+                }
+                return response.blob();
+            })()
+            : source;
+    const objectUrl = URL.createObjectURL(sourceBlob);
+
+    try {
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const element = new Image();
+            element.onload = () => resolve(element);
+            element.onerror = () => reject(new Error('Could not decode image.'));
+            element.src = objectUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = INSTAGRAM_STORY_WIDTH;
+        canvas.height = INSTAGRAM_STORY_HEIGHT;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Could not initialize canvas context.');
+
+        // Cover fit: fills 1080x1920 and crops overflow.
+        const scale = Math.max(
+            INSTAGRAM_STORY_WIDTH / img.width,
+            INSTAGRAM_STORY_HEIGHT / img.height
+        );
+        const drawWidth = img.width * scale;
+        const drawHeight = img.height * scale;
+        const dx = (INSTAGRAM_STORY_WIDTH - drawWidth) / 2;
+        const dy = (INSTAGRAM_STORY_HEIGHT - drawHeight) / 2;
+        ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+        const outputBlob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.92);
+        });
+        if (!outputBlob) throw new Error('Failed to export resized image.');
+        return outputBlob;
+    } finally {
+        URL.revokeObjectURL(objectUrl);
+    }
+};
+
 export default function UseCaseWizardPage() {
     const { useCaseId } = useParams<{ useCaseId: string }>();
     const useCase = USE_CASES.find((uc) => uc.id === useCaseId);
@@ -98,18 +148,28 @@ export default function UseCaseWizardPage() {
     const [history, setHistory] = useState<CreativeRecord[]>([]);
     const [showHistory, setShowHistory] = useState(false);
     const [videoSource, setVideoSource] = useState<'upload' | 'alli'>('alli');
+    const [imageSource, setImageSource] = useState<'upload' | 'alli'>('alli');
     const [alliAssets, setAlliAssets] = useState<CreativeAsset[]>([]);
+    const [alliImageAssets, setAlliImageAssets] = useState<CreativeAsset[]>([]);
     const [assetDurations, setAssetDurations] = useState<Record<string, number>>({});
     const [platforms, setPlatforms] = useState<string[]>([]);
     const [platformFilter, setPlatformFilter] = useState('all');
     const [isFetchingAssets, setIsFetchingAssets] = useState(false);
     const [assetPage, setAssetPage] = useState(1);
+    const [imageAssetPage, setImageAssetPage] = useState(1);
+    const [uploadedImageBlob, setUploadedImageBlob] = useState<Blob | null>(null);
+    const [localImageOutputUrl, setLocalImageOutputUrl] = useState<string | null>(null);
     const ITEMS_PER_PAGE = 16; // 4 columns × 4 rows
+    const IMAGE_ITEMS_PER_PAGE = 12;
 
     const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
 
     // Move steps definition up so handleNext can use it
     const steps = WIZARD_STEPS[useCaseId as UseCaseId] || [];
+    const clampStepIndex = (index: number) => {
+        if (steps.length === 0) return 0;
+        return Math.min(Math.max(index, 0), steps.length - 1);
+    };
 
     useEffect(() => {
         if (client.slug) {
@@ -117,19 +177,35 @@ export default function UseCaseWizardPage() {
         }
     }, [client.slug]);
 
-    // Fetch Alli assets if source is 'alli'
+    // Fetch Alli assets if any workflow source is 'alli'
     useEffect(() => {
-        if (videoSource === 'alli' && client.slug && alliAssets.length === 0) {
+        const shouldFetch =
+            (videoSource === 'alli' || imageSource === 'alli') &&
+            client.slug &&
+            alliAssets.length === 0 &&
+            alliImageAssets.length === 0;
+
+        if (shouldFetch) {
             fetchAlliAssets();
         }
-    }, [videoSource, client.slug]);
+    }, [videoSource, imageSource, client.slug, alliAssets.length, alliImageAssets.length]);
+
+    useEffect(() => {
+        return () => {
+            if (localImageOutputUrl) {
+                URL.revokeObjectURL(localImageOutputUrl);
+            }
+        };
+    }, [localImageOutputUrl]);
 
     const fetchAlliAssets = async () => {
         setIsFetchingAssets(true);
         try {
             const assets = await alliService.getCreativeAssets(client.slug);
             const videos = assets.filter(a => a.type === 'video');
+            const images = assets.filter(a => a.type === 'image');
             setAlliAssets(videos);
+            setAlliImageAssets(images);
 
             // Extract unique platforms
             const uniquePlatforms = Array.from(new Set(videos.map(v => v.platform).filter(Boolean))) as string[];
@@ -147,11 +223,24 @@ export default function UseCaseWizardPage() {
 
     const totalPages = Math.ceil(filteredAssets.length / ITEMS_PER_PAGE);
     const paginatedAssets = filteredAssets.slice((assetPage - 1) * ITEMS_PER_PAGE, assetPage * ITEMS_PER_PAGE);
+    const totalImagePages = Math.max(1, Math.ceil(alliImageAssets.length / IMAGE_ITEMS_PER_PAGE));
+    const paginatedImageAssets = alliImageAssets.slice((imageAssetPage - 1) * IMAGE_ITEMS_PER_PAGE, imageAssetPage * IMAGE_ITEMS_PER_PAGE);
 
     // Reset pagination when filter changes
     useEffect(() => {
         setAssetPage(1);
     }, [platformFilter]);
+
+    useEffect(() => {
+        setImageAssetPage(1);
+    }, [imageSource, alliImageAssets.length, useCaseId]);
+
+    useEffect(() => {
+        if (useCaseId !== 'image-resize') return;
+        if (steps[currentStep]?.id !== 'upload') return;
+        if (stepData.source === 'local') setImageSource('upload');
+        if (stepData.source === 'alli') setImageSource('alli');
+    }, [useCaseId, currentStep, stepData.source]);
 
     // Track if we've auto-triggered for the current creative + step combination
     const autoTriggeredRef = useRef<string | null>(null);
@@ -248,11 +337,12 @@ export default function UseCaseWizardPage() {
                 if (storedId) {
                     const record = await creativeService.getCreative(storedId);
                     if (record && record.status !== 'completed') {
+                        const safeStep = clampStepIndex(record.currentStep ?? 0);
                         setCreativeId(storedId);
                         setCreative(record);
-                        const lastStepId = steps[record.currentStep]?.id;
+                        const lastStepId = steps[safeStep]?.id;
                         setStepData(record.stepData[lastStepId] || {});
-                        setCurrentStep(record.currentStep);
+                        setCurrentStep(safeStep);
                         resumed = true;
                     } else if (record?.status === 'completed') {
                         // Project is done - clean up storage so we don't loop back to it
@@ -277,6 +367,11 @@ export default function UseCaseWizardPage() {
         setCreativeId(null);
         setCreative(null);
         setStepData({});
+        setUploadedImageBlob(null);
+        setLocalImageOutputUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
         setCurrentStep(0);
         // If it's a standard flow, we might want to show history screen
         if (useCaseId !== 'video-cutdown') {
@@ -296,6 +391,11 @@ export default function UseCaseWizardPage() {
             localStorage.setItem(`creative_${client.slug}_${useCaseId}`, id);
             setCurrentStep(0);
             setStepData({});
+            setUploadedImageBlob(null);
+            setLocalImageOutputUrl((prev) => {
+                if (prev) URL.revokeObjectURL(prev);
+                return null;
+            });
             setShowHistory(false);
         } catch (err) {
             console.error(err);
@@ -305,11 +405,17 @@ export default function UseCaseWizardPage() {
     };
 
     const resumeProject = (record: CreativeRecord) => {
+        const safeStep = clampStepIndex(record.currentStep ?? 0);
+        setUploadedImageBlob(null);
+        setLocalImageOutputUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
         setCreativeId(record.id);
         setCreative(record);
         localStorage.setItem(`creative_${client.slug}_${useCaseId}`, record.id);
-        setCurrentStep(record.currentStep);
-        const currentStepId = steps[record.currentStep]?.id;
+        setCurrentStep(safeStep);
+        const currentStepId = steps[safeStep]?.id;
         setStepData(record.stepData[currentStepId] || {});
         setShowHistory(false);
     };
@@ -453,8 +559,125 @@ export default function UseCaseWizardPage() {
                 }
             }
 
+            if (useCaseId === 'image-resize') {
+                const currentStepId = steps[currentStep].id;
+
+                if (currentStepId === 'upload') {
+                    const sourceImageUrl =
+                        currentStepData.imageUrl ||
+                        updatedStepData.upload?.imageUrl ||
+                        creative?.stepData?.upload?.imageUrl;
+
+                    if (!sourceImageUrl && !uploadedImageBlob) {
+                        alert('Please upload an image first.');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+
+                    try {
+                        const outputBlob = await resizeToInstagramStoryBlob(uploadedImageBlob || sourceImageUrl);
+                        const localOutputUrl = URL.createObjectURL(outputBlob);
+                        setLocalImageOutputUrl((prev) => {
+                            if (prev) URL.revokeObjectURL(prev);
+                            return localOutputUrl;
+                        });
+
+                        const sourceImageName =
+                            currentStepData.imageName ||
+                            updatedStepData.upload?.imageName ||
+                            'image';
+
+                        const persistedPreviewData = {
+                            sourceImageUrl: sourceImageUrl || '',
+                            sourceImageName,
+                            outputUrl: '',
+                            width: INSTAGRAM_STORY_WIDTH,
+                            height: INSTAGRAM_STORY_HEIGHT,
+                            format: 'jpeg',
+                        };
+
+                        const localPreviewData = {
+                            ...persistedPreviewData,
+                            localOutputUrl,
+                        };
+
+                        const seededStepData = {
+                            ...updatedStepData,
+                            preview: persistedPreviewData,
+                            download: persistedPreviewData,
+                        };
+
+                        await creativeService.updateCreative(activeCreativeId!, {
+                            currentStep: nextStep,
+                            stepData: seededStepData,
+                        });
+                        setUploadedImageBlob(null);
+                        setStepData(localPreviewData);
+
+                        // Background upload keeps preview responsive while still producing a durable URL.
+                        void (async () => {
+                            try {
+                                const outputPath = `results/${client.slug}/${activeCreativeId}/story_${Date.now()}.jpg`;
+                                const outputRef = ref(storage, outputPath);
+                                await uploadBytes(outputRef, outputBlob, { contentType: 'image/jpeg' });
+                                const outputUrl = await getDownloadURL(outputRef);
+
+                                const uploadedPreviewData = {
+                                    ...persistedPreviewData,
+                                    outputUrl,
+                                };
+                                const finalStepData = {
+                                    ...seededStepData,
+                                    preview: uploadedPreviewData,
+                                    download: uploadedPreviewData,
+                                };
+
+                                await creativeService.updateCreative(activeCreativeId!, {
+                                    stepData: finalStepData,
+                                });
+
+                                setStepData((prev) => ({ ...prev, outputUrl }));
+                                const refreshed = await creativeService.getCreative(activeCreativeId!);
+                                if (refreshed) setCreative(refreshed);
+                            } catch (err) {
+                                console.error('[Image-Resize] Failed to upload resized output:', err);
+                            }
+                        })();
+                    } catch (err) {
+                        console.error('[Image-Resize] Failed to generate preview:', err);
+                        alert(`Image resize failed: ${err instanceof Error ? err.message : String(err)}`);
+                        setCurrentStep(nextStep - 1);
+                        setStepData(updatedStepData.upload || currentStepData);
+                        return;
+                    }
+                } else if (currentStepId === 'preview') {
+                    const downloadData = updatedStepData.preview || currentStepData;
+                    if (!downloadData.outputUrl && !downloadData.localOutputUrl && !localImageOutputUrl) {
+                        alert('Preview is still generating. Please wait a moment and try again.');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+                    const persistedDownloadData = { ...downloadData };
+                    delete persistedDownloadData.localOutputUrl;
+                    const finalStepData = {
+                        ...updatedStepData,
+                        download: persistedDownloadData,
+                    };
+
+                    await creativeService.updateCreative(activeCreativeId!, {
+                        currentStep: nextStep,
+                        status: 'completed',
+                        stepData: finalStepData,
+                    });
+                    const refreshed = await creativeService.getCreative(activeCreativeId!);
+                    if (refreshed) setCreative(refreshed);
+                    setStepData(downloadData);
+                    await fetchHistory();
+                }
+            }
+
             // If finishing, trigger simulation (standard flows)
-            if (nextStep === steps.length - 1 && useCaseId !== 'video-cutdown') {
+            if (nextStep === steps.length - 1 && useCaseId !== 'video-cutdown' && useCaseId !== 'image-resize') {
                 setIsProcessing(true);
                 await creativeService.simulateGeneration(activeCreativeId!);
                 const updated = await creativeService.getCreative(activeCreativeId!);
@@ -469,6 +692,26 @@ export default function UseCaseWizardPage() {
     };
 
     const isReady = clientAssetHouseService.checkBrandStandards(assetHouse);
+    const isNextDisabled =
+        isLoading ||
+        (
+            useCaseId === 'video-cutdown' && (
+                (steps[currentStep]?.id === 'upload' && !stepData.videoUrl) ||
+                (steps[currentStep]?.id === 'configure' && (!stepData.lengths || stepData.lengths.length === 0)) ||
+                (steps[currentStep]?.id === 'ai-reccos' && (!stepData.lengths?.every((l: number) => stepData[`selected_${l}`])))
+            )
+        ) ||
+        (
+            useCaseId === 'image-resize' && (
+                steps[currentStep]?.id === 'upload' && !stepData.imageUrl
+            )
+        );
+    const imageResizeOutputUrl =
+        stepData.outputUrl ||
+        stepData.localOutputUrl ||
+        localImageOutputUrl ||
+        creative?.stepData?.download?.outputUrl ||
+        creative?.stepData?.preview?.outputUrl;
 
     if (!useCase || !useCaseId) {
         return (
@@ -582,7 +825,7 @@ export default function UseCaseWizardPage() {
                             <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest italic">
                                 Recent {useCase.title} Strategy Boards
                             </h2>
-                            <p className="text-sm text-blue-gray-400">Continue a recent session or start a new high-impact cutdown board.</p>
+                            <p className="text-sm text-blue-gray-400">Continue a recent session or start a new board.</p>
                         </div>
 
                         <div className="mx-auto max-w-lg space-y-3">
@@ -594,7 +837,7 @@ export default function UseCaseWizardPage() {
                                 >
                                     <div className="text-left">
                                         <p className="text-sm font-bold text-gray-900 tracking-tight italic">
-                                            {record.stepData.upload?.videoName || `Project ${record.id.slice(-6).toUpperCase()}`}
+                                            {record.stepData.upload?.imageName || record.stepData.upload?.videoName || `Project ${record.id.slice(-6).toUpperCase()}`}
                                         </p>
                                         <p className="text-[10px] text-blue-gray-400 font-extrabold uppercase tracking-widest mt-1">
                                             Modified: {record.updatedAt?.seconds
@@ -628,6 +871,318 @@ export default function UseCaseWizardPage() {
                         </h2>
 
                         <div className="mt-8">
+                            {/* IMAGE RESIZE WORKFLOW (MVP) */}
+                            {useCaseId === 'image-resize' && (
+                                <div className="mx-auto max-w-2xl space-y-6 text-left">
+                                    {steps[currentStep].id === 'upload' && (
+                                        <div className="space-y-4">
+                                            <div className="flex p-1 bg-gray-100 rounded-2xl w-fit">
+                                                <button
+                                                    onClick={() => setImageSource('alli')}
+                                                    className={cn(
+                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                        imageSource === 'alli' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                    )}
+                                                >
+                                                    Alli Central
+                                                </button>
+                                                <button
+                                                    onClick={() => setImageSource('upload')}
+                                                    className={cn(
+                                                        "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                                                        imageSource === 'upload' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                                                    )}
+                                                >
+                                                    Local Upload
+                                                </button>
+                                            </div>
+
+                                            {imageSource === 'alli' ? (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Select Image from Alli</h3>
+                                                        <button
+                                                            onClick={() => fetchAlliAssets()}
+                                                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50"
+                                                        >
+                                                            Refresh
+                                                        </button>
+                                                    </div>
+
+                                                    {isFetchingAssets ? (
+                                                        <div className="py-20 text-center space-y-4 bg-gray-50 rounded-2xl border border-dashed border-gray-100">
+                                                            <ArrowPathIcon className="h-8 w-8 mx-auto text-blue-600 animate-spin" />
+                                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Loading asset library...</p>
+                                                        </div>
+                                                    ) : alliImageAssets.length === 0 ? (
+                                                        <div className="py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+                                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">No image assets found in Alli</p>
+                                                            <p className="mt-2 text-[10px] text-gray-400">Use Local Upload to continue.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                                                {alliImageAssets.length} assets · Page {imageAssetPage} of {totalImagePages}
+                                                            </p>
+
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                                                {paginatedImageAssets.map((asset) => (
+                                                                    <button
+                                                                        key={asset.id}
+                                                                        type="button"
+                                                                        onClick={async () => {
+                                                                            setUploadedImageBlob(null);
+                                                                            setLocalImageOutputUrl((prev) => {
+                                                                                if (prev) URL.revokeObjectURL(prev);
+                                                                                return null;
+                                                                            });
+
+                                                                            const newStepData = {
+                                                                                imageName: asset.name || `alli_${asset.id}`,
+                                                                                imageUrl: asset.url,
+                                                                                source: 'alli',
+                                                                                assetId: asset.id,
+                                                                            };
+                                                                            setStepData(newStepData);
+
+                                                                            if (creativeId) {
+                                                                                await creativeService.updateCreative(creativeId, {
+                                                                                    stepData: {
+                                                                                        ...creative?.stepData,
+                                                                                        upload: newStepData,
+                                                                                        preview: {},
+                                                                                        download: {}
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        className={cn(
+                                                                            "relative aspect-square overflow-hidden rounded-xl border-2 bg-gray-100 transition-all",
+                                                                            stepData.imageUrl === asset.url ? "border-blue-600 ring-4 ring-blue-50" : "border-transparent hover:border-blue-400"
+                                                                        )}
+                                                                    >
+                                                                        <img src={asset.url} alt={asset.name || 'Alli asset'} className="h-full w-full object-cover" />
+                                                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                                                            <p className="text-[9px] font-black text-white truncate uppercase tracking-wider">
+                                                                                {asset.name || asset.id}
+                                                                            </p>
+                                                                        </div>
+                                                                        {stepData.imageUrl === asset.url && (
+                                                                            <div className="absolute top-1 right-1 bg-blue-600 rounded-full p-0.5 shadow-lg border border-white">
+                                                                                <CheckIcon className="h-2 w-2 text-white" />
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+
+                                                            {totalImagePages > 1 && (
+                                                                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                                                    <button
+                                                                        onClick={() => setImageAssetPage(p => Math.max(1, p - 1))}
+                                                                        disabled={imageAssetPage === 1}
+                                                                        className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-[9px] font-black uppercase tracking-widest text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-all"
+                                                                    >
+                                                                        ← Prev
+                                                                    </button>
+                                                                    <div className="flex items-center gap-1">
+                                                                        {Array.from({ length: Math.min(totalImagePages, 7) }, (_, i) => {
+                                                                            let page: number;
+                                                                            if (totalImagePages <= 7) page = i + 1;
+                                                                            else if (imageAssetPage <= 4) page = i + 1;
+                                                                            else if (imageAssetPage >= totalImagePages - 3) page = totalImagePages - 6 + i;
+                                                                            else page = imageAssetPage - 3 + i;
+                                                                            return (
+                                                                                <button
+                                                                                    key={page}
+                                                                                    onClick={() => setImageAssetPage(page)}
+                                                                                    className={cn(
+                                                                                        "w-7 h-7 rounded-lg text-[9px] font-black transition-all",
+                                                                                        imageAssetPage === page ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                                                                                    )}
+                                                                                >
+                                                                                    {page}
+                                                                                </button>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => setImageAssetPage(p => Math.min(totalImagePages, p + 1))}
+                                                                        disabled={imageAssetPage === totalImagePages}
+                                                                        className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-[9px] font-black uppercase tracking-widest text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-all"
+                                                                    >
+                                                                        Next →
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em]">Upload Local Image</h3>
+                                                    <label className="flex flex-col items-center justify-center h-[240px] border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-blue-400 transition-all cursor-pointer">
+                                                        {isLoading ? (
+                                                            <ArrowPathIcon className="h-8 w-8 text-blue-600 animate-spin" />
+                                                        ) : (
+                                                            <div className="text-center">
+                                                                <SparklesIcon className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                                                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">Drop Image File</p>
+                                                                <p className="text-[9px] text-gray-400 mt-2">Any size accepted (JPG, PNG, WEBP)</p>
+                                                            </div>
+                                                        )}
+                                                        <input
+                                                            type="file"
+                                                            className="sr-only"
+                                                            accept="image/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (!file) return;
+                                                                setUploadedImageBlob(file);
+                                                                setLocalImageOutputUrl((prev) => {
+                                                                    if (prev) URL.revokeObjectURL(prev);
+                                                                    return null;
+                                                                });
+                                                                setIsLoading(true);
+                                                                try {
+                                                                    const storageRef = ref(storage, `uploads/${client.slug}/${Date.now()}_${file.name}`);
+                                                                    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+                                                                    const url = await getDownloadURL(storageRef);
+                                                                    const newStepData = { imageName: file.name, imageUrl: url, source: 'local' };
+                                                                    setStepData(newStepData);
+                                                                    if (creativeId) {
+                                                                        await creativeService.updateCreative(creativeId, {
+                                                                            stepData: {
+                                                                                ...creative?.stepData,
+                                                                                upload: newStepData,
+                                                                                preview: {},
+                                                                                download: {}
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error('[Image-Resize] Upload failed:', err);
+                                                                    alert('Image upload failed. Please try again.');
+                                                                } finally {
+                                                                    setIsLoading(false);
+                                                                }
+                                                            }}
+                                                        />
+                                                    </label>
+                                                </div>
+                                            )}
+
+                                            {stepData.imageUrl && (
+                                                <div className="flex items-center gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                                    <img src={stepData.imageUrl} alt={stepData.imageName || 'Uploaded image'} className="h-20 w-20 rounded-lg object-cover border border-blue-200" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest mb-1 truncate">{stepData.imageName}</p>
+                                                        <p className="text-[9px] text-blue-gray-500 uppercase tracking-widest font-bold">
+                                                            {stepData.source === 'alli' ? 'Selected from Alli Central' : 'Ready for Instagram Story Resize'}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={async () => {
+                                                            setStepData({});
+                                                            setUploadedImageBlob(null);
+                                                            setLocalImageOutputUrl((prev) => {
+                                                                if (prev) URL.revokeObjectURL(prev);
+                                                                return null;
+                                                            });
+                                                            if (creativeId) {
+                                                                await creativeService.updateCreative(creativeId, {
+                                                                    stepData: {
+                                                                        ...creative?.stepData,
+                                                                        upload: {},
+                                                                        preview: {},
+                                                                        download: {}
+                                                                    }
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-700 hover:bg-red-100"
+                                                    >
+                                                        Remove Image
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {steps[currentStep].id === 'preview' && (
+                                        <div className="space-y-4">
+                                            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                                    Auto-resized to Instagram Story: {INSTAGRAM_STORY_WIDTH}x{INSTAGRAM_STORY_HEIGHT}
+                                                </p>
+                                            </div>
+                                            {imageResizeOutputUrl ? (
+                                                <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                                                    <div className="aspect-[9/16] bg-black">
+                                                        <img
+                                                            src={imageResizeOutputUrl}
+                                                            alt="Instagram Story preview"
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <div className="p-4">
+                                                        <p className="text-xs font-black uppercase tracking-widest text-gray-900">Instagram Story Output</p>
+                                                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-blue-gray-400">
+                                                            {INSTAGRAM_STORY_WIDTH}x{INSTAGRAM_STORY_HEIGHT} · JPEG
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="py-16 text-center border-2 border-dashed border-gray-200 rounded-xl">
+                                                    <ArrowPathIcon className="h-8 w-8 text-blue-600 animate-spin mx-auto" />
+                                                    <p className="mt-4 text-sm text-blue-gray-500">Generating story preview...</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {steps[currentStep].id === 'download' && (
+                                        <div className="space-y-5">
+                                            <div className="rounded-2xl border border-green-100 bg-green-50/50 p-5">
+                                                <p className="text-sm font-black text-green-900 uppercase tracking-widest">Ready to Download</p>
+                                                <p className="text-[10px] text-green-700 font-bold uppercase tracking-widest">Instagram Story JPEG generated</p>
+                                            </div>
+
+                                            {imageResizeOutputUrl ? (
+                                                <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                                                    <div className="aspect-[9/16] bg-black">
+                                                        <img
+                                                            src={imageResizeOutputUrl}
+                                                            alt="Instagram Story result"
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <div className="p-4 flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-xs font-black uppercase tracking-widest text-gray-900">story_1080x1920.jpg</p>
+                                                            <p className="text-[10px] text-blue-gray-400 font-bold uppercase tracking-widest mt-1">Instagram Story</p>
+                                                        </div>
+                                                        <a
+                                                            href={imageResizeOutputUrl}
+                                                            download={`story_${INSTAGRAM_STORY_WIDTH}x${INSTAGRAM_STORY_HEIGHT}.jpg`}
+                                                            target="_blank"
+                                                            className="rounded-xl bg-blue-600 px-4 py-2 text-[10px] font-black text-white hover:bg-blue-700 uppercase tracking-widest"
+                                                        >
+                                                            Download
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">No output found yet</p>
+                                                    <p className="mt-2 text-[10px] text-amber-700">Go back to Preview and regenerate if needed.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* NEW IMAGE WORKFLOW STEPS */}
                             {useCaseId === 'new-image' && (
                                 <div className="mx-auto max-w-lg text-left">
@@ -1284,7 +1839,7 @@ export default function UseCaseWizardPage() {
                             )}
 
                             {/* FALLBACK FOR OTHER CORES */}
-                            {useCaseId !== 'new-image' && useCaseId !== 'video-cutdown' && (
+                            {useCaseId !== 'new-image' && useCaseId !== 'video-cutdown' && useCaseId !== 'image-resize' && (
                                 <div className="mx-auto mt-8 flex h-64 max-w-lg items-center justify-center rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50/30">
                                     <div className="text-center">
                                         <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">
@@ -1326,19 +1881,10 @@ export default function UseCaseWizardPage() {
                             {currentStep < steps.length - 1 && (
                                 <button
                                     onClick={handleNext}
-                                    disabled={
-                                        isLoading ||
-                                        (steps[currentStep]?.id === 'upload' && !stepData.videoUrl) ||
-                                        (steps[currentStep]?.id === 'configure' && (!stepData.lengths || stepData.lengths.length === 0)) ||
-                                        (steps[currentStep]?.id === 'ai-reccos' && (!stepData.lengths?.every((l: number) => stepData[`selected_${l}`])))
-                                    }
+                                    disabled={isNextDisabled}
                                     className={cn(
                                         'rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center gap-2',
-                                        (isLoading ||
-                                            (steps[currentStep]?.id === 'upload' && !stepData.videoUrl) ||
-                                            (steps[currentStep]?.id === 'configure' && (!stepData.lengths || stepData.lengths.length === 0)) ||
-                                            (steps[currentStep]?.id === 'ai-reccos' && (!stepData.lengths?.every((l: number) => stepData[`selected_${l}`])))
-                                        ) ? 'opacity-20 cursor-not-allowed grayscale bg-gray-400 shadow-none' : 'hover:bg-blue-700 hover:shadow-blue-200'
+                                        isNextDisabled ? 'opacity-20 cursor-not-allowed grayscale bg-gray-400 shadow-none' : 'hover:bg-blue-700 hover:shadow-blue-200'
                                     )}
                                 >
                                     {isLoading && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
