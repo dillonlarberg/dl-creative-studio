@@ -36,10 +36,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCreativeAssetsProxy = exports.getClientsProxy = exports.getMeProxy = void 0;
+exports.imageProxy = exports.getCreativeAssetsProxy = exports.getClientsProxy = exports.getMeProxy = void 0;
 const functions = __importStar(require("firebase-functions"));
 const axios_1 = __importDefault(require("axios"));
 const cors_1 = __importDefault(require("cors"));
+const ALLOWED_IMAGE_HOSTS = [
+    'creative-insights-images-prod.creative.alliplatform.com',
+    'creative-insights-images-staging.creative.alliplatform.com',
+];
 const corsHandler = (0, cors_1.default)({
     origin: true,
     allowedHeaders: ['Authorization', 'Content-Type', 'clientid', 'Accept'],
@@ -271,6 +275,49 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
             console.error('Target URL:', queryUrl);
             console.error('--- [UDA v2.1] END PROXY ERROR ---');
             res.status(errorStatus || 500).send(errorData || { message: error.message });
+        }
+    });
+});
+/**
+ * Image proxy for Alli CDN assets that lack CORS headers.
+ * Usage: GET /imageProxy?url=<encoded-alli-image-url>
+ */
+exports.imageProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+        const imageUrl = req.query.url;
+        if (!imageUrl) {
+            res.status(400).send('Missing url query parameter');
+            return;
+        }
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(imageUrl);
+        }
+        catch {
+            res.status(400).send('Invalid url');
+            return;
+        }
+        if (!ALLOWED_IMAGE_HOSTS.includes(parsedUrl.hostname)) {
+            res.status(403).send('Host not allowed');
+            return;
+        }
+        try {
+            const response = await axios_1.default.get(imageUrl, {
+                responseType: 'arraybuffer',
+                timeout: 15000,
+            });
+            const contentType = response.headers['content-type'] || 'image/jpeg';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.status(200).send(Buffer.from(response.data));
+        }
+        catch (error) {
+            console.error('[imageProxy] Failed to fetch:', imageUrl, error.message);
+            res.status(error.response?.status || 502).send('Failed to fetch image');
         }
     });
 });

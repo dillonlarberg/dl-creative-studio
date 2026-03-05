@@ -2,6 +2,11 @@ import * as functions from 'firebase-functions';
 import axios from 'axios';
 import cors from 'cors';
 
+const ALLOWED_IMAGE_HOSTS = [
+    'creative-insights-images-prod.creative.alliplatform.com',
+    'creative-insights-images-staging.creative.alliplatform.com',
+];
+
 const corsHandler = cors({
     origin: true,
     allowedHeaders: ['Authorization', 'Content-Type', 'clientid', 'Accept'],
@@ -266,6 +271,53 @@ export const getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
             console.error('--- [UDA v2.1] END PROXY ERROR ---');
 
             res.status(errorStatus || 500).send(errorData || { message: error.message });
+        }
+    });
+});
+
+/**
+ * Image proxy for Alli CDN assets that lack CORS headers.
+ * Usage: GET /imageProxy?url=<encoded-alli-image-url>
+ */
+export const imageProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+
+        const imageUrl = req.query.url as string;
+        if (!imageUrl) {
+            res.status(400).send('Missing url query parameter');
+            return;
+        }
+
+        let parsedUrl: URL;
+        try {
+            parsedUrl = new URL(imageUrl);
+        } catch {
+            res.status(400).send('Invalid url');
+            return;
+        }
+
+        if (!ALLOWED_IMAGE_HOSTS.includes(parsedUrl.hostname)) {
+            res.status(403).send('Host not allowed');
+            return;
+        }
+
+        try {
+            const response = await axios.get(imageUrl, {
+                responseType: 'arraybuffer',
+                timeout: 15000,
+            });
+
+            const contentType = response.headers['content-type'] || 'image/jpeg';
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.status(200).send(Buffer.from(response.data));
+        } catch (error: any) {
+            console.error('[imageProxy] Failed to fetch:', imageUrl, error.message);
+            res.status(error.response?.status || 502).send('Failed to fetch image');
         }
     });
 });

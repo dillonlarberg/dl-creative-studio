@@ -13,12 +13,16 @@ import { videoService } from '../../services/videoService';
 import { alliService } from '../../services/alli';
 import { storage } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import Cropper from 'react-easy-crop';
+import type { Area } from 'react-easy-crop';
+import { getCroppedImg, doesImageCoverCrop } from '../../utils/cropImage';
 
 // Wizard step definitions per use case
 const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
     'image-resize': [
         { id: 'upload', name: 'Select Image' },
-        { id: 'preview', name: 'Instagram Story Preview' },
+        { id: 'crop', name: 'Crop & Position' },
+        { id: 'preview', name: 'Story Preview' },
         { id: 'download', name: 'Download' },
     ],
     'edit-image': [
@@ -87,54 +91,6 @@ const MODEL_MAPPING: Record<string, string> = {
 const INSTAGRAM_STORY_WIDTH = 1080;
 const INSTAGRAM_STORY_HEIGHT = 1920;
 
-const resizeToInstagramStoryBlob = async (source: string | Blob): Promise<Blob> => {
-    const sourceBlob =
-        typeof source === 'string'
-            ? await (async () => {
-                const response = await fetch(source);
-                if (!response.ok) {
-                    throw new Error(`Failed to load image (${response.status})`);
-                }
-                return response.blob();
-            })()
-            : source;
-    const objectUrl = URL.createObjectURL(sourceBlob);
-
-    try {
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const element = new Image();
-            element.onload = () => resolve(element);
-            element.onerror = () => reject(new Error('Could not decode image.'));
-            element.src = objectUrl;
-        });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = INSTAGRAM_STORY_WIDTH;
-        canvas.height = INSTAGRAM_STORY_HEIGHT;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Could not initialize canvas context.');
-
-        // Cover fit: fills 1080x1920 and crops overflow.
-        const scale = Math.max(
-            INSTAGRAM_STORY_WIDTH / img.width,
-            INSTAGRAM_STORY_HEIGHT / img.height
-        );
-        const drawWidth = img.width * scale;
-        const drawHeight = img.height * scale;
-        const dx = (INSTAGRAM_STORY_WIDTH - drawWidth) / 2;
-        const dy = (INSTAGRAM_STORY_HEIGHT - drawHeight) / 2;
-        ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
-
-        const outputBlob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, 'image/jpeg', 0.92);
-        });
-        if (!outputBlob) throw new Error('Failed to export resized image.');
-        return outputBlob;
-    } finally {
-        URL.revokeObjectURL(objectUrl);
-    }
-};
-
 export default function UseCaseWizardPage() {
     const { useCaseId } = useParams<{ useCaseId: string }>();
     const useCase = USE_CASES.find((uc) => uc.id === useCaseId);
@@ -159,6 +115,11 @@ export default function UseCaseWizardPage() {
     const [imageAssetPage, setImageAssetPage] = useState(1);
     const [uploadedImageBlob, setUploadedImageBlob] = useState<Blob | null>(null);
     const [localImageOutputUrl, setLocalImageOutputUrl] = useState<string | null>(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+    const [sourceImageDimensions, setSourceImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [_isOutpainting, _setIsOutpainting] = useState(false);
     const ITEMS_PER_PAGE = 16; // 4 columns × 4 rows
     const IMAGE_ITEMS_PER_PAGE = 12;
 
@@ -241,6 +202,22 @@ export default function UseCaseWizardPage() {
         if (stepData.source === 'local') setImageSource('upload');
         if (stepData.source === 'alli') setImageSource('alli');
     }, [useCaseId, currentStep, stepData.source]);
+
+    // Load source image dimensions when entering crop step
+    useEffect(() => {
+        if (useCaseId !== 'image-resize') return;
+        if (steps[currentStep]?.id !== 'crop') return;
+
+        const imageUrl = stepData.imageUrl || creative?.stepData?.upload?.imageUrl;
+        if (!imageUrl) return;
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            setSourceImageDimensions({ width: img.width, height: img.height });
+        };
+        img.src = imageUrl;
+    }, [useCaseId, currentStep, stepData.imageUrl, creative?.stepData?.upload?.imageUrl]);
 
     // Track if we've auto-triggered for the current creative + step combination
     const autoTriggeredRef = useRef<string | null>(null);
@@ -563,6 +540,7 @@ export default function UseCaseWizardPage() {
                 const currentStepId = steps[currentStep].id;
 
                 if (currentStepId === 'upload') {
+                    // Validate an image is selected
                     const sourceImageUrl =
                         currentStepData.imageUrl ||
                         updatedStepData.upload?.imageUrl ||
@@ -574,35 +552,91 @@ export default function UseCaseWizardPage() {
                         return;
                     }
 
+                    // If user uploaded a local blob, upload to Storage first for the crop step
+                    if (uploadedImageBlob && !sourceImageUrl) {
+                        try {
+                            const uploadPath = `uploads/${client.slug}/${activeCreativeId}/source_${Date.now()}.jpg`;
+                            const uploadRef = ref(storage, uploadPath);
+                            await uploadBytes(uploadRef, uploadedImageBlob, { contentType: 'image/jpeg' });
+                            const url = await getDownloadURL(uploadRef);
+                            const uploadStepData = { ...currentStepData, imageUrl: url };
+                            setStepData(uploadStepData);
+                            updatedStepData.upload = uploadStepData;
+                            setUploadedImageBlob(null);
+                        } catch (err) {
+                            console.error('[Image-Resize] Failed to upload source:', err);
+                            alert('Failed to upload image. Please try again.');
+                            setCurrentStep(nextStep - 1);
+                            return;
+                        }
+                    }
+
+
+                    // Reset crop state for the incoming crop step
+                    setCrop({ x: 0, y: 0 });
+                    setZoom(1);
+                    setCroppedAreaPixels(null);
+                    setSourceImageDimensions(null);
+                    setLocalImageOutputUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return null;
+                    });
+
+                    await creativeService.updateCreative(activeCreativeId!, {
+                        currentStep: nextStep,
+                        stepData: updatedStepData,
+                    });
+
+                } else if (currentStepId === 'crop') {
+                    // Generate the cropped output
+                    if (!croppedAreaPixels) {
+                        alert('Please adjust the crop before continuing.');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+
+                    const imageUrl =
+                        stepData.outpaintedImageUrl ||
+                        stepData.imageUrl ||
+                        updatedStepData.upload?.imageUrl ||
+                        creative?.stepData?.upload?.imageUrl;
+
+                    if (!imageUrl) {
+                        alert('No source image found.');
+                        setCurrentStep(nextStep - 1);
+                        return;
+                    }
+
                     try {
-                        const outputBlob = await resizeToInstagramStoryBlob(uploadedImageBlob || sourceImageUrl);
+                        const outputBlob = await getCroppedImg(
+                            imageUrl,
+                            croppedAreaPixels,
+                            INSTAGRAM_STORY_WIDTH,
+                            INSTAGRAM_STORY_HEIGHT
+                        );
+
                         const localOutputUrl = URL.createObjectURL(outputBlob);
                         setLocalImageOutputUrl((prev) => {
                             if (prev) URL.revokeObjectURL(prev);
                             return localOutputUrl;
                         });
 
-                        const sourceImageName =
-                            currentStepData.imageName ||
-                            updatedStepData.upload?.imageName ||
-                            'image';
-
                         const persistedPreviewData = {
-                            sourceImageUrl: sourceImageUrl || '',
-                            sourceImageName,
+                            sourceImageUrl: imageUrl,
+                            crop,
+                            zoom,
+                            croppedAreaPixels,
+                            wasOutpainted: !!stepData.outpaintedImageUrl,
+                            outpaintedImageUrl: stepData.outpaintedImageUrl || undefined,
                             outputUrl: '',
                             width: INSTAGRAM_STORY_WIDTH,
                             height: INSTAGRAM_STORY_HEIGHT,
                             format: 'jpeg',
                         };
 
-                        const localPreviewData = {
-                            ...persistedPreviewData,
-                            localOutputUrl,
-                        };
-
                         const seededStepData = {
                             ...updatedStepData,
+                            crop: persistedPreviewData,
                             preview: persistedPreviewData,
                             download: persistedPreviewData,
                         };
@@ -611,10 +645,9 @@ export default function UseCaseWizardPage() {
                             currentStep: nextStep,
                             stepData: seededStepData,
                         });
-                        setUploadedImageBlob(null);
-                        setStepData(localPreviewData);
+                        setStepData({ ...persistedPreviewData, localOutputUrl });
 
-                        // Background upload keeps preview responsive while still producing a durable URL.
+                        // Background upload
                         void (async () => {
                             try {
                                 const outputPath = `results/${client.slug}/${activeCreativeId}/story_${Date.now()}.jpg`;
@@ -622,34 +655,30 @@ export default function UseCaseWizardPage() {
                                 await uploadBytes(outputRef, outputBlob, { contentType: 'image/jpeg' });
                                 const outputUrl = await getDownloadURL(outputRef);
 
-                                const uploadedPreviewData = {
-                                    ...persistedPreviewData,
-                                    outputUrl,
-                                };
+                                const uploadedData = { ...persistedPreviewData, outputUrl };
                                 const finalStepData = {
                                     ...seededStepData,
-                                    preview: uploadedPreviewData,
-                                    download: uploadedPreviewData,
+                                    preview: uploadedData,
+                                    download: uploadedData,
                                 };
 
                                 await creativeService.updateCreative(activeCreativeId!, {
                                     stepData: finalStepData,
                                 });
-
                                 setStepData((prev) => ({ ...prev, outputUrl }));
                                 const refreshed = await creativeService.getCreative(activeCreativeId!);
                                 if (refreshed) setCreative(refreshed);
                             } catch (err) {
-                                console.error('[Image-Resize] Failed to upload resized output:', err);
+                                console.error('[Image-Resize] Failed to upload cropped output:', err);
                             }
                         })();
                     } catch (err) {
-                        console.error('[Image-Resize] Failed to generate preview:', err);
-                        alert(`Image resize failed: ${err instanceof Error ? err.message : String(err)}`);
+                        console.error('[Image-Resize] Crop failed:', err);
+                        alert(`Crop failed: ${err instanceof Error ? err.message : String(err)}`);
                         setCurrentStep(nextStep - 1);
-                        setStepData(updatedStepData.upload || currentStepData);
                         return;
                     }
+
                 } else if (currentStepId === 'preview') {
                     const downloadData = updatedStepData.preview || currentStepData;
                     if (!downloadData.outputUrl && !downloadData.localOutputUrl && !localImageOutputUrl) {
@@ -703,7 +732,8 @@ export default function UseCaseWizardPage() {
         ) ||
         (
             useCaseId === 'image-resize' && (
-                steps[currentStep]?.id === 'upload' && !stepData.imageUrl
+                (steps[currentStep]?.id === 'upload' && !stepData.imageUrl) ||
+                (steps[currentStep]?.id === 'crop' && !croppedAreaPixels)
             )
         );
     const imageResizeOutputUrl =
@@ -1109,11 +1139,106 @@ export default function UseCaseWizardPage() {
                                         </div>
                                     )}
 
+                                    {steps[currentStep].id === 'crop' && (
+                                        <div className="space-y-4">
+                                            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                                    Drag to position · Scroll or use slider to zoom
+                                                </p>
+                                            </div>
+
+                                            {/* Crop editor container */}
+                                            <div className="relative mx-auto w-full max-w-sm" style={{ height: 480 }}>
+                                                <Cropper
+                                                    image={
+                                                        stepData.outpaintedImageUrl ||
+                                                        stepData.imageUrl ||
+                                                        creative?.stepData?.upload?.imageUrl ||
+                                                        ''
+                                                    }
+                                                    crop={crop}
+                                                    zoom={zoom}
+                                                    aspect={9 / 16}
+                                                    objectFit="contain"
+                                                    showGrid={true}
+                                                    onCropChange={setCrop}
+                                                    onZoomChange={setZoom}
+                                                    onCropComplete={(_, pixelArea) => setCroppedAreaPixels(pixelArea)}
+                                                    style={{
+                                                        containerStyle: { borderRadius: '1rem', overflow: 'hidden' },
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {/* Zoom slider */}
+                                            <div className="mx-auto max-w-sm space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Zoom</span>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{zoom.toFixed(1)}x</span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min={1}
+                                                    max={3}
+                                                    step={0.1}
+                                                    value={zoom}
+                                                    onChange={(e) => setZoom(Number(e.target.value))}
+                                                    className="w-full accent-blue-600"
+                                                />
+                                            </div>
+
+                                            {/* Coverage indicator + AI Expand button */}
+                                            {sourceImageDimensions && croppedAreaPixels && (
+                                                <div className="mx-auto max-w-sm">
+                                                    {doesImageCoverCrop(
+                                                        sourceImageDimensions.width,
+                                                        sourceImageDimensions.height,
+                                                        croppedAreaPixels
+                                                    ) ? (
+                                                        <div className="rounded-xl border border-green-100 bg-green-50/50 p-3 text-center">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-green-700">
+                                                                Image fully covers frame
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-3">
+                                                            <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                                                                    Image doesn't fully cover the frame — gaps will be visible
+                                                                </p>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    console.log('[Outpaint] AI expansion feature is not ready yet.');
+                                                                    alert('AI expansion is coming soon — this feature is not ready yet.');
+                                                                }}
+                                                                disabled={_isOutpainting}
+                                                                className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all"
+                                                            >
+                                                                {_isOutpainting ? (
+                                                                    <span className="flex items-center justify-center gap-2">
+                                                                        <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                                                                        Expanding with AI...
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="flex items-center justify-center gap-2">
+                                                                        <SparklesIcon className="h-4 w-4" />
+                                                                        Expand with AI
+                                                                    </span>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {steps[currentStep].id === 'preview' && (
                                         <div className="space-y-4">
                                             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">
-                                                    Auto-resized to Instagram Story: {INSTAGRAM_STORY_WIDTH}x{INSTAGRAM_STORY_HEIGHT}
+                                                    Cropped to Instagram Story: {INSTAGRAM_STORY_WIDTH}x{INSTAGRAM_STORY_HEIGHT}
                                                 </p>
                                             </div>
                                             {imageResizeOutputUrl ? (
