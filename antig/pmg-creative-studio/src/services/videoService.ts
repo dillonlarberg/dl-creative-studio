@@ -32,7 +32,9 @@ export const videoService = {
     async processCutdowns(videoUrl: string, cuts: Array<{
         length: number,
         id: string,
-        segments: Array<{ start: string, end: string }>
+        videoTrack?: Array<{ start: string, end: string }>,
+        audioTrack?: Array<{ start: string, end: string }>,
+        segments?: Array<{ start: string, end: string }>
     }>, platform?: string): Promise<any> {
         const processCuts = httpsCallable(functions, "processVideoCutdowns", { timeout: 600000 });
         const result = await processCuts({ videoUrl, cuts, platform });

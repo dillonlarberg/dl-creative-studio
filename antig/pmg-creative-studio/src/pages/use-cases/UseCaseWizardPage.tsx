@@ -81,8 +81,7 @@ const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
 };
 
 const MODEL_MAPPING: Record<string, string> = {
-    'Gemini 3 Pro Preview': 'gemini-3-pro-preview',
-    'Gemini 1.5 Pro': 'gemini-1.5-pro',
+    'Gemini 3 Flash Preview': 'gemini-3-flash-preview',
 };
 
 export default function UseCaseWizardPage() {
@@ -174,13 +173,16 @@ export default function UseCaseWizardPage() {
             if (videoUrl && creativeId) {
                 console.log('[Auto-Trigger] Starting missing AI analysis for', triggerKey);
                 autoTriggeredRef.current = triggerKey;
-                const technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-pro-preview';
+                let technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-flash-preview';
+                if (technicalModel === 'gemini-3-pro-preview' || technicalModel === 'Gemini 3 Pro Preview') {
+                    technicalModel = 'gemini-3-flash-preview';
+                }
                 triggerAIAnalysis(creativeId, videoUrl, lengths, creative.stepData, technicalModel);
             }
         }
     }, [currentStep, stepData.ai_reccos, creativeId, creative?.stepData, isLoading]);
     const triggerAIAnalysis = async (id: string, videoUrl: string, lengths: number[], existingStepData: any, modelName?: string) => {
-        const activeTechnicalModel = modelName || 'gemini-3-pro-preview';
+        const activeTechnicalModel = modelName || 'gemini-3-flash-preview';
         // Map back to a nice display name if possible
         const displayModel = Object.keys(MODEL_MAPPING).find(k => MODEL_MAPPING[k] === activeTechnicalModel) || activeTechnicalModel;
 
@@ -205,8 +207,9 @@ export default function UseCaseWizardPage() {
             const fresh = await creativeService.getCreative(id);
             if (fresh) setCreative(fresh);
         } catch (err) {
-            console.error('[AI-Analysis] Gemini failure:', err);
-            alert(`AI Analysis Failed: ${err instanceof Error ? err.message : String(err)}`);
+            if (steps[currentStep]?.id === 'ai-reccos') {
+                alert(`AI Analysis Failed: ${err instanceof Error ? err.message : String(err)}`);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -239,7 +242,7 @@ export default function UseCaseWizardPage() {
 
                 // Set default model for video-cutdown if not already set
                 if (useCaseId === 'video-cutdown' && !stepData.model) {
-                    setStepData(prev => ({ ...prev, model: 'Gemini 3 Pro Preview' }));
+                    setStepData(prev => ({ ...prev, model: 'Gemini 3 Flash Preview' }));
                 }
 
                 // If there's a stored creativeId, resume it (unless it's already completed)
@@ -389,10 +392,14 @@ export default function UseCaseWizardPage() {
                         return selectionIds.map((id: any) => {
                             const opt = recco?.options?.find((o: any) => o.id === id);
                             if (!opt) return null;
+
+                            const uniqueId = `cut_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                            // Return unified segments for joint A/V processing
                             return {
-                                id: crypto.randomUUID(),
+                                id: uniqueId,
                                 length: len,
-                                segments: opt.segments || []
+                                segments: opt.segments || opt.videoTrack || []
                             };
                         }).filter(Boolean);
                     }) as any[];
@@ -580,13 +587,13 @@ export default function UseCaseWizardPage() {
                     <div className="text-center space-y-8 py-10">
                         <div className="space-y-2">
                             <h2 className="text-xl font-black text-gray-900 uppercase tracking-widest italic">
-                                Recent {useCase.title} Strategy Boards
+                                Recent {useCase?.title || 'Creative'} Strategy Boards
                             </h2>
                             <p className="text-sm text-blue-gray-400">Continue a recent session or start a new high-impact cutdown board.</p>
                         </div>
 
                         <div className="mx-auto max-w-lg space-y-3">
-                            {history.slice(0, 5).map(record => (
+                            {(history || []).slice(0, 5).map(record => (
                                 <button
                                     key={record.id}
                                     onClick={() => resumeProject(record)}
@@ -594,7 +601,7 @@ export default function UseCaseWizardPage() {
                                 >
                                     <div className="text-left">
                                         <p className="text-sm font-bold text-gray-900 tracking-tight italic">
-                                            {record.stepData.upload?.videoName || `Project ${record.id.slice(-6).toUpperCase()}`}
+                                            {record.stepData.upload?.videoName?.replace(/\.[^/.]+$/, "") || `Untitled Project`}
                                         </p>
                                         <p className="text-[10px] text-blue-gray-400 font-extrabold uppercase tracking-widest mt-1">
                                             Modified: {record.updatedAt?.seconds
@@ -742,13 +749,13 @@ export default function UseCaseWizardPage() {
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Intelligence:</span>
                                                         <select
-                                                            value={stepData.model || "Gemini 3 Pro Preview"}
+                                                            value={stepData.model || "Gemini 3 Flash Preview"}
                                                             onChange={(e) => setStepData({ ...stepData, model: e.target.value })}
                                                             className="text-[10px] font-black uppercase tracking-widest py-1.5 pl-3 pr-8 rounded-lg border-gray-200 bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
                                                         >
-                                                            <option>Gemini 3 Pro Preview</option>
-                                                            <option disabled>OpenAI GPT-4o (Soon)</option>
-                                                            <option disabled>Claude 3.5 (Soon)</option>
+                                                            {['Gemini 3 Flash Preview'].map((m) => (
+                                                                <option key={m} value={m}>{m}</option>
+                                                            ))}                <option disabled>Claude 3.5 (Soon)</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1107,7 +1114,7 @@ export default function UseCaseWizardPage() {
                                                     <div className="flex justify-center">
                                                         <ArrowPathIcon className="h-10 w-10 text-blue-600 animate-spin" />
                                                     </div>
-                                                    <p className="text-sm font-bold text-gray-900 tracking-tight italic">{stepData.model || 'Gemini 3 Pro Preview'} is Analyzing Your Video Context...</p>
+                                                    <p className="text-sm font-bold text-gray-900 tracking-tight italic">{stepData.model || 'Gemini 3 Flash Preview'} is Analyzing Your Video Context...</p>
                                                     <p className="text-[10px] text-blue-gray-400 font-bold uppercase tracking-widest">Identifying hook hooks & optimal stitch points</p>
                                                 </div>
                                             ) : (
@@ -1126,7 +1133,7 @@ export default function UseCaseWizardPage() {
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest leading-none mb-1">Analysis Matrix Complete</p>
-                                                                    <p className="text-[9px] text-blue-700 font-bold uppercase tracking-widest leading-none">Insights synthesized by {stepData.model || creative?.stepData?.configure?.model || 'Gemini 3 Pro Preview'}</p>
+                                                                    <p className="text-[9px] text-blue-700 font-bold uppercase tracking-widest leading-none">Insights synthesized by {stepData.model || creative?.stepData?.configure?.model || 'Gemini 3 Flash Preview'}</p>
                                                                 </div>
                                                             </div>
                                                             <span className="text-[9px] font-black py-1 px-3 bg-blue-600 text-white rounded-full tracking-[0.2em] uppercase">Ready</span>
@@ -1136,7 +1143,7 @@ export default function UseCaseWizardPage() {
                                                         <div className="flex justify-end">
                                                             <button
                                                                 onClick={() => {
-                                                                    const technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-pro-preview';
+                                                                    const technicalModel = stepData.model ? (MODEL_MAPPING[stepData.model] || stepData.model) : 'gemini-3-flash-preview';
                                                                     const videoUrl = creative?.stepData?.upload?.videoUrl || stepData.videoUrl;
                                                                     const lengths = stepData.lengths || creative?.stepData?.configure?.lengths || [15];
 
@@ -1183,12 +1190,17 @@ export default function UseCaseWizardPage() {
                                                                             >
                                                                                 <div className="flex-1">
                                                                                     <p className="text-sm font-bold text-gray-900 italic mb-2">“{opt.reason}”</p>
-                                                                                    <div className="flex flex-wrap gap-1">
-                                                                                        {opt.segments.map((seg: any, idx: number) => (
-                                                                                            <span key={idx} className="inline-block px-1.5 py-0.5 bg-white border border-blue-100 text-blue-600 rounded text-[9px] font-black tracking-tighter">
-                                                                                                {seg.start} → {seg.end}
-                                                                                            </span>
-                                                                                        ))}
+                                                                                    <div className="space-y-2">
+                                                                                        <div>
+                                                                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Stitched Sequence</p>
+                                                                                            <div className="flex flex-wrap gap-1">
+                                                                                                {(opt.segments || opt.videoTrack || []).map((seg: any, idx: number) => (
+                                                                                                    <span key={idx} className="inline-block px-1.5 py-0.5 bg-white border border-blue-100 text-blue-600 rounded text-[9px] font-black tracking-tighter">
+                                                                                                        {seg.start} → {seg.end}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className={cn(
@@ -1288,10 +1300,10 @@ export default function UseCaseWizardPage() {
                                 <div className="mx-auto mt-8 flex h-64 max-w-lg items-center justify-center rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50/30">
                                     <div className="text-center">
                                         <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">
-                                            {useCase.title} Strategy Block
+                                            {useCase?.title || 'Strategy'} Strategy Block
                                         </p>
                                         <p className="mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                            Phase {currentStep + 1} of {steps.length}
+                                            Phase {currentStep + 1} of {steps.length || 0}
                                         </p>
                                     </div>
                                 </div>
