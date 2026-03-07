@@ -173,10 +173,10 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
             ["ci_ad_id", "url", "creative_type"],
             ["ad_id", "url", "creative_type"]
         ];
-        // Measures often help UDA resolve the correct aggregation table
+        // Measures often help UDA resolve the correct aggregation table, but can cause duplicates
         const measureAttempts = [
-            ["impressions"],
-            []
+            [],
+            ["impressions"]
         ];
         try {
             console.log(`--- [UDA v2.1] SMART QUERY START for ${clientSlug} ---`);
@@ -190,7 +190,7 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
                         const response = await axios_1.default.post(queryUrl, {
                             dimensions: dims,
                             measures: meas,
-                            limit: 500
+                            limit: 5000
                         }, {
                             headers: { 'Authorization': authHeader, 'Accept': 'application/json', 'Content-Type': 'application/json' }
                         });
@@ -213,7 +213,7 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
                 try {
                     const csvResp = await axios_1.default.post(queryUrl, {
                         dimensions: ["ad_id", "ci_ad_id", "url", "creative_type", "platform"],
-                        limit: 500
+                        limit: 5000
                     }, {
                         headers: { 'Authorization': authHeader, 'Accept': 'text/csv', 'Content-Type': 'application/json' }
                     });
@@ -257,7 +257,17 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
             }
             if (!finalResponseData)
                 finalResponseData = { results: [] };
-            console.log(`[UDA v2.1] Final Count: ${finalResponseData.results?.length || 0} using dims: ${successDims.join(', ')}`);
+            // Final Deduplication by URL
+            const seen = new Set();
+            const uniqueResults = (finalResponseData.results || []).filter((item) => {
+                const url = item.url || item.creative_insights_data_export__url;
+                if (!url || seen.has(url))
+                    return false;
+                seen.add(url);
+                return true;
+            });
+            finalResponseData.results = uniqueResults;
+            console.log(`[UDA v2.1] Final Unique Count: ${finalResponseData.results?.length || 0} using dims: ${successDims.join(', ')}`);
             res.status(200).send(finalResponseData);
         }
         catch (error) {

@@ -24,6 +24,7 @@ export interface UseCase {
     icon: string;
     entryPaths: EntryPath[];
     outputFormats: OutputFormat[];
+    requiresBrandStandards?: boolean;
 }
 
 export interface WizardStep {

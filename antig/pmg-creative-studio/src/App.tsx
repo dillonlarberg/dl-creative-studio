@@ -4,7 +4,6 @@ import { authService } from './services/auth';
 import type { User } from 'firebase/auth';
 
 import AppLayout from './components/AppLayout';
-import DashboardPage from './pages/DashboardPage';
 import CreatePage from './pages/CreatePage';
 import UseCaseWizardPage from './pages/use-cases/UseCaseWizardPage';
 import ClientSelectPage from './pages/ClientSelectPage';
@@ -36,8 +35,8 @@ export default function App() {
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/" />} />
 
         <Route element={user ? <AppLayout /> : <Navigate to="/login" />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/create" element={<CreatePage />} />
+          <Route path="/" element={<CreatePage />} />
+          <Route path="/create" element={<Navigate to="/" replace />} />
           <Route path="/create/:useCaseId" element={<UseCaseWizardPage />} />
           <Route path="/select-client" element={<ClientSelectPage />} />
           <Route path="/client-asset-house" element={<ClientAssetHousePage />} />

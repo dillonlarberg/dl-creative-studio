@@ -24,6 +24,7 @@ export const USE_CASES: UseCase[] = [
         icon: 'SparklesIcon',
         entryPaths: ['create-new'],
         outputFormats: ['jpeg', 'png'],
+        requiresBrandStandards: true,
     },
     {
         id: 'edit-video',
@@ -40,6 +41,7 @@ export const USE_CASES: UseCase[] = [
         icon: 'VideoCameraIcon',
         entryPaths: ['create-new'],
         outputFormats: ['mp4'],
+        requiresBrandStandards: true,
     },
     {
         id: 'video-cutdown',
@@ -56,6 +58,7 @@ export const USE_CASES: UseCase[] = [
         icon: 'RectangleGroupIcon',
         entryPaths: ['create-new'],
         outputFormats: ['html', 'jpeg'],
+        requiresBrandStandards: true,
     },
     {
         id: 'feed-processing',
@@ -64,6 +67,7 @@ export const USE_CASES: UseCase[] = [
         icon: 'CpuChipIcon',
         entryPaths: ['create-new'],
         outputFormats: ['jpeg'],
+        requiresBrandStandards: true,
     },
 ];
 

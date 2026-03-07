@@ -207,9 +207,8 @@ export default function UseCaseWizardPage() {
             const fresh = await creativeService.getCreative(id);
             if (fresh) setCreative(fresh);
         } catch (err) {
-            if (steps[currentStep]?.id === 'ai-reccos') {
-                alert(`AI Analysis Failed: ${err instanceof Error ? err.message : String(err)}`);
-            }
+            console.error('[AI-Analysis] Gemini failure:', err);
+            alert(`AI Analysis Failed: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setIsLoading(false);
         }
@@ -488,7 +487,7 @@ export default function UseCaseWizardPage() {
         );
     }
 
-    if (!isReady && !isLoading) {
+    if (useCase.requiresBrandStandards && !isReady && !isLoading) {
         return (
             <div className="max-w-2xl mx-auto py-12 text-center">
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-12">

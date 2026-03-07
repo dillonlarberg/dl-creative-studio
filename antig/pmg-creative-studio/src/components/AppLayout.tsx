@@ -3,13 +3,13 @@ import { cn } from '../utils/cn';
 import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
 import {
-    HomeIcon,
     SparklesIcon,
     ArrowRightStartOnRectangleIcon,
     BookOpenIcon,
     XMarkIcon,
     MagnifyingGlassIcon,
     ArrowPathIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -17,10 +17,10 @@ import { alliService } from '../services/alli';
 import type { Client } from '../types';
 import Breadcrumbs from './Breadcrumbs';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
+import WaveAnimation from './WaveAnimation';
 
 const navigation = [
-    { name: 'Dashboard', href: '/', icon: HomeIcon },
-    { name: 'Create New', href: '/create', icon: SparklesIcon },
+    { name: 'Alli Studio', href: '/', icon: SparklesIcon },
     { name: 'Client Asset House', href: '/client-asset-house', icon: BookOpenIcon },
 ];
 
@@ -32,6 +32,7 @@ export default function AppLayout() {
     const [clients, setClients] = useState<Client[]>([]);
     const [search, setSearch] = useState('');
     const [loadingClients, setLoadingClients] = useState(false);
+    const [clientError, setClientError] = useState<string | null>(null);
 
     useEffect(() => {
         const clientStr = localStorage.getItem('selectedClient');
@@ -73,18 +74,18 @@ export default function AppLayout() {
     };
 
     useEffect(() => {
-        if (isDrawerOpen && clients.length === 0) {
-            fetchClients();
-        }
-    }, [isDrawerOpen]);
+        fetchClients();
+    }, []);
 
     const fetchClients = async () => {
         setLoadingClients(true);
+        setClientError(null);
         try {
             const data = await alliService.getClients();
             setClients(data);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to load clients:', err);
+            setClientError(err.message || 'Failed to load clients');
         } finally {
             setLoadingClients(false);
         }
@@ -107,16 +108,15 @@ export default function AppLayout() {
             {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white">
                 {/* Logo & Client Selector */}
-                <div className="flex h-16 items-center gap-2 border-b border-gray-200 px-6">
-                    <span className="text-xl font-bold text-gray-900">alli</span>
-                    <div className="h-6 w-px bg-gray-200 mx-1" />
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="truncate text-sm font-medium text-gray-900">
+                <div className="flex flex-col justify-center border-b border-gray-200 px-6 py-4">
+                    <span className="text-xl font-bold text-gray-900">Alli Studio</span>
+                    <div className="mt-1.5 flex items-center justify-between gap-2 min-w-0 font-bold uppercase tracking-widest text-[10px]">
+                        <span className="truncate text-blue-gray-400">
                             {selectedClient?.name || '...'}
                         </span>
                         <button
                             onClick={() => setIsDrawerOpen(true)}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-500"
+                            className="shrink-0 text-blue-600 hover:text-blue-500"
                         >
                             Change
                         </button>
@@ -160,7 +160,7 @@ export default function AppLayout() {
                         <div className="flex-1 min-w-0">
                             <p className="truncate text-sm font-medium text-gray-900">Dillon Larberg</p>
                             <button
-                                onClick={() => navigate('/select-client')}
+                                onClick={() => setIsDrawerOpen(true)}
                                 className="truncate text-xs text-blue-600 hover:text-blue-500 font-medium text-left w-full"
                             >
                                 {selectedClient?.name || 'Select Client'}
@@ -181,10 +181,17 @@ export default function AppLayout() {
 
             {/* Main content */}
             <main className="flex-1 pl-64">
-                <div className="brand-gradient min-h-screen">
-                    <Breadcrumbs />
-                    <div className="mx-auto max-w-7xl px-6 py-4 sm:px-8">
-                        <Outlet />
+                <div className="brand-gradient relative min-h-screen overflow-hidden">
+                    {/* Background Waves */}
+                    <div className="absolute inset-x-0 bottom-0 z-0 opacity-30">
+                        <WaveAnimation height="200px" waveNumber={2} />
+                    </div>
+
+                    <div className="relative z-10">
+                        <Breadcrumbs />
+                        <div className="mx-auto max-w-7xl px-6 py-4 sm:px-8">
+                            <Outlet />
+                        </div>
                     </div>
                 </div>
             </main>
@@ -257,7 +264,18 @@ export default function AppLayout() {
                                                         <div className="flex h-32 items-center justify-center">
                                                             <ArrowPathIcon className="h-6 w-6 animate-spin text-blue-600" />
                                                         </div>
-                                                    ) : (
+                                                    ) : clientError ? (
+                                                        <div className="px-4 py-8 text-center text-sm">
+                                                            <ExclamationTriangleIcon className="mx-auto h-8 w-8 text-amber-500" />
+                                                            <p className="mt-2 text-gray-600">{clientError}</p>
+                                                            <button
+                                                                onClick={fetchClients}
+                                                                className="mt-4 font-semibold text-blue-600 hover:text-blue-500"
+                                                            >
+                                                                Try Again
+                                                            </button>
+                                                        </div>
+                                                    ) : filteredClients.length > 0 ? (
                                                         filteredClients.map((client) => (
                                                             <button
                                                                 key={client.slug}
@@ -272,6 +290,10 @@ export default function AppLayout() {
                                                                 {client.name}
                                                             </button>
                                                         ))
+                                                    ) : (
+                                                        <div className="px-4 py-8 text-center text-sm text-gray-500">
+                                                            No clients found.
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>

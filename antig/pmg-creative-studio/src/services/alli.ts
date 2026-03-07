@@ -11,6 +11,8 @@ const PROXY_BASE = 'https://us-central1-automated-creative-e10d7.cloudfunctions.
 export class AlliService {
     private static instance: AlliService;
     private assetCache: Record<string, CreativeAsset[]> = {};
+    private clientCache: Client[] | null = null;
+    private clientCacheTime: number = 0;
 
     private constructor() { }
 
@@ -51,19 +53,33 @@ export class AlliService {
      * Preference is given to the /me endpoint which returns user-assigned clients
      */
     async getClients(): Promise<Client[]> {
+        const CACHE_STALENESS_MS = 5 * 60 * 1000; // 5 minutes
+        if (this.clientCache && (Date.now() - this.clientCacheTime < CACHE_STALENESS_MS)) {
+            console.log('[AlliService] Returning cached client list');
+            return this.clientCache;
+        }
+
         try {
-            // We use getMe() because it returns the specific subset of clients 
-            // the user is assigned to, which is usually more relevant than the 
-            // full directory of clients.
             const meData = await this.getMe();
+            console.log('[AlliService] /me response:', meData);
 
-            const clientList = meData.user?.clients || [];
+            // Try multiple places where clients might live in the /me response
+            const clientList = meData.user?.clients || meData.clients || meData.results || meData.data || (Array.isArray(meData) ? meData : null);
 
-            return clientList.map((c: any) => ({
-                slug: c.slug || c.id,
-                name: c.name || c.slug,
-                id: c.id
+            if (!clientList || !Array.isArray(clientList) || clientList.length === 0) {
+                console.warn('[AlliService] No clients found in /me response, trying fallback...');
+                throw new Error('No clients found in user profile');
+            }
+
+            const mapped = clientList.filter((c: any) => c && (c.slug || c.id || c.name)).map((c: any) => ({
+                slug: c.slug || c.id || String(c.name).toLowerCase().replace(/\s+/g, '-'),
+                name: c.name || c.slug || 'Unknown Client',
+                id: c.id || c.slug || 'unknown'
             }));
+
+            this.clientCache = mapped;
+            this.clientCacheTime = Date.now();
+            return mapped;
         } catch (error) {
             console.error('Fetch Clients Error (falling back to /clients):', error);
 
@@ -86,11 +102,15 @@ export class AlliService {
             const data = await response.json();
             const list = data.results || data.data || (Array.isArray(data) ? data : []);
 
-            return list.map((c: any) => ({
-                slug: c.slug || c.id,
-                name: c.name || c.slug,
-                id: c.id
+            const fallbackMapped = list.filter((c: any) => c && (c.slug || c.id || c.name)).map((c: any) => ({
+                slug: c.slug || c.id || String(c.name).toLowerCase().replace(/\s+/g, '-'),
+                name: c.name || c.slug || 'Unknown Client',
+                id: c.id || c.slug || 'unknown'
             }));
+
+            this.clientCache = fallbackMapped;
+            this.clientCacheTime = Date.now();
+            return fallbackMapped;
         }
     }
 

@@ -70,8 +70,10 @@ exports.processVideoCutdowns = functions
     functions.logger.info(`[FFmpeg] Platform: ${platform} | Target: ${targetWidth}x${targetHeight}`);
     const bucket = admin.storage().bucket();
     const tempDir = os.tmpdir();
-    const inputPath = path.join(tempDir, `input_${Date.now()}.mp4`);
+    const inputPath = path.join(tempDir, `input_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.mp4`);
     try {
+        functions.logger.info(`[FFmpeg] Received ${cuts?.length || 0} cuts to process.`);
+        functions.logger.info(`[FFmpeg] Full Cuts Data: ${JSON.stringify(cuts)}`);
         // 1. Download base video once
         functions.logger.info(`Downloading video from ${videoUrl} to ${inputPath}`);
         const response = await (0, axios_1.default)({
@@ -86,9 +88,12 @@ exports.processVideoCutdowns = functions
             writer.on("error", reject);
         });
         const timeToSeconds = (timeStr) => {
-            if (!timeStr)
+            if (!timeStr || typeof timeStr !== "string")
                 return 0;
-            const parts = timeStr.split(':').reverse().map(Number);
+            const parts = timeStr.trim().split(':').reverse().map(p => {
+                const n = parseFloat(p);
+                return isNaN(n) ? 0 : n;
+            });
             let seconds = 0;
             if (parts[0])
                 seconds += parts[0];
@@ -98,27 +103,46 @@ exports.processVideoCutdowns = functions
                 seconds += parts[2] * 3600;
             return seconds;
         };
-        // 2. Process all cuts in parallel
-        const cutdownPromises = cuts.map(async (cut) => {
+        // 2. Process all cuts SEQUENTIALLY to prevent OOM/CPU throttling
+        const results = [];
+        for (const cut of cuts) {
             const outputPath = path.join(tempDir, `output_${cut.id}.mp4`);
-            functions.logger.info(`[FFmpeg] Starting parallel cut: ${cut.id} | Length: ${cut.length}s`);
+            functions.logger.info(`[FFmpeg] Starting sequential cut: ${cut.id} | Length: ${cut.length}s`);
+            // Unified logic for joint A/V segments
+            const segments = cut.segments || cut.videoTrack || [];
             await new Promise((resolve, reject) => {
                 let command = (0, fluent_ffmpeg_1.default)(inputPath);
                 let filter = "";
-                let inputs = "";
-                cut.segments.forEach((seg, i) => {
+                let vInputs = "";
+                let aInputs = "";
+                let validCount = 0;
+                segments.forEach((seg) => {
                     const start = Math.max(0, timeToSeconds(seg.start));
                     const end = timeToSeconds(seg.end);
                     if (end <= start)
                         return;
-                    filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},setsar=1[v${i}]; `;
-                    filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,aresample=44100[a${i}]; `;
-                    inputs += `[v${i}][a${i}]`;
+                    const i = validCount;
+                    const duration = end - start;
+                    const fadeLen = Math.min(0.05, duration / 2);
+                    // Normalization for reliable concat
+                    filter += `[0:v]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,fps=30,scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=increase,crop=${targetWidth}:${targetHeight},setsar=1,format=yuv420p[v${i}]; `;
+                    vInputs += `[v${i}]`;
+                    // Audio with full normalization + cross-segment awareness
+                    const prevSeg = segments[validCount - 1];
+                    const nextSeg = segments[validCount + 1];
+                    const isPrevContiguous = prevSeg && Math.abs(start - timeToSeconds(prevSeg.end || prevSeg.stop)) < 0.05;
+                    const isNextContiguous = nextSeg && Math.abs(timeToSeconds(nextSeg.start || nextSeg.startTime) - end) < 0.05;
+                    const inFade = (i === 0 || !isPrevContiguous) ? `,afade=t=in:st=0:d=${fadeLen}` : "";
+                    const outFade = isNextContiguous ? "" : `,afade=t=out:st=${Math.max(0, duration - fadeLen)}:d=${fadeLen}`;
+                    filter += `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS${inFade}${outFade},aresample=44100,aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo[a${i}]; `;
+                    aInputs += `[a${i}]`;
+                    validCount++;
                 });
-                const segmentCount = inputs.match(/\[v\d+\]/g)?.length || 0;
-                if (segmentCount === 0)
-                    return reject(new Error("No valid segments."));
-                filter += `${inputs}concat=n=${segmentCount}:v=1:a=1[v][a]`;
+                if (validCount === 0)
+                    return reject(new Error("No valid segments for sync processing."));
+                filter += `${vInputs}concat=n=${validCount}:v=1:a=0[v]; `;
+                filter += `${aInputs}concat=n=${validCount}:v=0:a=1[a]`;
+                functions.logger.info(`[FFmpeg] Generated Sync-Filter: ${filter}`);
                 command
                     .complexFilter(filter)
                     .map('[v]')
@@ -132,8 +156,16 @@ exports.processVideoCutdowns = functions
                     '-movflags +faststart'
                 ])
                     .output(outputPath)
-                    .on("end", () => resolve(true))
-                    .on("error", reject)
+                    .on("start", (cmd) => functions.logger.info(`[FFmpeg] Spawned command for cut ${cut.id} (length: ${cut.length}s): ${cmd}`))
+                    .on("progress", (p) => functions.logger.debug(`[FFmpeg] Processing cut ${cut.id}: ${p.percent}% done`))
+                    .on("end", () => {
+                    functions.logger.info(`[FFmpeg] Finished processing cut ${cut.id}`);
+                    resolve(true);
+                })
+                    .on("error", (err) => {
+                    functions.logger.error(`FFmpeg error for cut ${cut.id}:`, err);
+                    reject(err);
+                })
                     .run();
             });
             // 3. Upload cut back to storage
@@ -144,9 +176,8 @@ exports.processVideoCutdowns = functions
             // Cleanup output file
             if (fs.existsSync(outputPath))
                 fs.unlinkSync(outputPath);
-            return { length: cut.length, url };
-        });
-        const results = await Promise.all(cutdownPromises);
+            results.push({ length: cut.length, url });
+        }
         return { status: "success", cutdowns: results };
     }
     catch (err) {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
 import { SparklesIcon } from '@heroicons/react/24/outline';
+import WaveAnimation from '../components/WaveAnimation';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
@@ -23,23 +24,28 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="brand-gradient flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="brand-gradient relative flex min-h-screen flex-col justify-center overflow-hidden py-12 sm:px-6 lg:px-8 font-sans">
+            {/* Background Waves */}
+            <div className="absolute inset-x-0 bottom-0 z-0 opacity-50">
+                <WaveAnimation height="300px" waveNumber={3} />
+            </div>
+
+            <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
                         <SparklesIcon className="h-8 w-8 text-white" />
                     </div>
                 </div>
                 <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-                    PMG Creative Studio
+                    Alli Studio
                 </h2>
                 <p className="mt-2 text-center text-sm text-blue-gray-500">
                     Sign in with your Alli credentials to start creating.
                 </p>
             </div>
 
-            <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
-                <div className="bg-white/80 backdrop-blur-sm px-6 py-12 shadow-elevated sm:rounded-2xl sm:px-12 border border-white/20">
+            <div className="relative z-10 mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
+                <div className="bg-white/80 backdrop-blur-md px-6 py-12 shadow-elevated sm:rounded-2xl sm:px-12 border border-white/20">
                     <div className="space-y-6">
                         <button
                             onClick={handleLogin}
@@ -80,3 +86,4 @@ export default function LoginPage() {
         </div>
     );
 }
+

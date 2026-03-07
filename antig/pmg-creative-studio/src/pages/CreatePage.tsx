@@ -66,9 +66,9 @@ export default function CreatePage() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Create New Creative</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Alli Studio</h1>
                     <p className="mt-2 text-sm text-blue-gray-600">
-                        Choose a creative workflow below. Each will guide you step-by-step through the process.
+                        A unified workspace to create, edit, and optimize your creative assets.
                     </p>
                 </div>
 
@@ -92,9 +92,9 @@ export default function CreatePage() {
                     <div className="flex items-start gap-3">
                         <ExclamationTriangleIcon className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                            <h3 className="text-sm font-bold text-amber-800">Brand Standards Required</h3>
+                            <h3 className="text-sm font-bold text-amber-800">Full Brand Integration Available Soon</h3>
                             <p className="mt-1 text-sm text-amber-700">
-                                You cannot use creation features until the <span className="font-semibold underline">Mandatory Brand Standards</span> (logos, colors, fonts) are defined for this client.
+                                Some features (Dynamic Versioning and AI Generation) are restricted until <span className="font-semibold underline">Mandatory Brand Standards</span> (logos, colors, fonts) are defined. Editing and resizing features are still available.
                             </p>
                             <Link to="/client-asset-house" className="mt-3 inline-block text-sm font-bold text-blue-600 hover:text-blue-500">
                                 Update Asset House &rarr;
@@ -109,7 +109,7 @@ export default function CreatePage() {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-gray-400">Images</h2>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {USE_CASES.filter(uc => ['image-resize', 'edit-image', 'new-image'].includes(uc.id)).map((uc) => (
-                        <UseCaseCard key={uc.id} useCase={uc} disabled={!isReady} />
+                        <UseCaseCard key={uc.id} useCase={uc} disabled={uc.requiresBrandStandards && !isReady} />
                     ))}
                 </div>
             </div>
@@ -119,7 +119,7 @@ export default function CreatePage() {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-gray-400">Video</h2>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {USE_CASES.filter(uc => ['edit-video', 'new-video', 'video-cutdown'].includes(uc.id)).map((uc) => (
-                        <UseCaseCard key={uc.id} useCase={uc} disabled={!isReady} />
+                        <UseCaseCard key={uc.id} useCase={uc} disabled={uc.requiresBrandStandards && !isReady} />
                     ))}
                 </div>
             </div>
@@ -129,7 +129,7 @@ export default function CreatePage() {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-gray-400">Dynamic Versioning</h2>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {USE_CASES.filter(uc => ['template-builder', 'feed-processing', 'static-creative'].includes(uc.id)).map((uc) => (
-                        <UseCaseCard key={uc.id} useCase={uc} disabled={!isReady} />
+                        <UseCaseCard key={uc.id} useCase={uc} disabled={uc.requiresBrandStandards && !isReady} />
                     ))}
                 </div>
             </div>

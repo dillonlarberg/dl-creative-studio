@@ -1,15 +1,6 @@
 import * as functions from "firebase-functions";
 import { GoogleGenerativeAI, GenerationConfig, SchemaType } from "@google/generative-ai";
 import axios from "axios";
-import * as path from "path";
-import * as os from "os";
-import * as fs from "fs";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegPath from "ffmpeg-static";
-
-if (ffmpegPath) {
-  ffmpeg.setFfmpegPath(ffmpegPath);
-}
 
 // Initialize Gemini with the API key from secrets
 // firebase functions:secrets:set GEMINI_API_KEY
@@ -17,7 +8,7 @@ export const analyzeVideoForCutdowns = functions
   .runWith({
     secrets: ["GEMINI_API_KEY"],
     timeoutSeconds: 540,
-    memory: "2GB"
+    memory: "1GB"
   })
   .https.onCall(async (data: { videoUrl: string, targetLengths: number[], model?: string }, context) => {
     // Initialize Gemini with the API key from secrets (must be inside handler)
@@ -28,38 +19,12 @@ export const analyzeVideoForCutdowns = functions
       throw new functions.https.HttpsError("invalid-argument", "Missing videoUrl or targetLengths.");
     }
 
-    const tempDir = os.tmpdir();
-    const inputPath = path.join(tempDir, `analyze_in_${Date.now()}.mp4`);
-    const previewPath = path.join(tempDir, `analyze_preview_${Date.now()}.mp4`);
-
     try {
-      functions.logger.info(`Starting Gemini analysis for ${videoUrl} using model ${requestedModel || 'gemini-3-flash-preview'}`);
+      functions.logger.info(`Starting real Gemini analysis for ${videoUrl} using model ${requestedModel || 'gemini-3-pro-preview'}`);
 
-      // 2. Download the video via stream to save memory (avoiding arraybuffer in JS heap)
-      const writer = fs.createWriteStream(inputPath);
-      const streamResponse = await axios.get(videoUrl, { responseType: 'stream' });
-      streamResponse.data.pipe(writer);
-      await new Promise((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
-      });
-
-      // 3. Downsample to save memory (Convert to 360p, low bitrate)
-      // Gemini doesn't need 4K/1080p to understand narrative or audio
-      functions.logger.info(`Generating low-res preview for ${videoUrl}...`);
-      await new Promise((resolve, reject) => {
-        ffmpeg(inputPath)
-          .size('640x?')
-          .videoBitrate('1000k')
-          .audioBitrate('96k')
-          .format('mp4')
-          .output(previewPath)
-          .on('end', resolve)
-          .on('error', reject)
-          .run();
-      });
-
-      const videoBase64 = fs.readFileSync(previewPath).toString('base64');
+      // 2. Download the video bytes
+      const response = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+      const videoBase64 = Buffer.from(response.data, 'binary').toString('base64');
 
       // 3. Setup Gemini Model
       const modelName = requestedModel || "gemini-3-flash-preview";
@@ -73,7 +38,7 @@ export const analyzeVideoForCutdowns = functions
       });
 
       const generationConfig: GenerationConfig = {
-        temperature: 0.1, // Minimal randomness for strict JSON schema compliance
+        temperature: 0.7, // Creative latitude for multi-segment variety
         topP: 0.95,
         topK: 64,
         maxOutputTokens: 8192,
@@ -142,12 +107,7 @@ export const analyzeVideoForCutdowns = functions
     ═══════════════════════════════════════
     - Verify that EVERY cutdown ends on a natural "out" point (end of a word, end of a thought). 
     - If a cut lands in the middle of a syllable, move it! The timing MUST be precise to the millisecond.
-    ═══════════════════════════════════════
-    JSON VALIDATION
-    ═══════════════════════════════════════
-    - You must return a complete, un-truncated, valid JSON object.
-    - No markdown commentary or extra text.
-    - If you are running out of space, prioritize returning the JSON structure over long reasonings.
+    - YOU ARE AUDITING YOUR OWN WORK: If a recommendation sounds like it stops halfway through, you have failed.
     
     RETURN VALID JSON following requested schema.`;
 
