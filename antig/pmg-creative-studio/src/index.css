@@ -122,3 +122,14 @@ body {
   transform: translate3d(0, 0, 0);
   pointer-events: none;
 }
+
+/* ---- Shimmer (template preview skeleton) ---- */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

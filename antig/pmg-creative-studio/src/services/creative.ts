@@ -63,12 +63,19 @@ export const creativeService = {
     async simulateGeneration(id: string): Promise<void> {
         await this.updateCreative(id, { status: 'processing' });
 
+        const record = await this.getCreative(id);
+        const wireframeFile = record?.stepData?.context?.wireframeFile;
+
         // Simulate background processing
         return new Promise((resolve) => {
             setTimeout(async () => {
+                const results = wireframeFile
+                    ? [`/template_examples/social/${wireframeFile}`]
+                    : ['https://picsum.photos/1080/1080'];
+
                 await this.updateCreative(id, {
                     status: 'completed',
-                    resultUrls: ['https://picsum.photos/1080/1080'] // Placeholder result
+                    resultUrls: results
                 });
                 resolve();
             }, 3000);

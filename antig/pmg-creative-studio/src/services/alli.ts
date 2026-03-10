@@ -6,7 +6,7 @@
 import type { Client, CreativeAsset } from '../types';
 import { authService } from './auth';
 
-const PROXY_BASE = 'https://us-central1-automated-creative-e10d7.cloudfunctions.net';
+const PROXY_BASE = '/api';
 
 export class AlliService {
     private static instance: AlliService;
@@ -163,13 +163,83 @@ export class AlliService {
     }
 
     /**
-     * Fetches product feeds for a specific client
+     * Fetches all data sources (models) for a client
      */
-    async getProductFeeds(clientSlug: string): Promise<any[]> {
-        console.log(`Fetching feeds for ${clientSlug}...`);
-        return [
-            { id: 'feed_1', name: 'Global Product Feed', type: 'product_feed' },
-        ];
+    async getDataSources(clientSlug: string): Promise<any[]> {
+        const token = await authService.getAccessToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const response = await fetch(`${PROXY_BASE}/getDataSourcesProxy?clientSlug=${clientSlug}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Data Sources Error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log(`[AlliService] getDataSources raw response for ${clientSlug}:`, data);
+
+        // Alli UDA can return models in several keys depending on the endpoint/version
+        const models = data.models || data.results || data.data || data.payload || (Array.isArray(data) ? data : []);
+        return models;
+    }
+
+    /**
+     * Fetches metadata for a specific model (dimensions, measures, etc.)
+     */
+    async getModelMetadata(clientSlug: string, modelName: string): Promise<any> {
+        const token = await authService.getAccessToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const response = await fetch(`${PROXY_BASE}/getModelMetadataProxy?clientSlug=${clientSlug}&modelName=${modelName}&t=${Date.now()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Metadata Error: ${response.status} - ${errorText}`);
+        }
+
+        return await response.json();
+    }
+
+    async executeQuery(clientSlug: string, modelName: string, query: { dimensions?: string[], measures?: string[], limit?: number }): Promise<any> {
+        const token = await authService.getAccessToken();
+        if (!token) throw new Error('Not authenticated');
+
+        const url = `${PROXY_BASE}/smartExecuteQueryProxy?clientSlug=${clientSlug}&modelName=${modelName}&t=${Date.now()}`;
+        console.log(`[AlliService] Executing query on ${modelName}:`, { url, query });
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(query)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[AlliService] Query failed (${response.status}):`, errorText);
+                throw new Error(`Query Error: ${response.status} - ${errorText}`);
+            }
+
+            return await response.json();
+        } catch (fetchErr: any) {
+            console.error('[AlliService] ExecuteQuery Fetch Exception:', fetchErr);
+            throw fetchErr;
+        }
     }
 }
 

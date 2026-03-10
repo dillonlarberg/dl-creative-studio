@@ -1,0 +1,183 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, width=device-width">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saol Display:wght@300&amp;display=swap">
+    <style>
+        @font-face {
+            font-family: 'Saol Display';
+            src: url("https://banner.dynamicplus-staging.pmg.com/Kohler Hospitality/Assets/Fonts/SaolDisplay-Light.otf") format('opentype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body {
+            margin: 0;
+            line-height: normal;
+        }
+
+        .image-icon {
+            position: absolute;
+            top: -14px;
+            left: -239px;
+            width: 1559.8px;
+            height: 1107px;
+            object-fit: cover;
+        }
+
+        .opacity-layer {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            background-color: rgba(23, 29, 26, 0.5);
+            width: 1024px;
+            height: 1024px;
+        }
+
+        .headline-here {
+            position: absolute;
+            top: 389px;
+            left: calc(50% - 392px);
+            line-height: 98.79px;
+            font-weight: 300;
+            display: inline-block;
+            width: 785px;
+            height: 106.1px;
+        }
+
+        .logo-container {
+            position: absolute;
+            top: 548px;
+            left: 296px;
+            background-color: #d9d9d9;
+            width: 454px;
+            height: 163px;
+            display: none;
+        }
+
+        .theshopsatwoodlakekohler-logo-icon {
+            position: absolute;
+            top: 512px;
+            left: 26px;
+            max-width: 973px;
+            max-height: 270px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .kohler-hospitality-dynamic-1x {
+            width: 100%;
+            position: relative;
+            background-color: #171d1a;
+            height: 1024px;
+            overflow: hidden;
+            text-align: center;
+            font-size: 100px;
+            color: #fff;
+            font-family: 'Saol Display', sans-serif;
+        }
+    </style>
+    <meta name="ad.size" content="width=1024,height=1024">
+    <script src="https://s0.2mdn.net/ads/studio/Enabler.js"></script>
+    <script type="text/javascript" id="h5GeneratedCode">
+        Enabler.setProfileId(10943372);
+        var devDynamicContent = {};
+    </script>
+</head>
+
+<body>
+    <gwd-page id="page1" class="gwd-page-wrapper gwd-page-size gwd-lightbox" data-gwd-width="100%"
+        data-gwd-height="100%">
+        <div id="base" class="kohler-hospitality-dynamic-1x">
+            <img id="img1" class="image-icon" alt="" src="">
+            <div id="opacity" class="opacity-layer">
+            </div>
+            <div id="headline" class="headline-here"></div>
+            <div class="logo-container">
+            </div>
+            <img id="logo" class="theshopsatwoodlakekohler-logo-icon" alt="" src="">
+        </div>
+    </gwd-page>
+    <script>
+        function exitHandler(e) {
+            console.log('Exit handler triggered', e);
+        }
+
+        function enablerInitHandler() {
+            // Ensure Enabler is initialized before setting up interactions
+            document.getElementById('base').addEventListener('click', exitHandler, false);
+            createContent();
+        }
+
+        window.onload = function () {
+            if (typeof Enabler !== 'undefined' && Enabler.isInitialized()) {
+                enablerInitHandler();
+            } else if (typeof Enabler !== 'undefined') {
+                Enabler.addEventListener(studio.events.StudioEvent.INIT, enablerInitHandler);
+            } else {
+                console.error('Enabler is not defined. Ensure the Enabler.js script is included.');
+            }
+        };
+
+        function createContent() {
+            if (typeof Enabler === 'undefined') {
+                console.error('Enabler is not available.');
+                return;
+            }
+            populateContent();
+        }
+        function populateContent() {
+            if (typeof dynamicContent === 'undefined') {
+                console.error('dynamicContent is not available.');
+                return;
+            }
+
+            var select = function (s) {
+                return document.querySelector(s);
+            };
+
+            var logo = select('#logo'),
+                image1 = select('#img1'),
+                headline1 = select('#headline'),
+                opacity = select('#opacity'),
+                dc = dynamicContent.Social_Dynamic_Custom_Input_Tracker_Sample_Studio_Input_[0];
+
+
+            logo.src = dc.logo;
+            image1.src = dc.image1;
+            headline1.innerHTML = dc.headline1;
+            const obj = (new Function(`return ${dc.custom_input_1}`))();
+            Object.assign(opacity.style, obj);
+            opacity.style.backgroundColor = dc.background_color;
+
+            function fitTextToWidth(elementClass, maxWidth, maxFontSize) {
+                const element = document.querySelector(`.${elementClass}`);
+                const testSpan = document.createElement('span');
+
+                testSpan.style.font = window.getComputedStyle(element).font;
+                testSpan.style.visibility = 'hidden';
+                testSpan.style.whiteSpace = 'nowrap';
+                document.body.appendChild(testSpan);
+
+                let fontSize = maxFontSize;
+                testSpan.innerText = element.innerText;
+
+                while (fontSize > 20) {
+                    testSpan.style.fontSize = fontSize + 'px';
+                    if (testSpan.offsetWidth <= maxWidth) break;
+                    fontSize -= 1;
+                }
+
+                element.style.fontSize = fontSize + 'px';
+                document.body.removeChild(testSpan);
+            }
+            fitTextToWidth("headline-here", 785, 100);
+        }
+    </script>
+
+
+</body>
+
+</html>

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCreativeAssetsProxy = exports.getClientsProxy = exports.getMeProxy = void 0;
+exports.smartExecuteQueryProxy = exports.getModelMetadataProxy = exports.getDataSourcesProxy = exports.getCreativeAssetsProxy = exports.getClientsProxy = exports.getMeProxy = void 0;
 const functions = __importStar(require("firebase-functions"));
 const axios_1 = __importDefault(require("axios"));
 const cors_1 = __importDefault(require("cors"));
@@ -281,6 +281,150 @@ exports.getCreativeAssetsProxy = functions.https.onRequest((req, res) => {
             console.error('Target URL:', queryUrl);
             console.error('--- [UDA v2.1] END PROXY ERROR ---');
             res.status(errorStatus || 500).send(errorData || { message: error.message });
+        }
+    });
+});
+exports.getDataSourcesProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+        const authHeader = req.headers.authorization;
+        const clientSlug = req.query.clientSlug;
+        if (!authHeader || !clientSlug) {
+            res.status(401).send('Missing Auth or clientSlug');
+            return;
+        }
+        const url = `https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models`;
+        try {
+            const response = await axios_1.default.get(url, {
+                headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+            });
+            res.status(200).send(response.data);
+        }
+        catch (error) {
+            console.error('[DataSources Proxy] Error:', error.message);
+            res.status(error.response?.status || 500).send(error.response?.data || error.message);
+        }
+    });
+});
+// 5. General Model Metadata Discovery
+exports.getModelMetadataProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+        const authHeader = req.headers.authorization;
+        const clientSlug = req.query.clientSlug;
+        const modelName = req.query.modelName;
+        if (!authHeader || !clientSlug || !modelName) {
+            res.status(401).send('Missing Auth, clientSlug, or modelName');
+            return;
+        }
+        const url = `https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models/${modelName}`;
+        try {
+            console.log(`[Metadata Proxy] Fetching ${modelName} for ${clientSlug}`);
+            const response = await axios_1.default.get(url, {
+                headers: { 'Authorization': authHeader, 'Accept': 'application/json' }
+            });
+            res.status(200).send(response.data);
+        }
+        catch (error) {
+            console.error('[ModelMetadata Proxy] Error:', error.message);
+            res.status(error.response?.status || 500).send(error.response?.data || error.message);
+        }
+    });
+});
+// 6. Smart Execute Query (Mimics Creative Assets robustness for any model)
+exports.smartExecuteQueryProxy = functions.https.onRequest((req, res) => {
+    return corsHandler(req, res, async () => {
+        if (req.method === 'OPTIONS') {
+            res.status(204).send();
+            return;
+        }
+        const authHeader = req.headers.authorization;
+        const clientSlug = req.query.clientSlug;
+        const modelName = req.query.modelName;
+        if (!authHeader || !clientSlug || !modelName) {
+            res.status(401).send('Missing Auth, clientSlug, or modelName');
+            return;
+        }
+        const url = `https://dataexplorer.alliplatform.com/api/v2/clients/${clientSlug}/models/${modelName}/execute-query`;
+        const query = req.body || { limit: 100 };
+        try {
+            console.log(`--- [SmartQuery] ${modelName} START ---`);
+            // Attempt 1: Standard JSON
+            let finalData = null;
+            try {
+                const jsonResp = await axios_1.default.post(url, query, {
+                    headers: { 'Authorization': authHeader, 'Accept': 'application/json', 'Content-Type': 'application/json' }
+                });
+                if (jsonResp.data && (jsonResp.data.results?.length > 0 || jsonResp.data.rows?.length > 0)) {
+                    finalData = jsonResp.data;
+                }
+            }
+            catch (e) {
+                console.log(`[SmartQuery] JSON Attempt failed, trying CSV...`);
+            }
+            // Attempt 2: CSV Fallback
+            if (!finalData) {
+                const csvResp = await axios_1.default.post(url, query, {
+                    headers: { 'Authorization': authHeader, 'Accept': 'text/csv', 'Content-Type': 'application/json' }
+                });
+                if (csvResp.status === 200 && csvResp.data) {
+                    const csvContent = csvResp.data;
+                    // Simple regex-based CSV line parser that respects quotes
+                    const parseCSVLine = (text) => {
+                        const result = [];
+                        let cur = '';
+                        let inQuote = false;
+                        for (let i = 0; i < text.length; i++) {
+                            const char = text[i];
+                            const next = text[i + 1];
+                            if (char === '"' && inQuote && next === '"') {
+                                cur += '"';
+                                i++;
+                            }
+                            else if (char === '"') {
+                                inQuote = !inQuote;
+                            }
+                            else if (char === ',' && !inQuote) {
+                                result.push(cur.trim());
+                                cur = '';
+                            }
+                            else {
+                                cur += char;
+                            }
+                        }
+                        result.push(cur.trim());
+                        return result;
+                    };
+                    const lines = csvContent.split(/\r?\n/).filter(l => l.trim());
+                    if (lines.length > 0) {
+                        const headers = parseCSVLine(lines[0]);
+                        const results = lines.slice(1).map(line => {
+                            const values = parseCSVLine(line);
+                            const obj = {};
+                            headers.forEach((h, i) => {
+                                // Strip surrounding quotes if regex missed them or for safety
+                                let val = values[i] || '';
+                                if (val.startsWith('"') && val.endsWith('"'))
+                                    val = val.substring(1, val.length - 1);
+                                obj[h] = val;
+                            });
+                            return obj;
+                        });
+                        finalData = { results };
+                    }
+                }
+            }
+            res.status(200).send(finalData || { results: [] });
+        }
+        catch (error) {
+            console.error('[SmartQuery] Error:', error.message);
+            res.status(error.response?.status || 500).send(error.response?.data || error.message);
         }
     });
 });

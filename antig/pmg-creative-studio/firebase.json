@@ -14,6 +14,30 @@
         ],
         "rewrites": [
             {
+                "source": "/api/getMeProxy",
+                "function": "getMeProxy"
+            },
+            {
+                "source": "/api/getClientsProxy",
+                "function": "getClientsProxy"
+            },
+            {
+                "source": "/api/getCreativeAssetsProxy",
+                "function": "getCreativeAssetsProxy"
+            },
+            {
+                "source": "/api/getDataSourcesProxy",
+                "function": "getDataSourcesProxy"
+            },
+            {
+                "source": "/api/getModelMetadataProxy",
+                "function": "getModelMetadataProxy"
+            },
+            {
+                "source": "/api/smartExecuteQueryProxy",
+                "function": "smartExecuteQueryProxy"
+            },
+            {
                 "source": "**",
                 "destination": "/index.html"
             }
