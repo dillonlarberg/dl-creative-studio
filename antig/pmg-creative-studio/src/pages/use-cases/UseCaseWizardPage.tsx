@@ -16,8 +16,18 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
+import { EditImageWizard } from '../../components/edit-image/EditImageWizard';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
+
+// edit-image: Recursively strip undefined values and non-serializable objects
+// (e.g. File) before saving to Firestore, which rejects them.
+const sanitizeForFirestore = (obj: Record<string, any>): Record<string, any> =>
+    Object.fromEntries(
+        Object.entries(obj)
+            .filter(([, v]) => v !== undefined && !(v instanceof File))
+            .map(([k, v]) => [k, v && typeof v === 'object' && !Array.isArray(v) ? sanitizeForFirestore(v) : v])
+    );
 
 // ---------------------------------------------------------------------------
 // TemplatePreview
@@ -344,10 +354,10 @@ const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
     ],
     'edit-image': [
         { id: 'select', name: 'Select Image' },
-        { id: 'describe', name: 'Describe Edit' },
-        { id: 'model', name: 'Choose AI Model' },
-        { id: 'review', name: 'Review Variations' },
-        { id: 'approve', name: 'Approve & Download' },
+        { id: 'edit-type', name: 'Choose Edit Type' },
+        { id: 'configure', name: 'Configure Edit' },
+        { id: 'preview', name: 'Preview & Adjust' },
+        { id: 'approve', name: 'Save' },
     ],
     'new-image': [
         { id: 'brief', name: 'Creative Brief' },
@@ -1249,8 +1259,10 @@ export default function UseCaseWizardPage() {
                 generateCandidates();
             }
 
-            // Snapshot stepData NOW before any setState calls wipe it
-            const currentStepData = { ...stepData };
+            // Snapshot stepData NOW before any setState calls wipe it.
+            const currentStepData = useCaseId === 'edit-image'
+                ? sanitizeForFirestore(stepData)
+                : { ...stepData };
             const updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
 
             await creativeService.updateCreative(activeCreativeId!, {
@@ -1279,6 +1291,9 @@ export default function UseCaseWizardPage() {
                     ...(contextData.wireframeFile ? { wireframeFile: contextData.wireframeFile } : {}),
                     ...nextStepSavedData,
                 });
+            } else if (useCaseId === 'edit-image') {
+                // edit-image: carry all step data forward (flat object across all steps)
+                setStepData({ ...currentStepData, ...nextStepSavedData });
             } else {
                 setStepData(nextStepSavedData || {});
             }
@@ -1381,8 +1396,17 @@ export default function UseCaseWizardPage() {
                 }
             }
 
+            // edit-image: mark completed on final step, skip simulation
+            if (useCaseId === 'edit-image' && nextStep >= steps.length - 1) {
+                await creativeService.updateCreative(activeCreativeId!, {
+                    status: 'completed',
+                    resultUrls: currentStepData.finalUrl ? [currentStepData.finalUrl] : [],
+                });
+                await fetchHistory();
+            }
+
             // If finishing, trigger simulation (standard flows)
-            if (nextStep === steps.length - 1 && useCaseId !== 'video-cutdown') {
+            if (nextStep === steps.length - 1 && useCaseId !== 'video-cutdown' && useCaseId !== 'edit-image') {
                 setIsProcessing(true);
                 await creativeService.simulateGeneration(activeCreativeId!);
                 const updated = await creativeService.getCreative(activeCreativeId!);
@@ -4197,8 +4221,21 @@ export default function UseCaseWizardPage() {
                             )}
 
 
+                            {/* EDIT IMAGE WIZARD */}
+                            {useCaseId === 'edit-image' && (
+                                <EditImageWizard
+                                    currentStepId={steps[currentStep]?.id}
+                                    stepData={stepData}
+                                    onStepDataChange={(updates) => setStepData(updates)}
+                                    clientSlug={client.slug}
+                                    assetHouse={assetHouse}
+                                    isLoading={isLoading}
+                                    setIsLoading={setIsLoading}
+                                />
+                            )}
+
                             {/* FALLBACK FOR OTHER CORES */}
-                            {useCaseId !== 'new-image' && useCaseId !== 'video-cutdown' && useCaseId !== 'template-builder' && (
+                            {useCaseId !== 'new-image' && useCaseId !== 'video-cutdown' && useCaseId !== 'template-builder' && useCaseId !== 'edit-image' && (
                                 <div className="mx-auto mt-8 flex h-64 max-w-lg items-center justify-center rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50/30">
                                     <div className="text-center">
                                         <p className="text-xs font-black text-gray-300 uppercase tracking-[0.2em]">
@@ -4227,13 +4264,19 @@ export default function UseCaseWizardPage() {
                         const isNextDisabled =
                             isLoading ||
                             (isContextStep && !contextValid) ||
-                            (steps[currentStep]?.id === 'upload' && !stepData.videoUrl) ||
-                            (steps[currentStep]?.id === 'configure' && (!stepData.lengths || stepData.lengths.length === 0)) ||
-                            (steps[currentStep]?.id === 'ai-reccos' && (!stepData.lengths?.every((l: number) => stepData[`selected_${l}`]))) ||
+                            (useCaseId === 'video-cutdown' && steps[currentStep]?.id === 'upload' && !stepData.videoUrl) ||
+                            (useCaseId === 'video-cutdown' && steps[currentStep]?.id === 'configure' && (!stepData.lengths || stepData.lengths.length === 0)) ||
+                            (useCaseId === 'video-cutdown' && steps[currentStep]?.id === 'ai-reccos' && (!stepData.lengths?.every((l: number) => stepData[`selected_${l}`]))) ||
                             (useCaseId === 'template-builder' && (
                                 (steps[currentStep]?.id === 'intent' && (!stepData.prompt || requirements.length === 0 || isAnalyzingIntent || !areRequirementsApproved)) ||
                                 (steps[currentStep]?.id === 'source' && !selectedFeed) ||
                                 (steps[currentStep]?.id === 'mapping' && (requirements.filter(r => r.category === 'Dynamic').some(r => !feedMappings[r.id])))
+                            )) ||
+                            (useCaseId === 'edit-image' && (
+                                (steps[currentStep]?.id === 'select' && !stepData.imageUrl) ||
+                                (steps[currentStep]?.id === 'edit-type' && !stepData.editType) ||
+                                (steps[currentStep]?.id === 'configure' && !stepData.selectedBackground) ||
+                                (steps[currentStep]?.id === 'preview' && !stepData.selectedVariation)
                             ));
 
                         return (
