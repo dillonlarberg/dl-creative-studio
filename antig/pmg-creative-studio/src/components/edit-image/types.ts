@@ -1,5 +1,4 @@
 import type { ClientAssetHouse } from '../../services/clientAssetHouse';
-import type { RenderVariation } from '../../services/imageEditService';
 
 export type EditType = 'background' | 'text' | 'colors';
 
@@ -22,10 +21,11 @@ export interface EditImageStepData {
   selectedBackground?: { type: 'color'; value: string } | { type: 'image'; url: string; name: string };
   customColor?: string;
 
-  // Step 5 — Preview
-  selectedVariation?: RenderVariation;
+  // Step 5 — Preview (CSS layering, no server data needed)
+  previewReady?: boolean;
 
   // Step 6 — Save
+  compositeDataUrl?: string;
   finalUrl?: string;
   savedToAssetHouse?: boolean;
 }

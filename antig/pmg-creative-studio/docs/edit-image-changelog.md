@@ -45,7 +45,7 @@ See `docs/superpowers/specs/2026-03-11-edit-image-tooling-architecture.md` for t
 | 2 | `edit-type` | ChooseEditTypeStep | `editType` required |
 | 3 | `canvas` | CanvasStep | `extractedImageUrl` required |
 | 4 | `new-background` | NewBackgroundStep | `selectedBackground` required |
-| 5 | `preview` | PreviewStep | `selectedVariation` required |
+| 5 | `preview` | PreviewStep | `previewReady` required |
 | 6 | `approve` | ApproveDownloadStep | None (final step) |
 
 ## Issues & Fixes
@@ -163,12 +163,43 @@ All 6 steps are wired up. Ready for UI review and adjustments.
 
 ---
 
+## Architecture Integration — 2026-03-11
+
+### Backend migration
+- Retired local FastAPI service (`local-services/image-edit-api/`) dependency
+- `imageEditService.ts` rewritten: `extractForeground(imageUrl)` calls Vercel/Replicate, `saveEditedImage(blob, meta)` uploads to Firebase Storage
+- Old methods removed: `getBackgroundCatalog`, `detectText`, `renderVariations`
+- Environment variable changed: `VITE_IMAGE_EDIT_API_URL` → `VITE_EXTRACT_API_URL`
+
+### Canvas step
+- `extractForeground` now sends image URL (not File upload) to Vercel serverless function
+- Fabric.js mask editor modal added (Edit button opens it)
+- Brush tools: "Keep" (green) and "Erase" (red) with adjustable size
+- Mask application is visual-only for now; full pipeline is a follow-up
+
+### Preview step
+- Replaced server-side rendering with CSS layering (instant, zero API calls)
+- Foreground PNG transparency shows chosen background via CSS `background-color` or `background-image`
+
+### Save step
+- Canvas API composites foreground + background into a single PNG blob
+- Direct browser download (no server round-trip for the file)
+- Optional Firebase Storage upload for persistence
+
+### New files
+- `src/components/edit-image/steps/MaskEditorModal.tsx` — Fabric.js mask refinement UI
+- `src/components/edit-image/utils/compositeImage.ts` — Canvas API compositing helper
+
+### Dependencies
+- Added: `fabric` (Fabric.js for mask editing)
+- Removed dependency on: `VITE_IMAGE_EDIT_API_URL`, local FastAPI server
+
+---
+
 ## Pending
 
 - [ ] "Add to Asset House" button (currently grayed out with "Coming Soon" tooltip)
 - [ ] Change Text edit type
 - [ ] Change Colors edit type
-- [ ] Firebase Function + Replicate integration for foreground extraction (replaces local FastAPI)
-- [ ] `composePreview()` and `saveEditedImage()` service methods
-- [ ] Local preview compositing in browser (foreground + chosen background)
-- [ ] Manual mask editing when "Edit" button is clicked on Canvas step (MediaPipe later)
+- [ ] Full mask-to-foreground pipeline (applying paint strokes to alpha channel)
+- [ ] Manual mask editing actual refinement (currently visual-only)

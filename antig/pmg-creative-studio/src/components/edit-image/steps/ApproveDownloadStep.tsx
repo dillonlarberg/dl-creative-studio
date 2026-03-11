@@ -1,33 +1,53 @@
 import { useState } from 'react';
 import { ArrowDownTrayIcon, CheckCircleIcon, CircleStackIcon } from '@heroicons/react/24/outline';
+import { compositeImage } from '../utils/compositeImage';
+import { imageEditService } from '../../../services/imageEditService';
 import type { EditImageStepProps } from '../types';
 
-const API_BASE = import.meta.env.VITE_IMAGE_EDIT_API_URL || 'http://127.0.0.1:8001';
+export function ApproveDownloadStep({ stepData, onStepDataChange, clientSlug }: EditImageStepProps) {
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-export function ApproveDownloadStep({ stepData, onStepDataChange }: EditImageStepProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
-  const variation = stepData.selectedVariation;
+  const bg = stepData.selectedBackground;
+  const bgStyle: React.CSSProperties = bg?.type === 'color'
+    ? { backgroundColor: bg.value }
+    : bg?.type === 'image'
+      ? { backgroundImage: `url(${bg.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      : { backgroundColor: '#f1f5f9' };
 
   const handleDownload = async () => {
-    if (!variation) return;
-    setIsDownloading(true);
+    if (!stepData.extractedImageUrl || !stepData.selectedBackground) return;
+    setIsExporting(true);
+    setExportError(null);
+
     try {
-      const downloadSrc = variation.downloadUrl.startsWith('http') ? variation.downloadUrl : `${API_BASE}${variation.downloadUrl}`;
-      const response = await fetch(downloadSrc);
-      const blob = await response.blob();
+      // Composite via Canvas API
+      const blob = await compositeImage(stepData.extractedImageUrl, stepData.selectedBackground);
+
+      // Download locally
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = variation.fileName || 'edited-image.png';
+      a.download = `edited_${stepData.imageName || 'image'}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      onStepDataChange({ finalUrl: `${API_BASE}${variation.url}` });
-    } catch {
-      // User can retry
+
+      // Optionally save to Firebase Storage
+      try {
+        const saved = await imageEditService.saveEditedImage(blob, {
+          clientSlug,
+          imageName: stepData.imageName || 'image.png',
+        });
+        onStepDataChange({ finalUrl: saved.url });
+      } catch {
+        // Storage save is optional — download still succeeded
+      }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
     } finally {
-      setIsDownloading(false);
+      setIsExporting(false);
     }
   };
 
@@ -50,27 +70,33 @@ export function ApproveDownloadStep({ stepData, onStepDataChange }: EditImageSte
         </div>
         <div className="space-y-2">
           <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-center">After</p>
-          <div className="overflow-hidden rounded-2xl border-2 border-blue-200 shadow-sm ring-2 ring-blue-100">
-            {variation && (
-              <img src={variation.url.startsWith('http') ? variation.url : `${API_BASE}${variation.url}`} alt="Edited" className="w-full object-contain" />
+          <div
+            className="overflow-hidden rounded-2xl border-2 border-blue-200 shadow-sm ring-2 ring-blue-100"
+            style={bgStyle}
+          >
+            {stepData.extractedImageUrl && (
+              <img src={stepData.extractedImageUrl} alt="Edited" className="w-full object-contain" />
             )}
           </div>
         </div>
       </div>
 
+      {/* Error */}
+      {exportError && (
+        <p className="text-center text-[10px] font-bold text-red-500">{exportError}</p>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center justify-center gap-4">
-        {/* Download — active */}
         <button
           onClick={handleDownload}
-          disabled={isDownloading || !variation}
+          disabled={isExporting || !stepData.extractedImageUrl}
           className="flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-3 text-xs font-black text-white uppercase tracking-widest hover:bg-blue-700 transition-colors disabled:opacity-40 shadow-lg shadow-blue-600/20"
         >
           <ArrowDownTrayIcon className="h-4 w-4" />
-          {isDownloading ? 'Downloading...' : 'Download Image'}
+          {isExporting ? 'Exporting...' : 'Download Image'}
         </button>
 
-        {/* Add to Asset House — grayed out */}
         <div className="relative group">
           <button
             disabled

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowPathIcon, PencilSquareIcon, ScissorsIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import { imageEditService } from '../../../services/imageEditService';
+import { MaskEditorModal } from './MaskEditorModal';
 import type { EditImageStepProps } from '../types';
 
 export function CanvasStep({
@@ -10,32 +11,45 @@ export function CanvasStep({
   setIsLoading,
 }: EditImageStepProps) {
   const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [showMaskEditor, setShowMaskEditor] = useState(false);
 
   const handleExtract = async () => {
     if (!stepData.imageUrl) return;
     setIsExtracting(true);
     setIsLoading(true);
+    setExtractError(null);
 
     try {
-      const response = await fetch(stepData.imageUrl);
-      const blob = await response.blob();
-      const file = new File([blob], stepData.imageName || 'image.png', { type: blob.type });
-
-      const result = await imageEditService.extractForeground(file);
+      const result = await imageEditService.extractForeground(stepData.imageUrl);
       onStepDataChange({
         extractedImageUrl: result.url,
         extractionMethod: 'auto',
       });
-    } catch {
-      // Backend not running — use original image as placeholder
-      onStepDataChange({
-        extractedImageUrl: stepData.imageUrl,
-        extractionMethod: 'auto',
-      });
+    } catch (err) {
+      // If API is not configured or fails, fall back to original image for UI review
+      const message = err instanceof Error ? err.message : 'Extraction failed';
+      if (message.includes('VITE_EXTRACT_API_URL')) {
+        // API not configured — use placeholder
+        onStepDataChange({
+          extractedImageUrl: stepData.imageUrl,
+          extractionMethod: 'auto',
+        });
+      } else {
+        setExtractError(message);
+      }
     } finally {
       setIsExtracting(false);
       setIsLoading(false);
     }
+  };
+
+  const handleMaskConfirm = (refinedImageUrl: string) => {
+    onStepDataChange({
+      extractedImageUrl: refinedImageUrl,
+      extractionMethod: 'manual',
+    });
+    setShowMaskEditor(false);
   };
 
   const isExtracted = !!stepData.extractedImageUrl;
@@ -47,7 +61,9 @@ export function CanvasStep({
         <div
           className={cn(
             'relative overflow-hidden rounded-2xl border-2 min-h-[320px] flex items-center justify-center',
-            isExtracted ? 'border-blue-200 bg-[repeating-conic-gradient(#f1f5f9_0%_25%,#fff_0%_50%)_0_0/20px_20px]' : 'border-gray-200 bg-gray-50',
+            isExtracted
+              ? 'border-blue-200 bg-[repeating-conic-gradient(#f1f5f9_0%_25%,#fff_0%_50%)_0_0/20px_20px]'
+              : 'border-gray-200 bg-gray-50',
           )}
         >
           {stepData.imageUrl && (
@@ -64,17 +80,19 @@ export function CanvasStep({
               <p className="mt-3 text-[10px] font-black text-blue-600 uppercase tracking-widest">
                 Extracting foreground...
               </p>
+              <p className="mt-1 text-[9px] text-gray-400">This may take a few seconds</p>
             </div>
           )}
         </div>
 
         {/* Edit button — top right of canvas */}
         <button
+          onClick={() => setShowMaskEditor(true)}
           disabled={!isExtracted}
           className={cn(
             'absolute top-3 right-3 flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all',
             isExtracted
-              ? 'border-gray-300 bg-white/90 text-gray-500 hover:border-blue-300 hover:text-blue-600 backdrop-blur-sm'
+              ? 'border-gray-300 bg-white/90 text-gray-500 hover:border-blue-300 hover:text-blue-600 backdrop-blur-sm cursor-pointer'
               : 'border-gray-200 bg-gray-100/80 text-gray-300 cursor-not-allowed',
           )}
           title={isExtracted ? 'Edit selection mask' : 'Extract background first'}
@@ -84,9 +102,20 @@ export function CanvasStep({
         </button>
       </div>
 
-      {/* Extract button */}
+      {/* Extract button / status */}
       <div className="text-center">
-        {!isExtracted ? (
+        {extractError ? (
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold text-red-500">{extractError}</p>
+            <button
+              onClick={handleExtract}
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-8 py-3 text-xs font-black text-white uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+              Retry
+            </button>
+          </div>
+        ) : !isExtracted ? (
           <button
             onClick={handleExtract}
             disabled={isExtracting || !stepData.imageUrl}
@@ -111,6 +140,16 @@ export function CanvasStep({
           </div>
         )}
       </div>
+
+      {/* Mask Editor Modal */}
+      {showMaskEditor && stepData.imageUrl && stepData.extractedImageUrl && (
+        <MaskEditorModal
+          originalImageUrl={stepData.imageUrl}
+          extractedImageUrl={stepData.extractedImageUrl}
+          onConfirm={handleMaskConfirm}
+          onCancel={() => setShowMaskEditor(false)}
+        />
+      )}
     </div>
   );
 }

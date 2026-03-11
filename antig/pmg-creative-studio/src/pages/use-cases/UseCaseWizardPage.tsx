@@ -4278,7 +4278,7 @@ export default function UseCaseWizardPage() {
                                 (steps[currentStep]?.id === 'edit-type' && !stepData.editType) ||
                                 (steps[currentStep]?.id === 'canvas' && !stepData.extractedImageUrl) ||
                                 (steps[currentStep]?.id === 'new-background' && !stepData.selectedBackground) ||
-                                (steps[currentStep]?.id === 'preview' && !stepData.selectedVariation)
+                                (steps[currentStep]?.id === 'preview' && !stepData.previewReady)
                             ));
 
                         return (
