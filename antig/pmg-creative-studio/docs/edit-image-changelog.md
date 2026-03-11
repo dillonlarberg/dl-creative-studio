@@ -16,10 +16,11 @@ src/components/edit-image/
 ├── EditImageWizard.tsx             # Step orchestrator (switch on currentStepId)
 └── steps/
     ├── SelectImageStep.tsx         # Alli asset picker + local upload
-    ├── ChooseEditTypeStep.tsx      # 3 cards: Background (active), Text/Colors (Coming Soon)
-    ├── BackgroundConfigStep.tsx    # Solid/image background catalog, variation count
-    ├── PreviewStep.tsx             # Renders variations via FastAPI, selection grid
-    └── ApproveDownloadStep.tsx     # Before/after, download, grayed-out Asset House
+    ├── ChooseEditTypeStep.tsx      # 3 cards + preview video placeholder
+    ├── CanvasStep.tsx              # Foreground extraction + edit mask button
+    ├── NewBackgroundStep.tsx       # Brand colors, Alli creative browser, upload, custom picker
+    ├── PreviewStep.tsx             # Single before/after comparison
+    └── ApproveDownloadStep.tsx     # Download + grayed-out Asset House
 ```
 
 ### Integration Points
@@ -33,9 +34,10 @@ src/components/edit-image/
 |------|----|-----------|------------|
 | 1 | `select` | SelectImageStep | `imageUrl` required |
 | 2 | `edit-type` | ChooseEditTypeStep | `editType` required |
-| 3 | `configure` | BackgroundConfigStep | `selectedBackground` required |
-| 4 | `preview` | PreviewStep | `selectedVariation` required |
-| 5 | `approve` | ApproveDownloadStep | None (final step) |
+| 3 | `canvas` | CanvasStep | `extractedImageUrl` required |
+| 4 | `new-background` | NewBackgroundStep | `selectedBackground` required |
+| 5 | `preview` | PreviewStep | `selectedVariation` required |
+| 6 | `approve` | ApproveDownloadStep | None (final step) |
 
 ## Issues & Fixes
 
@@ -96,9 +98,66 @@ src/components/edit-image/
 
 ---
 
+## UI Redesign — 2026-03-11
+
+### Step name changes (prior to this session)
+| Step ID | Before | After |
+|---------|--------|-------|
+| `edit-type` | Choose Edit Type | Edit Type |
+| `configure` | Configure Edit | Canvas |
+| `approve` | Approve & Download | Save |
+
+### Wizard expanded from 5 steps to 6
+
+Old: Select Image → Edit Type → Configure → Preview → Save
+New: Select Image → Edit Type → Canvas → New Background → Preview → Save
+
+### Changes by step
+
+**Edit Type (ChooseEditTypeStep):**
+- Added preview video placeholder above tool cards
+- Placeholder text updates based on selected tool
+
+**Canvas (CanvasStep — new):**
+- New step for foreground extraction
+- Shows selected image on canvas area
+- "Extract Background" button triggers extraction (falls back to original image when API offline)
+- Grayed "Edit" button (top-right) for future manual mask painting
+- Continue disabled until extraction complete
+
+**New Background (NewBackgroundStep — new, replaces BackgroundConfigStep):**
+- Brand colors loaded from Alli Asset Library (primaryColor + variables + assets of type 'color')
+- "+" button opens native color picker for custom colors
+- "Browse Alli Creative" card to search/select background images
+- "Upload Image" card for local file upload
+- Selected background image preview bar
+- No variation count picker (single output only)
+
+**Preview (PreviewStep — simplified):**
+- Removed variation grid and "Re-render" button
+- Simple side-by-side: Original vs Edited (single result)
+- Uses extractedImageUrl instead of imageUrl for compositing
+
+**BackgroundConfigStep — deleted**
+- Replaced by CanvasStep + NewBackgroundStep
+
+### Data model changes (types.ts)
+- Added: `extractedImageUrl`, `extractionMethod`, `customColor`
+- Changed: `selectedBackground` to discriminated union (`color` | `image`)
+- Removed: `variationCount`, `variations` array (single output only)
+
+### Service changes (imageEditService.ts)
+- Added: `extractForeground()` method stub for foreground extraction API
+
+### Pickup point
+All 6 steps are wired up. Ready for UI review and adjustments.
+
+---
+
 ## Pending
 
 - [ ] "Add to Asset House" button (currently grayed out with "Coming Soon" tooltip)
 - [ ] Change Text edit type
 - [ ] Change Colors edit type
-- [ ] Real GrabCut rendering when backend is running (currently falls back to placeholders)
+- [ ] Real foreground extraction when backend is running (currently falls back to placeholders)
+- [ ] Manual mask editing when "Edit" button is clicked on Canvas step

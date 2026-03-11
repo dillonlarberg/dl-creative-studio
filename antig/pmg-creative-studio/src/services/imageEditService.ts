@@ -37,6 +37,11 @@ interface RenderVariationsResponse {
     variations: RenderVariation[];
 }
 
+interface ExtractForegroundResponse {
+    url: string;
+    maskUrl?: string;
+}
+
 const BASE_URL = (import.meta.env.VITE_IMAGE_EDIT_API_URL || 'http://127.0.0.1:8001').replace(/\/$/, '');
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -93,5 +98,17 @@ export const imageEditService = {
         });
 
         return parseResponse<RenderVariationsResponse>(response);
+    },
+
+    async extractForeground(file: File): Promise<ExtractForegroundResponse> {
+        const form = new FormData();
+        form.append('file', file);
+
+        const response = await fetch(`${BASE_URL}/extract-foreground`, {
+            method: 'POST',
+            body: form,
+        });
+
+        return parseResponse<ExtractForegroundResponse>(response);
     },
 };

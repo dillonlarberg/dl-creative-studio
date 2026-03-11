@@ -354,9 +354,10 @@ const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
     ],
     'edit-image': [
         { id: 'select', name: 'Select Image' },
-        { id: 'edit-type', name: 'Choose Edit Type' },
-        { id: 'configure', name: 'Configure Edit' },
-        { id: 'preview', name: 'Preview & Adjust' },
+        { id: 'edit-type', name: 'Edit Type' },
+        { id: 'canvas', name: 'Canvas' },
+        { id: 'new-background', name: 'New Background' },
+        { id: 'preview', name: 'Preview' },
         { id: 'approve', name: 'Save' },
     ],
     'new-image': [
@@ -4275,7 +4276,8 @@ export default function UseCaseWizardPage() {
                             (useCaseId === 'edit-image' && (
                                 (steps[currentStep]?.id === 'select' && !stepData.imageUrl) ||
                                 (steps[currentStep]?.id === 'edit-type' && !stepData.editType) ||
-                                (steps[currentStep]?.id === 'configure' && !stepData.selectedBackground) ||
+                                (steps[currentStep]?.id === 'canvas' && !stepData.extractedImageUrl) ||
+                                (steps[currentStep]?.id === 'new-background' && !stepData.selectedBackground) ||
                                 (steps[currentStep]?.id === 'preview' && !stepData.selectedVariation)
                             ));
 

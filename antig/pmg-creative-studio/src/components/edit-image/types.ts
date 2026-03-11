@@ -1,5 +1,5 @@
 import type { ClientAssetHouse } from '../../services/clientAssetHouse';
-import type { BackgroundCatalogItem, RenderVariation } from '../../services/imageEditService';
+import type { RenderVariation } from '../../services/imageEditService';
 
 export type EditType = 'background' | 'text' | 'colors';
 
@@ -14,15 +14,18 @@ export interface EditImageStepData {
   // Step 2 — Edit Type
   editType?: EditType;
 
-  // Step 3 — Background Config
-  selectedBackground?: BackgroundCatalogItem;
-  variationCount?: number;
+  // Step 3 — Canvas (extraction)
+  extractedImageUrl?: string;
+  extractionMethod?: 'auto' | 'manual';
 
-  // Step 4 — Preview
-  variations?: RenderVariation[];
+  // Step 4 — New Background
+  selectedBackground?: { type: 'color'; value: string } | { type: 'image'; url: string; name: string };
+  customColor?: string;
+
+  // Step 5 — Preview
   selectedVariation?: RenderVariation;
 
-  // Step 5 — Save
+  // Step 6 — Save
   finalUrl?: string;
   savedToAssetHouse?: boolean;
 }

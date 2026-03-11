@@ -23,8 +23,25 @@ const EDIT_TYPES: { id: EditType; title: string; description: string; enabled: b
 ];
 
 export function ChooseEditTypeStep({ stepData, onStepDataChange }: EditImageStepProps) {
+  const selectedType = EDIT_TYPES.find((t) => t.id === stepData.editType);
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      {/* Preview video placeholder */}
+      <div className="overflow-hidden rounded-2xl border-2 border-gray-100 bg-gray-900">
+        <div className="flex flex-col items-center justify-center py-16 px-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 mb-3">
+            <svg className="h-5 w-5 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+            {selectedType ? `${selectedType.title} Preview` : 'Tool Preview'}
+          </p>
+          <p className="mt-1 text-[9px] text-white/20">Video placeholder</p>
+        </div>
+      </div>
+
       <h3 className="text-xs font-black text-gray-900 uppercase tracking-[0.2em] text-center">
         What would you like to change?
       </h3>

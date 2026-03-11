@@ -2,7 +2,8 @@ import type { ClientAssetHouse } from '../../services/clientAssetHouse';
 import type { EditImageStepData } from './types';
 import { SelectImageStep } from './steps/SelectImageStep';
 import { ChooseEditTypeStep } from './steps/ChooseEditTypeStep';
-import { BackgroundConfigStep } from './steps/BackgroundConfigStep';
+import { CanvasStep } from './steps/CanvasStep';
+import { NewBackgroundStep } from './steps/NewBackgroundStep';
 import { PreviewStep } from './steps/PreviewStep';
 import { ApproveDownloadStep } from './steps/ApproveDownloadStep';
 
@@ -45,8 +46,10 @@ export function EditImageWizard({
       return <SelectImageStep {...sharedProps} />;
     case 'edit-type':
       return <ChooseEditTypeStep {...sharedProps} />;
-    case 'configure':
-      return <BackgroundConfigStep {...sharedProps} />;
+    case 'canvas':
+      return <CanvasStep {...sharedProps} />;
+    case 'new-background':
+      return <NewBackgroundStep {...sharedProps} />;
     case 'preview':
       return <PreviewStep {...sharedProps} />;
     case 'approve':

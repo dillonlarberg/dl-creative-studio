@@ -1,0 +1,116 @@
+<h2>Edit Image — Redesigned Flow</h2>
+<p class="subtitle">6-step wizard: Select Image → Edit Type → Canvas → New Background → Preview → Save</p>
+
+<div class="section">
+  <h3>Step 2: Edit Type (updated)</h3>
+  <p class="subtitle">Preview video placeholder above tool cards</p>
+  <div class="mockup">
+    <div class="mockup-header">Edit Type Step</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <!-- Video preview placeholder -->
+      <div style="background: linear-gradient(135deg, #1e293b, #334155); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 24px; border: 2px dashed #475569;">
+        <div style="font-size: 32px; margin-bottom: 8px;">▶</div>
+        <div style="color: #94a3b8; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;">Tool Preview Video</div>
+        <div style="color: #64748b; font-size: 10px; margin-top: 4px;">Updates based on selected tool below</div>
+      </div>
+
+      <!-- Tool cards -->
+      <div style="font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: #111; text-align: center; margin-bottom: 16px;">What would you like to change?</div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+        <div style="border: 2px solid #2563eb; background: #eff6ff; border-radius: 12px; padding: 16px; text-align: center;">
+          <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">Change Background</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 6px;">Replace the background with a solid color or image</div>
+        </div>
+        <div style="border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; opacity: 0.6;">
+          <div style="font-size: 8px; background: #e5e7eb; color: #6b7280; border-radius: 99px; padding: 2px 8px; display: inline-block; margin-bottom: 6px;">SOON</div>
+          <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">Change Text</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 6px;">Detect and replace text using brand fonts</div>
+        </div>
+        <div style="border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; opacity: 0.6;">
+          <div style="font-size: 8px; background: #e5e7eb; color: #6b7280; border-radius: 99px; padding: 2px 8px; display: inline-block; margin-bottom: 6px;">SOON</div>
+          <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;">Change Colors</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 6px;">Swap dominant colors with brand palette</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 3: Canvas (new)</h3>
+  <p class="subtitle">Extract foreground, review selection, optional manual mask edit</p>
+  <div class="mockup">
+    <div class="mockup-header">Canvas Step</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <!-- Canvas area -->
+      <div style="position: relative; background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 0 0 / 20px 20px; border: 2px solid #e2e8f0; border-radius: 12px; height: 280px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <div style="text-align: center; color: #94a3b8;">
+          <div style="font-size: 48px; margin-bottom: 8px;">🖼️</div>
+          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;">Selected Image Canvas</div>
+          <div style="font-size: 9px; color: #cbd5e1; margin-top: 4px;">After extraction: foreground shown on transparency grid</div>
+        </div>
+        <!-- Edit button (grayed) -->
+        <div style="position: absolute; top: 12px; right: 12px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 6px; color: #94a3b8; cursor: not-allowed;">
+          <span style="font-size: 14px;">✏️</span>
+          <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;">Edit</span>
+        </div>
+      </div>
+
+      <!-- Extract button -->
+      <div style="text-align: center;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: #2563eb; color: white; border-radius: 12px; padding: 12px 32px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em;">
+          ✂️ Extract Background
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 4: New Background (moved from old step 3)</h3>
+  <p class="subtitle">Pick solid color or image background — same catalog UI, minus variations picker</p>
+  <div class="mockup">
+    <div class="mockup-header">New Background Step</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: #111; margin-bottom: 12px;">Solid Colors</div>
+      <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+        <div style="width: 40px; height: 40px; background: #fff; border: 2px solid #2563eb; border-radius: 8px; box-shadow: 0 0 0 2px #bfdbfe;"></div>
+        <div style="width: 40px; height: 40px; background: #475569; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+        <div style="width: 40px; height: 40px; background: #d4a574; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+        <div style="width: 40px; height: 40px; background: #a7f3d0; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+        <div style="width: 40px; height: 40px; background: #fbbf24; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+        <div style="width: 40px; height: 40px; background: #38bdf8; border: 2px solid #e5e7eb; border-radius: 8px;"></div>
+      </div>
+      <div style="color: #94a3b8; font-size: 9px; font-style: italic;">No variation count picker — single output only</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 5: Preview (simplified)</h3>
+  <p class="subtitle">Original vs single edited result — no variation grid, no re-render</p>
+  <div class="mockup">
+    <div class="mockup-header">Preview Step</div>
+    <div class="mockup-body" style="padding: 24px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <div style="font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: #9ca3af; text-align: center; margin-bottom: 8px;">Original</div>
+          <div style="background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 12px; height: 200px; display: flex; align-items: center; justify-content: center;">
+            <span style="color: #94a3b8; font-size: 10px;">Original Image</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: #2563eb; text-align: center; margin-bottom: 8px;">Edited</div>
+          <div style="background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 12px; height: 200px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px #dbeafe;">
+            <span style="color: #60a5fa; font-size: 10px;">With New Background</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Step 6: Save</h3>
+  <p class="subtitle">Unchanged — download + grayed "Add to Asset House"</p>
+</div>
