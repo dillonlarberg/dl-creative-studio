@@ -50,8 +50,20 @@ export function SelectImageStep({
     assetPage * ASSETS_PER_PAGE,
   );
 
+  // Clear downstream step data whenever a new image is selected
+  const resetDownstreamData = {
+    extractedImageUrl: undefined,
+    extractionMethod: undefined,
+    selectedBackground: undefined,
+    customColor: undefined,
+    previewReady: undefined,
+    compositeDataUrl: undefined,
+    finalUrl: undefined,
+  };
+
   const selectAlliAsset = (asset: CreativeAsset) => {
     onStepDataChange({
+      ...resetDownstreamData,
       imageUrl: asset.url,
       imageName: asset.name || 'alli-asset',
       imageSource: 'alli',
@@ -72,6 +84,7 @@ export function SelectImageStep({
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       onStepDataChange({
+        ...resetDownstreamData,
         imageUrl: url,
         imageName: file.name,
         imageSource: 'upload',

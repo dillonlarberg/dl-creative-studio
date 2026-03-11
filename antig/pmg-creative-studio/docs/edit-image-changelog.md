@@ -196,6 +196,22 @@ All 6 steps are wired up. Ready for UI review and adjustments.
 
 ---
 
+## Bugfixes — 2026-03-11
+
+### Stale state on image change
+- **Problem:** Changing the selected image and backtracking left stale `extractedImageUrl`, `selectedBackground`, etc. from the previous selection. Page refresh also restored old step data from Firestore.
+- **Root cause:** edit-image uses a flat stepData object across all steps, but Firestore saved per-step snapshots. Old downstream keys survived merges.
+- **Fix (SelectImageStep):** Selecting a new image now resets all downstream fields (`extractedImageUrl`, `selectedBackground`, `previewReady`, `compositeDataUrl`, `finalUrl`, etc.)
+- **Fix (UseCaseWizardPage — handleNext):** For edit-image, the flat stepData is now saved under ALL step keys so stale downstream data is always overwritten.
+- **Fix (UseCaseWizardPage — back navigation):** edit-image keeps the current flat stepData when going back instead of loading stale per-step snapshots.
+- **Fix (UseCaseWizardPage — restore on load):** edit-image merges all saved step data into one flat object on resume.
+
+### Fabric.js CORS errors in MaskEditorModal
+- **Problem:** Alli CDN (`creative-insights-images-prod.creative.alliplatform.com`) does not send CORS headers. Loading images with `crossOrigin='anonymous'` (required for pixel export) caused `ERR_FAILED`. Replicate delivery URLs had similar issues with `fetch()`.
+- **Fix:** MaskEditorModal now loads images via plain `<img>` elements without `crossOrigin`, then wraps them directly in `FabricImage`. The canvas is tainted (can't export pixel data) but display works. This is acceptable since mask refinement is visual-only for now.
+
+---
+
 ## Pending
 
 - [ ] "Add to Asset House" button (currently grayed out with "Coming Soon" tooltip)

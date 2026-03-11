@@ -1126,8 +1126,16 @@ export default function UseCaseWizardPage() {
                     if (record && record.status !== 'completed') {
                         setCreativeId(storedId);
                         setCreative(record);
-                        const lastStepId = steps[record.currentStep]?.id;
-                        setStepData(record.stepData[lastStepId] || {});
+                        if (useCaseId === 'edit-image') {
+                            // edit-image uses a flat object — merge all saved step data
+                            const merged = Object.values(record.stepData || {}).reduce<Record<string, any>>(
+                                (acc, val) => ({ ...acc, ...(val as Record<string, any>) }), {}
+                            );
+                            setStepData(merged);
+                        } else {
+                            const lastStepId = steps[record.currentStep]?.id;
+                            setStepData(record.stepData[lastStepId] || {});
+                        }
                         setCurrentStep(record.currentStep);
                         resumed = true;
                     } else if (record?.status === 'completed') {
@@ -1264,7 +1272,17 @@ export default function UseCaseWizardPage() {
             const currentStepData = useCaseId === 'edit-image'
                 ? sanitizeForFirestore(stepData)
                 : { ...stepData };
-            const updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
+
+            // edit-image uses a flat object across all steps. Save it under
+            // every step key so that stale downstream data (e.g. old
+            // extractedImageUrl) is always overwritten on restore.
+            let updatedStepData;
+            if (useCaseId === 'edit-image') {
+                updatedStepData = { ...creative?.stepData };
+                steps.forEach(s => { updatedStepData[s.id] = currentStepData; });
+            } else {
+                updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
+            }
 
             await creativeService.updateCreative(activeCreativeId!, {
                 currentStep: nextStep,
@@ -4312,9 +4330,14 @@ export default function UseCaseWizardPage() {
                                         onClick={() => {
                                             const prev = currentStep - 1;
                                             setCurrentStep(Math.max(0, prev));
-                                            const prevStepId = steps[prev]?.id;
-                                            if (creative?.stepData && prevStepId) {
-                                                setStepData(creative.stepData[prevStepId] || {});
+                                            if (useCaseId === 'edit-image') {
+                                                // edit-image uses a flat object — keep current stepData
+                                                // so downstream selections stay in sync
+                                            } else {
+                                                const prevStepId = steps[prev]?.id;
+                                                if (creative?.stepData && prevStepId) {
+                                                    setStepData(creative.stepData[prevStepId] || {});
+                                                }
                                             }
                                         }}
                                         disabled={currentStep === 0 || isLoading}

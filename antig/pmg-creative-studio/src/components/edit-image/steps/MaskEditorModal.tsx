@@ -26,7 +26,25 @@ export function MaskEditorModal({
   useEffect(() => {
     let cancelled = false;
 
+    // Load image as HTMLImageElement without crossOrigin to avoid CORS blocks
+    // from external CDNs (Alli, Replicate). Canvas will be tainted but we
+    // only need to display images here, not export pixel data.
+    const loadImg = (url: string): Promise<HTMLImageElement> =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+        img.src = url;
+      });
+
     const initFabric = async () => {
+      // Pre-load images without crossOrigin so external CDNs don't block them
+      const [bgHtml, fgHtml] = await Promise.all([
+        loadImg(originalImageUrl),
+        loadImg(extractedImageUrl),
+      ]);
+      if (cancelled) return;
+
       // Dynamic import to avoid SSR issues and reduce initial bundle
       const fabric = await import('fabric');
       if (cancelled || !canvasRef.current) return;
@@ -38,8 +56,8 @@ export function MaskEditorModal({
       });
       fabricRef.current = canvas;
 
-      // Load the original image as background
-      const bgImg = await fabric.FabricImage.fromURL(originalImageUrl, { crossOrigin: 'anonymous' });
+      // Load the original image as background using pre-loaded element
+      const bgImg = new fabric.FabricImage(bgHtml);
       if (cancelled) return;
 
       // Scale to fit canvas
@@ -48,7 +66,7 @@ export function MaskEditorModal({
       canvas.backgroundImage = bgImg;
 
       // Load extracted image as overlay to show current mask
-      const fgImg = await fabric.FabricImage.fromURL(extractedImageUrl, { crossOrigin: 'anonymous' });
+      const fgImg = new fabric.FabricImage(fgHtml);
       if (cancelled) return;
 
       fgImg.scale(scale);
