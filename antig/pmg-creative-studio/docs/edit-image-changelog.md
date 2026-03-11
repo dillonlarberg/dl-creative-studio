@@ -26,7 +26,16 @@ src/components/edit-image/
 ### Integration Points
 
 - **UseCaseWizardPage.tsx** — Updated WIZARD_STEPS, added `<EditImageWizard />` block, added step validation in `isNextDisabled`, added edit-image step data carry-forward and completion handling.
-- **Existing services** — `imageEditService.ts`, `alliService.ts`, `creativeService.ts` consumed as-is. No backend changes.
+- **Existing services** — `imageEditService.ts` (provider-agnostic contract), `alliService.ts`, `creativeService.ts`.
+
+### Architecture Direction
+
+See `docs/superpowers/specs/2026-03-11-edit-image-tooling-architecture.md` for the full architecture sketch. Summary:
+- **Retiring** the local FastAPI service (`local-services/image-edit-api/`)
+- **Moving to** React + Firebase Functions + Replicate for foreground extraction
+- **Frontend** stays provider-agnostic via `imageEditService.ts` contract
+- **Firebase Functions** handle Replicate API calls, prediction polling, and result storage
+- **Browser-first path** (MediaPipe/Transformers.js) reserved for future interactive masking only
 
 ## Wizard Steps
 
@@ -159,5 +168,7 @@ All 6 steps are wired up. Ready for UI review and adjustments.
 - [ ] "Add to Asset House" button (currently grayed out with "Coming Soon" tooltip)
 - [ ] Change Text edit type
 - [ ] Change Colors edit type
-- [ ] Real foreground extraction when backend is running (currently falls back to placeholders)
-- [ ] Manual mask editing when "Edit" button is clicked on Canvas step
+- [ ] Firebase Function + Replicate integration for foreground extraction (replaces local FastAPI)
+- [ ] `composePreview()` and `saveEditedImage()` service methods
+- [ ] Local preview compositing in browser (foreground + chosen background)
+- [ ] Manual mask editing when "Edit" button is clicked on Canvas step (MediaPipe later)
