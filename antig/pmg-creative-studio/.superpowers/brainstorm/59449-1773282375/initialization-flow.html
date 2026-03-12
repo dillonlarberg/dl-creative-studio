@@ -1,0 +1,178 @@
+<h2>Mask Editor Initialization — After First Extraction</h2>
+<p class="subtitle">How the API result becomes an editable mask</p>
+
+<!-- Step 1 -->
+<div class="section">
+  <h3>Step 1: What the API returns</h3>
+  <div class="mockup">
+    <div class="mockup-header">extractForeground() → Replicate result</div>
+    <div class="mockup-body" style="padding:1.25rem;">
+      <div style="display:flex; gap:2rem; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1; min-width:200px;">
+          <div style="font-weight:bold; margin-bottom:0.5rem; font-size:0.85rem;">Foreground PNG</div>
+          <div style="width:200px; height:150px; border:2px solid #3b82f6; border-radius:8px; overflow:hidden; position:relative; background:repeating-conic-gradient(#e5e7eb 0% 25%,#fff 0% 50%) 0 0/16px 16px;">
+            <div style="position:absolute; top:20px; left:40px; width:120px; height:110px; background:linear-gradient(135deg,#8b5cf6,#ec4899); border-radius:40% 40% 5% 5%; opacity:1;"></div>
+          </div>
+          <div style="font-size:0.75rem; color:#666; margin-top:0.5rem;">
+            Checkerboard = transparent (alpha=0)<br>
+            Subject pixels = opaque (alpha=255)<br>
+            Edges = partial alpha (anti-aliased)
+          </div>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <div style="font-weight:bold; margin-bottom:0.5rem; font-size:0.85rem;">Alpha channel (what we care about)</div>
+          <div style="width:200px; height:150px; border:2px solid #6b7280; border-radius:8px; overflow:hidden; position:relative; background:#000;">
+            <div style="position:absolute; top:20px; left:40px; width:120px; height:110px; background:#fff; border-radius:40% 40% 5% 5%; box-shadow:0 0 8px rgba(255,255,255,0.5);"></div>
+          </div>
+          <div style="font-size:0.75rem; color:#666; margin-top:0.5rem;">
+            White = kept by API (alpha=255)<br>
+            Black = removed by API (alpha=0)<br>
+            Gray edges = partial alpha
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2 -->
+<div class="section">
+  <h3>Step 2: Read the alpha channel (requires CORS proxy)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Offscreen canvas reads pixel data from the extracted PNG</div>
+    <div class="mockup-body" style="padding:1.25rem;">
+      <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; font-size:0.85rem; font-family:monospace;">
+        <div style="background:#dbeafe; border:2px solid #3b82f6; border-radius:8px; padding:0.75rem; text-align:center;">
+          <strong>extractedImageUrl</strong><br>
+          <span style="font-size:0.7rem; color:#666;">Replicate URL</span>
+        </div>
+        <div style="color:#3b82f6; font-weight:bold;">→</div>
+        <div style="background:#d1fae5; border:2px solid #10b981; border-radius:8px; padding:0.75rem; text-align:center;">
+          <strong>proxyUrl()</strong><br>
+          <span style="font-size:0.7rem; color:#666;">CORS-safe</span>
+        </div>
+        <div style="color:#10b981; font-weight:bold;">→</div>
+        <div style="background:#fef9c3; border:2px solid #eab308; border-radius:8px; padding:0.75rem; text-align:center;">
+          <strong>Offscreen canvas</strong><br>
+          <span style="font-size:0.7rem; color:#666;">drawImage() → getImageData()</span>
+        </div>
+        <div style="color:#eab308; font-weight:bold;">→</div>
+        <div style="background:#fae8ff; border:2px solid #a855f7; border-radius:8px; padding:0.75rem; text-align:center;">
+          <strong>Alpha channel array</strong><br>
+          <span style="font-size:0.7rem; color:#666;">pixel[i*4 + 3] for each pixel</span>
+        </div>
+      </div>
+      <div style="margin-top:1rem; background:#fef3c7; border-radius:6px; padding:0.75rem; font-size:0.8rem;">
+        <strong>This is why the proxy is required.</strong> Without CORS-safe loading, <code>getImageData()</code> throws SecurityError and we can't read the alpha values.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 3 -->
+<div class="section">
+  <h3>Step 3: Initialize both canvases from the alpha data</h3>
+  <div class="mockup">
+    <div class="mockup-header">Alpha channel → mask canvas + display red tint</div>
+    <div class="mockup-body" style="padding:1.25rem;">
+      <div style="display:flex; gap:2rem; flex-wrap:wrap;">
+        <!-- Mask canvas -->
+        <div style="flex:1; min-width:220px;">
+          <div style="font-weight:bold; margin-bottom:0.5rem; color:#1d4ed8; font-size:0.85rem;">Hidden Mask Canvas</div>
+          <div style="width:200px; height:150px; border:2px solid #1d4ed8; border-radius:8px; overflow:hidden; position:relative; background:#000;">
+            <div style="position:absolute; top:20px; left:40px; width:120px; height:110px; background:#fff; border-radius:40% 40% 5% 5%; box-shadow:0 0 8px rgba(255,255,255,0.5);"></div>
+          </div>
+          <div style="font-size:0.75rem; color:#666; margin-top:0.5rem; font-family:monospace;">
+            for each pixel:<br>
+            &nbsp; alpha=0 → paint <strong>black</strong> (removed)<br>
+            &nbsp; alpha=255 → paint <strong>white</strong> (keep)<br>
+            &nbsp; partial → proportional <strong>gray</strong>
+          </div>
+        </div>
+
+        <!-- Display canvas -->
+        <div style="flex:1; min-width:220px;">
+          <div style="font-weight:bold; margin-bottom:0.5rem; color:#a855f7; font-size:0.85rem;">Visible Display Canvas</div>
+          <div style="width:200px; height:150px; border:2px solid #a855f7; border-radius:8px; overflow:hidden; position:relative;">
+            <!-- Original image underneath -->
+            <div style="position:absolute; inset:0; background:linear-gradient(135deg,#e0e7ff 0%,#fce7f3 50%,#dbeafe 100%);"></div>
+            <!-- Subject area -->
+            <div style="position:absolute; top:20px; left:40px; width:120px; height:110px; background:linear-gradient(135deg,#8b5cf6,#ec4899); border-radius:40% 40% 5% 5%;"></div>
+            <!-- Red tint over removed areas -->
+            <div style="position:absolute; inset:0; background:rgba(255,0,0,0.35);">
+              <div style="position:absolute; top:20px; left:40px; width:120px; height:110px; background:linear-gradient(135deg,#8b5cf6,#ec4899); border-radius:40% 40% 5% 5%;"></div>
+            </div>
+          </div>
+          <div style="font-size:0.75rem; color:#666; margin-top:0.5rem; font-family:monospace;">
+            Layer 1: original image (full)<br>
+            Layer 2: red tint <strong>only where alpha=0</strong><br>
+            Subject area = clear (no red)<br>
+            Background area = red tinted
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 4 -->
+<div class="section">
+  <h3>Step 4: How the red tint overlay is built</h3>
+  <div class="mockup">
+    <div class="mockup-header">Pixel-level red tint generation</div>
+    <div class="mockup-body" style="padding:1.25rem; font-size:0.85rem;">
+      <div style="font-family:monospace; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; font-size:0.8rem; line-height:1.6;">
+        <span style="color:#888;">// Create a raster overlay image from the alpha channel</span><br>
+        <span style="color:#888;">// This becomes a FabricImage on the display canvas</span><br><br>
+        tintCanvas = new OffscreenCanvas(naturalWidth, naturalHeight)<br>
+        tintData = tintCanvas.getImageData()<br><br>
+        <strong>for each pixel i:</strong><br>
+        &nbsp;&nbsp;extractedAlpha = alphaChannel[i]<br><br>
+        &nbsp;&nbsp;<span style="color:#16a34a;">// Where API removed background (alpha=0) → show red tint</span><br>
+        &nbsp;&nbsp;<span style="color:#16a34a;">// Where API kept subject (alpha=255) → fully transparent (no tint)</span><br><br>
+        &nbsp;&nbsp;tintData[i*4 + 0] = 255 &nbsp;&nbsp;&nbsp;<span style="color:#888;">// R = red</span><br>
+        &nbsp;&nbsp;tintData[i*4 + 1] = 0 &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#888;">// G = 0</span><br>
+        &nbsp;&nbsp;tintData[i*4 + 2] = 0 &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#888;">// B = 0</span><br>
+        &nbsp;&nbsp;tintData[i*4 + 3] = <strong>Math.round((1 - extractedAlpha/255) * 102)</strong><br>
+        &nbsp;&nbsp;<span style="color:#888;">// alpha=0 (removed) → tint alpha=102 (~40% red)</span><br>
+        &nbsp;&nbsp;<span style="color:#888;">// alpha=255 (kept) → tint alpha=0 (no red)</span><br>
+        &nbsp;&nbsp;<span style="color:#888;">// partial alpha → proportional red tint</span><br><br>
+        <span style="color:#888;">// Convert to image, load as FabricImage on display canvas</span><br>
+        tintCanvas.putImageData(tintData)<br>
+        tintBlob = tintCanvas.toBlob('image/png')<br>
+        tintUrl = URL.createObjectURL(tintBlob)<br>
+        fabricTint = new FabricImage(tintUrl) → add to display canvas
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="section">
+  <h3>Summary: The Full Init Sequence</h3>
+  <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem; font-family:monospace;">
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div style="background:#dbeafe; border-radius:6px; padding:0.5rem 0.75rem; min-width:40px; text-align:center; font-weight:bold;">1</div>
+      <div>Load <code>extractedImageUrl</code> through proxy → draw on offscreen canvas → <code>getImageData()</code></div>
+    </div>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div style="background:#d1fae5; border-radius:6px; padding:0.5rem 0.75rem; min-width:40px; text-align:center; font-weight:bold;">2</div>
+      <div>Read alpha channel pixel-by-pixel → this IS the API's edge detection result</div>
+    </div>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div style="background:#fef9c3; border-radius:6px; padding:0.5rem 0.75rem; min-width:40px; text-align:center; font-weight:bold;">3</div>
+      <div>Initialize mask canvas: alpha→luminance (0→black, 255→white, partial→gray)</div>
+    </div>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div style="background:#fae8ff; border-radius:6px; padding:0.5rem 0.75rem; min-width:40px; text-align:center; font-weight:bold;">4</div>
+      <div>Generate red tint raster: inverted alpha → red overlay (0→red, 255→clear)</div>
+    </div>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <div style="background:#fee2e2; border-radius:6px; padding:0.5rem 0.75rem; min-width:40px; text-align:center; font-weight:bold;">5</div>
+      <div>Display canvas: original image (bg) + red tint FabricImage (overlay) → ready for painting</div>
+    </div>
+  </div>
+  <div style="margin-top:1rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:1rem; font-size:0.8rem;">
+    <strong>Key insight:</strong> The API's edge detection is encoded in the alpha channel of the PNG it returns. We read that alpha channel to build both the visual red tint and the data mask. The edges are preserved exactly — anti-aliased edges in the API result become proportional gray values in the mask and proportional red tint on the display.
+  </div>
+</div>

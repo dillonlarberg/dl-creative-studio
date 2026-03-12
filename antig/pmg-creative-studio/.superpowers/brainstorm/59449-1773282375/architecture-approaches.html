@@ -1,0 +1,136 @@
+<h2>Mask Editor Architecture — Approaches</h2>
+<p class="subtitle">Based on your choices: Quick Mask mode, client-side processing, CORS proxy</p>
+
+<div style="margin: 2rem 0;">
+  <h3>Current Architecture (Broken)</h3>
+  <div class="mockup">
+    <div class="mockup-header">What happens today</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; font-size:0.85rem; font-family:monospace;">
+        <div style="background:#fee2e2; border:2px solid #ef4444; border-radius:8px; padding:0.75rem 1rem; text-align:center;">
+          <strong>Alli CDN / Replicate</strong><br>
+          <span style="font-size:0.75rem; color:#666;">External image URLs</span>
+        </div>
+        <div style="color:#ef4444; font-weight:bold;">→ ❌ CORS blocked →</div>
+        <div style="background:#fee2e2; border:2px solid #ef4444; border-radius:8px; padding:0.75rem 1rem; text-align:center;">
+          <strong>Fabric.js Canvas</strong><br>
+          <span style="font-size:0.75rem; color:#666;">Tainted — no pixel export</span>
+        </div>
+        <div style="color:#ef4444; font-weight:bold;">→ ❌ No pipeline →</div>
+        <div style="background:#fee2e2; border:2px solid #ef4444; border-radius:8px; padding:0.75rem 1rem; text-align:center;">
+          <strong>handleConfirm()</strong><br>
+          <span style="font-size:0.75rem; color:#666;">Returns original URL unchanged</span>
+        </div>
+      </div>
+      <div style="margin-top:1rem; padding:0.75rem; background:#fef3c7; border-radius:6px; font-size:0.8rem;">
+        <strong>Bugs:</strong> Image tiny/mispositioned in modal (Fabric width vs naturalWidth), brush strokes are decorative only, no mask-to-alpha code exists
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin: 2rem 0;">
+  <h3>Proposed Architecture</h3>
+  <div class="mockup">
+    <div class="mockup-header">New pipeline with CORS proxy + client-side alpha manipulation</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display:flex; flex-direction:column; gap:1.25rem; font-size:0.85rem; font-family:monospace;">
+        <!-- Row 1: Extraction -->
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="background:#dbeafe; border:2px solid #3b82f6; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>1. Extract</strong><br>
+            <span style="font-size:0.75rem; color:#666;">Vercel → Replicate API</span>
+          </div>
+          <div style="color:#3b82f6; font-weight:bold;">→</div>
+          <div style="background:#dbeafe; border:2px solid #3b82f6; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>Returns</strong><br>
+            <span style="font-size:0.75rem; color:#666;">foreground URL + mask URL</span>
+          </div>
+        </div>
+
+        <!-- Row 2: Proxy -->
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="background:#d1fae5; border:2px solid #10b981; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>2. Proxy</strong><br>
+            <span style="font-size:0.75rem; color:#666;">/api/proxy-image?url=...</span>
+          </div>
+          <div style="color:#10b981; font-weight:bold;">→</div>
+          <div style="background:#d1fae5; border:2px solid #10b981; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>CORS-safe images</strong><br>
+            <span style="font-size:0.75rem; color:#666;">crossOrigin works ✓</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Mask Editor -->
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="background:#fae8ff; border:2px solid #a855f7; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>3. Mask Editor</strong><br>
+            <span style="font-size:0.75rem; color:#666;">Fabric.js Quick Mask mode</span>
+          </div>
+          <div style="color:#a855f7; font-weight:bold;">→</div>
+          <div style="background:#fae8ff; border:2px solid #a855f7; border-radius:8px; padding:0.75rem 1rem; text-align:center;">
+            <strong>User paints white/black</strong><br>
+            <span style="font-size:0.75rem; color:#666;">Original underneath, mask overlay on top</span>
+          </div>
+        </div>
+
+        <!-- Row 4: Alpha pipeline -->
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="background:#fef9c3; border:2px solid #eab308; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>4. Apply Mask</strong><br>
+            <span style="font-size:0.75rem; color:#666;">Offscreen Canvas API</span>
+          </div>
+          <div style="color:#eab308; font-weight:bold;">→</div>
+          <div style="background:#fef9c3; border:2px solid #eab308; border-radius:8px; padding:0.75rem 1rem; text-align:center;">
+            <strong>Read mask pixels → modify foreground alpha</strong><br>
+            <span style="font-size:0.75rem; color:#666;">White=255α, Black=0α, Gray=partial</span>
+          </div>
+          <div style="color:#eab308; font-weight:bold;">→</div>
+          <div style="background:#fef9c3; border:2px solid #eab308; border-radius:8px; padding:0.75rem 1rem; text-align:center; min-width:140px;">
+            <strong>Data URL out</strong><br>
+            <span style="font-size:0.75rem; color:#666;">Updated foreground PNG</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin: 2rem 0;">
+  <h3>Key Changes Required</h3>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+      <div style="font-weight:bold; color:#3b82f6; margin-bottom:0.5rem;">🔧 Vercel Repo (separate)</div>
+      <ul style="font-size:0.8rem; margin:0; padding-left:1.25rem; color:#475569;">
+        <li>New <code>/api/proxy-image</code> endpoint</li>
+        <li>URL allowlist (Alli CDN, Replicate domains)</li>
+        <li>Streams image bytes with CORS headers</li>
+      </ul>
+    </div>
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+      <div style="font-weight:bold; color:#a855f7; margin-bottom:0.5rem;">🎨 MaskEditorModal (rewrite)</div>
+      <ul style="font-size:0.8rem; margin:0; padding-left:1.25rem; color:#475569;">
+        <li>Fix image sizing (use naturalWidth/Height)</li>
+        <li>Load via proxy URLs with crossOrigin</li>
+        <li>Quick Mask mode: original bg + mask overlay</li>
+        <li>White brush = keep, Black brush = erase</li>
+      </ul>
+    </div>
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+      <div style="font-weight:bold; color:#eab308; margin-bottom:0.5rem;">⚙️ New: applyMaskToAlpha utility</div>
+      <ul style="font-size:0.8rem; margin:0; padding-left:1.25rem; color:#475569;">
+        <li>Offscreen canvas reads mask + foreground</li>
+        <li>Pixel-by-pixel alpha channel modification</li>
+        <li>Exports refined foreground as data URL</li>
+      </ul>
+    </div>
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+      <div style="font-weight:bold; color:#10b981; margin-bottom:0.5rem;">🔗 compositeImage.ts (fix)</div>
+      <ul style="font-size:0.8rem; margin:0; padding-left:1.25rem; color:#475569;">
+        <li>Handle data URLs (no crossOrigin needed)</li>
+        <li>Route external URLs through proxy</li>
+        <li>Fixes Save step export bug</li>
+      </ul>
+    </div>
+  </div>
+</div>
