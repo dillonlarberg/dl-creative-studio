@@ -212,10 +212,61 @@ All 6 steps are wired up. Ready for UI review and adjustments.
 
 ---
 
+## Mask Editor Refinement — Planned (2026-03-12)
+
+### Problem
+MaskEditorModal is non-functional: image renders tiny/mispositioned, CORS tainting prevents pixel export, brush strokes are purely decorative with no mask pipeline.
+
+### Spec & Plan Written
+- Spec: `docs/superpowers/specs/2026-03-12-mask-editor-refinement-design.md`
+- Plan: `docs/superpowers/plans/2026-03-12-mask-editor-refinement.md`
+- Vercel proxy setup: `docs/vercel-proxy-setup.md` (copy into Vercel repo)
+
+### Architecture (approved)
+- CORS image proxy (`/api/proxy-image`) in Vercel repo with domain allowlist
+- Dual-canvas Quick Mask: visible Fabric display canvas + hidden offscreen mask canvas
+- Stroke mirroring via `path:created` with custom data tags (not color matching)
+- Client-side `applyMaskToAlpha` — mask luminance → foreground alpha (linear, no thresholds)
+- Brush cursor: custom Fabric Circle following mouse
+- Undo: replay-from-path-history strategy
+- PNG end-to-end constraint (no JPEG anywhere in pipeline)
+
+### Execution order
+1. Deploy CORS proxy in Vercel repo (see `docs/vercel-proxy-setup.md`)
+2. Chunk 1: proxyUrl helper, applyMaskToAlpha utility, types update
+3. Chunk 2: MaskEditorModal rewrite + CanvasStep update
+
+### Pickup point
+Plan is written and review-passed. Proxy endpoint deployed. Ready for mask editor implementation.
+
+---
+
+## Proxy Image Endpoint — Deployed (2026-03-12)
+
+### Vercel `edit-image-api` repo updated
+- New endpoint: `api/proxy-image.js` — GET with `url` query parameter
+- Domain allowlist restricts upstream hosts (Replicate delivery URLs)
+- 10 MB size limit enforced
+- CORS headers applied to ALL responses (including errors and OPTIONS preflight)
+- Cache headers included
+- Live at `https://edit-image-api.vercel.app/api/proxy-image`
+
+### Validation
+- 403 with CORS headers for disallowed domains
+- 200 OK with `content-type: image/png` and `access-control-allow-origin: *` for valid Replicate URLs
+- Tested end-to-end with real Replicate output from `api/extract-foreground.js`
+
+### Note
+- `api/extract-foreground.js` CORS fallback origin is `http://localhost:5173` (intentional for current dev phase, revisit before production frontend)
+
+### Detail
+- Full writeup: `docs/proxy-implementation-writeup.md`
+
+---
+
 ## Pending
 
+- [ ] **Mask editor refinement** (spec + plan done, implementation pending)
 - [ ] "Add to Asset House" button (currently grayed out with "Coming Soon" tooltip)
 - [ ] Change Text edit type
 - [ ] Change Colors edit type
-- [ ] Full mask-to-foreground pipeline (applying paint strokes to alpha channel)
-- [ ] Manual mask editing actual refinement (currently visual-only)

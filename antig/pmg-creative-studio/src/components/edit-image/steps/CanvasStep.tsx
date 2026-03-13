@@ -44,10 +44,11 @@ export function CanvasStep({
     }
   };
 
-  const handleMaskConfirm = (refinedImageUrl: string) => {
+  const handleMaskConfirm = (refinedImageUrl: string, maskDataUrl: string) => {
     onStepDataChange({
       extractedImageUrl: refinedImageUrl,
       extractionMethod: 'manual',
+      maskDataUrl,
     });
     setShowMaskEditor(false);
   };
@@ -146,6 +147,7 @@ export function CanvasStep({
         <MaskEditorModal
           originalImageUrl={stepData.imageUrl}
           extractedImageUrl={stepData.extractedImageUrl}
+          maskDataUrl={stepData.maskDataUrl}
           onConfirm={handleMaskConfirm}
           onCancel={() => setShowMaskEditor(false)}
         />

@@ -16,6 +16,7 @@ export interface EditImageStepData {
   // Step 3 — Canvas (extraction)
   extractedImageUrl?: string;
   extractionMethod?: 'auto' | 'manual';
+  maskDataUrl?: string;
 
   // Step 4 — New Background
   selectedBackground?: { type: 'color'; value: string } | { type: 'image'; url: string; name: string };
