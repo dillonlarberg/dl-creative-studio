@@ -62,7 +62,7 @@ Where:
 1. Load original image via `proxyUrl()` with `crossOrigin='anonymous'` → get `naturalWidth`, `naturalHeight`
 2. Compute `fitScale`, `displayW`, `displayH` and set them via `useState` so the JSX render function can access them for the CSS wrapper. Use a `displayDims` state object: `{ fitScale, displayW, displayH }`, initialized to defaults (`{ fitScale: 1, displayW: MAX_DISPLAY_WIDTH, displayH: MAX_DISPLAY_HEIGHT }`), updated once during init
 3. Build mask + tint via `buildMaskFromAlpha` or `buildMaskFromSaved` (existing logic, unchanged)
-4. Create Fabric canvas at `w x h` (natural dimensions, no zoom)
+4. **Wait for DOM reflow:** The `setDisplayDims` call in step 2 triggers a re-render that resizes the CSS wrapper. The Fabric canvas must be created *after* this reflow so its container has the correct dimensions. Use a separate `useEffect` that depends on `displayDims` (and gates on `isLoading`) to create the Fabric canvas, OR defer Fabric creation to a `requestAnimationFrame` / `setTimeout(0)` callback after setting state. The key constraint: do not create Fabric.Canvas until the `<canvas>` element's parent div has reflowed to `displayW x displayH`
 5. Set original image as `backgroundImage` — natural size, positioned at (0,0)
 6. Add tint `FabricImage` at (0,0) — natural size, exact pixel alignment
 7. Configure brush, cursor, `path:created` handler — all in natural coordinate space
@@ -84,6 +84,8 @@ return () => {
 ```
 
 All refs nulled on unmount. Modal starts completely fresh on every open.
+
+**Race condition note:** If the user closes and immediately reopens the modal, the old effect's cleanup runs concurrently with the new effect's init. The `cancelled` flag already gates all async steps in the init sequence (image loads, Fabric setup), including the `buildMaskFromAlpha`/`buildMaskFromSaved` calls that create `tintBlobUrl`. The blob URL is created inside the `init()` closure and only assigned to the outer `tintBlobUrl` variable within that closure, so the cleanup function always revokes the URL that belongs to its own effect instance. No cross-instance leakage is possible because each effect invocation captures its own `tintBlobUrl` in its closure scope.
 
 ## Unchanged Components
 
@@ -117,6 +119,8 @@ With CSS `transform: scale()`, the canvas attribute dimensions (natural) differ 
    - `canvas.getPointer(e.e, true)` — Fabric's legacy pointer method with `ignoreZoom` flag
 4. Document which method works in the commit message
 
+**Timebox: 1–2 hours.** If none of the four fallback methods produce clean cursor tracking without browser-specific hacks, that's a signal the CSS scaling approach needs rethinking (e.g., switching to Fabric canvas at display dimensions with manual coordinate remapping for the mask canvas only). Do not stack workarounds — escalate the architectural decision.
+
 **Testing tell:** Cursor circle lagging or leading the actual brush stroke = coordinate method is wrong.
 
 ## Simplified Component Structure
@@ -149,9 +153,13 @@ With CSS `transform: scale()`, the canvas attribute dimensions (natural) differ 
 
 | File | Change | Lines |
 |------|--------|-------|
-| `src/components/edit-image/steps/MaskEditorModal.tsx` | Rework: remove zoom/pan, fix canvas setup, fix cleanup | Net reduction ~80 lines |
+| `src/components/edit-image/steps/MaskEditorModal.tsx` | Rework: remove zoom/pan, fix canvas setup, fix cleanup | Net reduction ~40–50 lines |
 
 No other files change. The utilities, types, and CanvasStep integration are correct as-is.
+
+## HiDPI / Retina Displays
+
+The canvas is set to natural image dimensions and CSS-scaled down. On a 2x retina display, the canvas backing store and the CSS pixel grid won't align in the usual way. This is a **known non-issue** for mask editing — brushes are 5–80px wide, not pixel-precise work. Do not attempt to "fix" this with `devicePixelRatio` scaling, which would reintroduce the exact coordinate complexity this rework is removing.
 
 ## Out of Scope
 
