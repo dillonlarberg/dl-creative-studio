@@ -20,12 +20,17 @@ import { EditImageWizard } from '../../components/edit-image/EditImageWizard';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
 
-// edit-image: Recursively strip undefined values and non-serializable objects
-// (e.g. File) before saving to Firestore, which rejects them.
+// edit-image: Recursively strip undefined values, non-serializable objects
+// (e.g. File), and large data/blob URLs before saving to Firestore.
+// Data URLs from canvas operations (e.g. refined foreground, mask) can exceed
+// Firestore's 1 MB document limit; they are transient and reconstructable.
+const isTransientUrl = (v: unknown): boolean =>
+    typeof v === 'string' && (v.startsWith('data:') || v.startsWith('blob:'));
+
 const sanitizeForFirestore = (obj: Record<string, any>): Record<string, any> =>
     Object.fromEntries(
         Object.entries(obj)
-            .filter(([, v]) => v !== undefined && !(v instanceof File))
+            .filter(([, v]) => v !== undefined && !(v instanceof File) && !isTransientUrl(v))
             .map(([k, v]) => [k, v && typeof v === 'object' && !Array.isArray(v) ? sanitizeForFirestore(v) : v])
     );
 
@@ -1269,9 +1274,12 @@ export default function UseCaseWizardPage() {
             }
 
             // Snapshot stepData NOW before any setState calls wipe it.
-            const currentStepData = useCaseId === 'edit-image'
+            // Keep a full (unsanitized) copy for local state propagation,
+            // and a Firestore-safe copy with large data/blob URLs stripped.
+            const currentStepData = { ...stepData };
+            const firestoreStepData = useCaseId === 'edit-image'
                 ? sanitizeForFirestore(stepData)
-                : { ...stepData };
+                : currentStepData;
 
             // edit-image uses a flat object across all steps. Save it under
             // every step key so that stale downstream data (e.g. old
@@ -1279,9 +1287,9 @@ export default function UseCaseWizardPage() {
             let updatedStepData;
             if (useCaseId === 'edit-image') {
                 updatedStepData = { ...creative?.stepData };
-                steps.forEach(s => { updatedStepData[s.id] = currentStepData; });
+                steps.forEach(s => { updatedStepData[s.id] = firestoreStepData; });
             } else {
-                updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
+                updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: firestoreStepData };
             }
 
             await creativeService.updateCreative(activeCreativeId!, {
@@ -1311,8 +1319,10 @@ export default function UseCaseWizardPage() {
                     ...nextStepSavedData,
                 });
             } else if (useCaseId === 'edit-image') {
-                // edit-image: carry all step data forward (flat object across all steps)
-                setStepData({ ...currentStepData, ...nextStepSavedData });
+                // edit-image: carry all step data forward (flat object across all steps).
+                // Spread currentStepData LAST so transient data URLs (stripped from
+                // nextStepSavedData for Firestore) are preserved in local state.
+                setStepData({ ...nextStepSavedData, ...currentStepData });
             } else {
                 setStepData(nextStepSavedData || {});
             }

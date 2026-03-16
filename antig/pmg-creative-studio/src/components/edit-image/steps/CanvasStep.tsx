@@ -25,6 +25,7 @@ export function CanvasStep({
       onStepDataChange({
         extractedImageUrl: result.url,
         extractionMethod: 'auto',
+        maskDataUrl: undefined,
       });
     } catch (err) {
       // If API is not configured or fails, fall back to original image for UI review

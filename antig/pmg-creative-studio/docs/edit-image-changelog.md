@@ -264,6 +264,36 @@ Plan is written and review-passed. Proxy endpoint deployed. Ready for mask edito
 
 ---
 
+## Mask Editor Bugfix Rework — In Progress (2026-03-13)
+
+### Code changes (Tasks 1–5 from plan: complete)
+- Removed all zoom/pan code (imports, constants, callbacks, mouse:wheel, Cmd+0)
+- Replaced Fabric zoom-based display fitting with CSS `transform: scale(fitScale)`
+- Canvas created at natural image dimensions (`naturalWidth x naturalHeight`)
+- `displayDims` state `{ w, h, fitScale, displayW, displayH }` drives CSS wrapper sizing
+- Cleanup nulls all refs (fabricRef, maskCanvasRef, initialMaskRef, cursorRef)
+- Keyboard shortcuts simplified (removed Cmd+0 fit-to-view)
+
+### Bug discovered: Fabric.js 7 default origin change
+- **Problem:** Image and tint overlay rendered offset in the canvas. Top portion of image was cut off.
+- **Root cause:** Fabric.js 7 changed default `originX`/`originY` from `'left'/'top'` to `'center'/'center'`. Background image and tint overlay were anchored by their center at (0,0), shifting them up and left.
+- **Fix:** Explicit `{ left: 0, top: 0, originX: 'left', originY: 'top' }` on both `bgFabric` and `tintFabric`.
+- **Result:** Image now loads fully on screen, correctly positioned.
+
+### Remaining issue: Red tint misalignment
+- **Symptom:** The red tint overlay (which marks removed/background areas) does not visually align with the actual background regions of the image. User reported this happens "when I click in modal" — unclear if tint is wrong on load or shifts after brush interaction.
+- **Likely causes to investigate:**
+  1. The tint `FabricImage` may need the same `originX:'left', originY:'top'` fix (already applied — verify it's working)
+  2. The tint pixel data itself may be computed from a differently-sized or differently-proxied extracted image
+  3. CSS transform + Fabric pointer coordinates may cause brush strokes to land offset, making the tint appear misaligned after painting
+  4. `buildMaskFromAlpha` or `buildMaskFromSaved` may produce tint at wrong dimensions if extracted image doesn't match original natural dims
+- **Debug approach:** Add console.log for tint canvas dimensions vs original image dimensions. Check if tint looks correct BEFORE any brush interaction. Test pointer accuracy separately from tint alignment.
+
+### Pickup point
+Tasks 1–5 (code) done. Task 6 (manual testing) in progress — image positioning fixed, tint alignment still broken. See handoff doc: `docs/mask-editor-handoff.md`.
+
+---
+
 ## Pending
 
 - [ ] **Mask editor refinement** (spec + plan done, implementation pending)

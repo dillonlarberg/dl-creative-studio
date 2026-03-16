@@ -54,6 +54,7 @@ export function SelectImageStep({
   const resetDownstreamData = {
     extractedImageUrl: undefined,
     extractionMethod: undefined,
+    maskDataUrl: undefined,
     selectedBackground: undefined,
     customColor: undefined,
     previewReady: undefined,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { XMarkIcon, MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import { proxyUrl } from '../utils/proxyUrl';
 import { applyMaskToAlpha } from '../utils/applyMaskToAlpha';
@@ -17,8 +17,6 @@ type BrushMode = 'keep' | 'erase';
 // Max display dimensions for the canvas element within the modal
 const MAX_DISPLAY_WIDTH = 800;
 const MAX_DISPLAY_HEIGHT = 550;
-const MIN_ZOOM_FACTOR = 0.5;  // Allow zooming out to 50% of fit scale
-const MAX_ZOOM = 4;
 
 // ── Module-level helpers ──────────────────────────────────────────────
 
@@ -203,7 +201,7 @@ function setupBrushCursor(canvas: any, fabric: any): any {
     // which accounts for Fabric's zoom/pan viewport transform
     const pointer = canvas.getScenePoint(e.e);
     cursor.set({ left: pointer.x, top: pointer.y, visible: true });
-    cursor.bringToFront();
+    canvas.bringObjectToFront(cursor);
     canvas.renderAll();
   });
 
@@ -235,7 +233,6 @@ export function MaskEditorModal({
 }: MaskEditorModalProps) {
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<any>(null);
-  const fabricModuleRef = useRef<any>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const initialMaskRef = useRef<ImageData | null>(null);
   const cursorRef = useRef<any>(null);
@@ -248,43 +245,21 @@ export function MaskEditorModal({
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [canApply, setCanApply] = useState(true);
-  const [zoomPercent, setZoomPercent] = useState(100);
 
-  // Track natural image dimensions and the fit-to-view scale
+  // Display dimensions for CSS wrapper — computed during init, drives JSX layout.
+  // Includes natural dimensions (w, h) so JSX can size the inner CSS wrapper
+  // without reading a ref (ref updates don't trigger re-renders).
+  const [displayDims, setDisplayDims] = useState({
+    w: 0,
+    h: 0,
+    fitScale: 1,
+    displayW: MAX_DISPLAY_WIDTH,
+    displayH: MAX_DISPLAY_HEIGHT,
+  });
+
+  // Also stored in a ref for use by undo replay and mask operations
+  // (which run outside the render cycle and need synchronous access)
   const imageDimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
-  const fitScaleRef = useRef(1);
-  // Track display canvas element dimensions
-  const displayDimsRef = useRef<{ dw: number; dh: number }>({ dw: MAX_DISPLAY_WIDTH, dh: MAX_DISPLAY_HEIGHT });
-
-  // ── Zoom helpers ────────────────────────────────────────────────────
-
-  const zoomTo = useCallback((targetZoom: number, centerX?: number, centerY?: number) => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const fitScale = fitScaleRef.current;
-    const clamped = Math.max(fitScale * MIN_ZOOM_FACTOR, Math.min(MAX_ZOOM, targetZoom));
-
-    const F = fabricModuleRef.current;
-    if (!F) return;
-    if (centerX !== undefined && centerY !== undefined) {
-      canvas.zoomToPoint(new F.Point(centerX, centerY), clamped);
-    } else {
-      const { dw, dh } = displayDimsRef.current;
-      canvas.zoomToPoint(new F.Point(dw / 2, dh / 2), clamped);
-    }
-    canvas.renderAll();
-    setZoomPercent(Math.round((clamped / fitScale) * 100));
-  }, []);
-
-  const handleFitToView = useCallback(() => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const fitScale = fitScaleRef.current;
-    // Reset viewport: zoom to fitScale, centered at origin
-    canvas.setViewportTransform([fitScale, 0, 0, fitScale, 0, 0]);
-    canvas.renderAll();
-    setZoomPercent(100);
-  }, []);
 
   // ── Init effect ───────────────────────────────────────────────────
 
@@ -301,14 +276,11 @@ export function MaskEditorModal({
         const h = origImg.naturalHeight;
         imageDimsRef.current = { w, h };
 
-        // Calculate fit-to-view scale: natural image → display element
+        // Compute display dimensions for CSS wrapper
         const fitScale = Math.min(MAX_DISPLAY_WIDTH / w, MAX_DISPLAY_HEIGHT / h, 1);
-        fitScaleRef.current = fitScale;
-
-        // Display dimensions = what the canvas element is in the DOM
         const displayW = Math.round(w * fitScale);
         const displayH = Math.round(h * fitScale);
-        displayDimsRef.current = { dw: displayW, dh: displayH };
+        setDisplayDims({ w, h, fitScale, displayW, displayH });
 
         // Build mask canvas + tint
         let maskCanvas: HTMLCanvasElement;
@@ -326,33 +298,47 @@ export function MaskEditorModal({
         const maskCtx = maskCanvas.getContext('2d')!;
         initialMaskRef.current = maskCtx.getImageData(0, 0, w, h);
 
-        // Initialize Fabric.js — canvas element at DISPLAY dimensions
+        // Defer Fabric creation to next frame so DOM has reflowed
+        // with the new displayDims (CSS wrapper sized correctly).
+        // NOTE: requestAnimationFrame is not guaranteed to run after React 19's
+        // concurrent commit. If Fabric's Canvas constructor reads incorrect
+        // container dimensions on init, the fallback is to split Fabric creation
+        // into a separate useEffect gated on displayDims state.
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        if (cancelled || !displayCanvasRef.current) return;
+
+        // Initialize Fabric.js — canvas at NATURAL dimensions, no zoom
         const fabric = await import('fabric');
         if (cancelled || !displayCanvasRef.current) return;
-        fabricModuleRef.current = fabric;
 
         const canvas = new fabric.Canvas(displayCanvasRef.current, {
           isDrawingMode: true,
-          width: displayW,
-          height: displayH,
+          width: w,
+          height: h,
           selection: false,
         });
         fabricRef.current = canvas;
 
-        // Use Fabric's native zoom instead of CSS transform.
-        // This ensures pointer coordinates are correctly mapped from
-        // screen space → natural image coordinates.
-        canvas.setZoom(fitScale);
+        // DEBUG: verify container measurements after visibility:hidden fix
+        const wrapperRect = displayCanvasRef.current?.parentElement?.getBoundingClientRect();
+        const fabricContainer = (displayCanvasRef.current?.closest('.canvas-container') || displayCanvasRef.current?.parentElement) as HTMLElement | null;
+        console.log('[MaskEditor] Image natural:', { w, h });
+        console.log('[MaskEditor] Fabric canvas size:', canvas.getWidth(), 'x', canvas.getHeight());
+        console.log('[MaskEditor] Wrapper bounding rect:', wrapperRect);
+        console.log('[MaskEditor] Fabric container element:', fabricContainer?.tagName, fabricContainer?.style?.cssText);
+        console.log('[MaskEditor] displayDims state at init:', { fitScale, displayW, displayH });
 
-        // Layer 1: Original image as background (at natural dimensions — Fabric zooms it)
+        // Layer 1: Original image as background (natural size)
+        // Fabric.js 7 defaults to originX/Y: 'center' — must override to 'left'/'top'
         const bgFabric = new fabric.FabricImage(origImg);
+        bgFabric.set({ left: 0, top: 0, originX: 'left', originY: 'top' });
         canvas.backgroundImage = bgFabric;
 
-        // Layer 2: Red tint overlay
+        // Layer 2: Red tint overlay (natural size, positioned at origin)
         const tintImg = await loadImg(tintBlobUrl);
         if (cancelled) return;
         const tintFabric = new fabric.FabricImage(tintImg);
-        tintFabric.set({ selectable: false, evented: false });
+        tintFabric.set({ left: 0, top: 0, originX: 'left', originY: 'top', selectable: false, evented: false });
         canvas.add(tintFabric);
 
         // Configure brush
@@ -364,25 +350,6 @@ export function MaskEditorModal({
         const cursor = setupBrushCursor(canvas, fabric);
         cursorRef.current = cursor;
         updateBrushCursor(cursor, 'erase', brushSize);
-
-        // Mouse wheel zoom
-        canvas.on('mouse:wheel', (opt: any) => {
-          const e = opt.e as WheelEvent;
-          e.preventDefault();
-          e.stopPropagation();
-
-          const currentZoom = canvas.getZoom();
-          // Smooth zoom: multiply by a factor based on scroll delta
-          const zoomFactor = 0.999 ** e.deltaY;
-          const newZoom = Math.max(
-            fitScale * MIN_ZOOM_FACTOR,
-            Math.min(MAX_ZOOM, currentZoom * zoomFactor),
-          );
-
-          canvas.zoomToPoint(new fabric.Point(e.offsetX, e.offsetY), newZoom);
-          canvas.renderAll();
-          setZoomPercent(Math.round((newZoom / fitScale) * 100));
-        });
 
         // Stroke mirroring: path:created → tag + mirror to mask canvas
         canvas.on('path:created', (e: any) => {
@@ -418,7 +385,11 @@ export function MaskEditorModal({
       if (tintBlobUrl) URL.revokeObjectURL(tintBlobUrl);
       if (fabricRef.current) {
         fabricRef.current.dispose();
+        fabricRef.current = null;
       }
+      maskCanvasRef.current = null;
+      initialMaskRef.current = null;
+      cursorRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -442,15 +413,10 @@ export function MaskEditorModal({
         e.preventDefault();
         handleUndo();
       }
-      // Cmd+0 / Ctrl+0 to fit to view
-      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
-        e.preventDefault();
-        handleFitToView();
-      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleFitToView]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Undo ──────────────────────────────────────────────────────────
 
@@ -564,40 +530,14 @@ export function MaskEditorModal({
             <span className="text-[9px] font-bold text-gray-400 w-8 text-right">{brushOpacity}%</span>
           </div>
 
-          {/* Zoom controls */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            <button
-              onClick={() => zoomTo((fabricRef.current?.getZoom() ?? fitScaleRef.current) / 1.25)}
-              className="rounded-lg p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all"
-              title="Zoom out"
-            >
-              <MagnifyingGlassMinusIcon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleFitToView}
-              className="rounded-lg px-2 py-0.5 text-[9px] font-black text-gray-500 uppercase tracking-widest hover:bg-gray-200 transition-all"
-              title="Fit to view (⌘0)"
-            >
-              {zoomPercent}%
-            </button>
-            <button
-              onClick={() => zoomTo((fabricRef.current?.getZoom() ?? fitScaleRef.current) * 1.25)}
-              className="rounded-lg p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all"
-              title="Zoom in"
-            >
-              <MagnifyingGlassPlusIcon className="h-4 w-4" />
-            </button>
-          </div>
-
           {/* Keyboard hints */}
-          <div className="flex items-center gap-2 text-[8px] text-gray-400 font-bold uppercase tracking-widest">
+          <div className="ml-auto flex items-center gap-2 text-[8px] text-gray-400 font-bold uppercase tracking-widest">
             <span>X: toggle</span>
             <span>⌘Z: undo</span>
-            <span>Scroll: zoom</span>
           </div>
         </div>
 
-        {/* Canvas area — no CSS transform wrapper, Fabric handles zoom natively */}
+        {/* Canvas area — CSS transform handles scaling, Fabric at natural dimensions */}
         <div className="flex items-center justify-center p-6 bg-gray-100 overflow-hidden"
              style={{ minHeight: '400px' }}>
           {isLoading && !error && (
@@ -611,11 +551,30 @@ export function MaskEditorModal({
               <p className="text-[9px] text-gray-400">Check network connection and try again</p>
             </div>
           )}
-          <div className={cn(isLoading && 'hidden')}>
-            <canvas
-              ref={displayCanvasRef}
-              className="rounded-xl shadow-sm"
-            />
+          {/* Outer div: sized to display dimensions. Inner div: CSS-scales from natural to display.
+              Use visibility:hidden instead of display:none so Fabric can measure the container
+              during init (getBoundingClientRect returns zeros on display:none elements). */}
+          <div
+            style={{
+              width: displayDims.displayW,
+              height: displayDims.displayH,
+              overflow: 'hidden',
+              visibility: isLoading ? 'hidden' : 'visible',
+            }}
+          >
+            <div
+              style={{
+                transform: `scale(${displayDims.fitScale})`,
+                transformOrigin: 'top left',
+                width: displayDims.w || undefined,
+                height: displayDims.h || undefined,
+              }}
+            >
+              <canvas
+                ref={displayCanvasRef}
+                className="rounded-xl shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
