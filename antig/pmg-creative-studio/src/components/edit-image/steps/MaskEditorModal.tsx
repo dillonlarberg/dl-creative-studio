@@ -4,6 +4,17 @@ import { cn } from '../../../utils/cn';
 import { proxyUrl } from '../utils/proxyUrl';
 import { applyMaskToAlpha } from '../utils/applyMaskToAlpha';
 
+import type { BrushMode, CanvasEvent, DisplayDims } from './mask-editor/types';
+import {
+  loadImg,
+  buildMaskFromAlpha,
+  buildMaskFromSaved,
+  regenerateTint,
+} from './mask-editor/maskUtils';
+import { SelectionPipeline } from './mask-editor/SelectionPipeline';
+import { MagicWandTool } from './mask-editor/MagicWandTool';
+import { BrushTool } from './mask-editor/BrushTool';
+
 interface MaskEditorModalProps {
   originalImageUrl: string;
   extractedImageUrl: string;
@@ -12,217 +23,10 @@ interface MaskEditorModalProps {
   onCancel: () => void;
 }
 
-type BrushMode = 'keep' | 'erase';
-
-// Max display dimensions for the canvas element within the modal
 const MAX_DISPLAY_WIDTH = 800;
 const MAX_DISPLAY_HEIGHT = 550;
 
-// ── Module-level helpers ──────────────────────────────────────────────
-
-/** Load an image element, optionally with crossOrigin for CORS-safe pixel access */
-function loadImg(url: string, cors = false): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    if (cors && url.startsWith('http')) img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load: ${url.slice(0, 80)}`));
-    img.src = url;
-  });
-}
-
-/** Helper: canvas.toBlob() as a Promise */
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) resolve(blob);
-      else reject(new Error('Failed to convert canvas to blob'));
-    }, 'image/png');
-  });
-}
-
-/**
- * Build initial mask canvas + red tint overlay from the extracted foreground's alpha.
- * Case B in the spec: first edit after API extraction.
- */
-async function buildMaskFromAlpha(
-  extractedImg: HTMLImageElement,
-  w: number,
-  h: number,
-): Promise<{ maskCanvas: HTMLCanvasElement; tintBlobUrl: string }> {
-  const readCanvas = document.createElement('canvas');
-  readCanvas.width = w;
-  readCanvas.height = h;
-  const readCtx = readCanvas.getContext('2d')!;
-  readCtx.drawImage(extractedImg, 0, 0, w, h);
-  const extractedData = readCtx.getImageData(0, 0, w, h);
-  const pixels = extractedData.data;
-
-  const maskCanvas = document.createElement('canvas');
-  maskCanvas.width = w;
-  maskCanvas.height = h;
-  const maskCtx = maskCanvas.getContext('2d')!;
-  const maskData = maskCtx.createImageData(w, h);
-  const maskPixels = maskData.data;
-
-  const tintCanvas = document.createElement('canvas');
-  tintCanvas.width = w;
-  tintCanvas.height = h;
-  const tintCtx = tintCanvas.getContext('2d')!;
-  const tintData = tintCtx.createImageData(w, h);
-  const tintPixels = tintData.data;
-
-  for (let i = 0; i < pixels.length; i += 4) {
-    const alpha = pixels[i + 3];
-    maskPixels[i] = alpha;
-    maskPixels[i + 1] = alpha;
-    maskPixels[i + 2] = alpha;
-    maskPixels[i + 3] = 255;
-    tintPixels[i] = 255;
-    tintPixels[i + 1] = 0;
-    tintPixels[i + 2] = 0;
-    tintPixels[i + 3] = Math.round((1 - alpha / 255) * 102);
-  }
-
-  maskCtx.putImageData(maskData, 0, 0);
-  tintCtx.putImageData(tintData, 0, 0);
-
-  const tintBlob = await canvasToBlob(tintCanvas);
-  const tintBlobUrl = URL.createObjectURL(tintBlob);
-  return { maskCanvas, tintBlobUrl };
-}
-
-/**
- * Build initial mask canvas + red tint overlay from a saved mask data URL.
- * Case A in the spec: re-editing.
- */
-async function buildMaskFromSaved(
-  maskImg: HTMLImageElement,
-  w: number,
-  h: number,
-): Promise<{ maskCanvas: HTMLCanvasElement; tintBlobUrl: string }> {
-  const maskCanvas = document.createElement('canvas');
-  maskCanvas.width = w;
-  maskCanvas.height = h;
-  const maskCtx = maskCanvas.getContext('2d')!;
-  maskCtx.drawImage(maskImg, 0, 0, w, h);
-  const maskData = maskCtx.getImageData(0, 0, w, h);
-  const maskPixels = maskData.data;
-
-  const tintCanvas = document.createElement('canvas');
-  tintCanvas.width = w;
-  tintCanvas.height = h;
-  const tintCtx = tintCanvas.getContext('2d')!;
-  const tintData = tintCtx.createImageData(w, h);
-  const tintPixels = tintData.data;
-
-  for (let i = 0; i < maskPixels.length; i += 4) {
-    const luminance = maskPixels[i];
-    tintPixels[i] = 255;
-    tintPixels[i + 1] = 0;
-    tintPixels[i + 2] = 0;
-    tintPixels[i + 3] = Math.round((1 - luminance / 255) * 102);
-  }
-
-  tintCtx.putImageData(tintData, 0, 0);
-  const tintBlob = await canvasToBlob(tintCanvas);
-  const tintBlobUrl = URL.createObjectURL(tintBlob);
-  return { maskCanvas, tintBlobUrl };
-}
-
-/**
- * Mirror a Fabric path object onto the hidden mask canvas.
- * Uses custom `data.maskMode` tag instead of brittle color string matching.
- */
-function mirrorPathToMask(
-  fabricPath: any,
-  maskCanvas: HTMLCanvasElement,
-): void {
-  const ctx = maskCanvas.getContext('2d')!;
-  const isKeep = fabricPath.data?.maskMode === 'keep';
-  const opacity = fabricPath.opacity ?? 1;
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.strokeStyle = isKeep ? `rgba(255,255,255,${opacity})`
-                           : `rgba(0,0,0,${opacity})`;
-  ctx.lineWidth = fabricPath.strokeWidth || 20;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-
-  const left = fabricPath.left ?? 0;
-  const top = fabricPath.top ?? 0;
-  const offsetX = fabricPath.pathOffset?.x ?? 0;
-  const offsetY = fabricPath.pathOffset?.y ?? 0;
-  ctx.translate(left - offsetX, top - offsetY);
-
-  const pathStr = fabricPath.path?.map((seg: any[]) => seg.join(' ')).join(' ') || '';
-  const path2D = new Path2D(pathStr);
-  ctx.stroke(path2D);
-  ctx.restore();
-}
-
-/** Update brush appearance based on mode, size, opacity */
-function updateBrush(
-  canvas: any,
-  mode: BrushMode,
-  size: number,
-  opacity: number,
-): void {
-  if (!canvas?.freeDrawingBrush) return;
-  const normalizedOpacity = opacity / 100;
-  canvas.freeDrawingBrush.color = mode === 'keep'
-    ? `rgba(0, 255, 0, ${normalizedOpacity * 0.5})`
-    : `rgba(255, 0, 0, ${normalizedOpacity * 0.4})`;
-  canvas.freeDrawingBrush.width = size;
-}
-
-/** Setup brush cursor — a custom Fabric Circle that follows the mouse */
-function setupBrushCursor(canvas: any, fabric: any): any {
-  const cursor = new fabric.Circle({
-    radius: 10,
-    fill: 'transparent',
-    stroke: 'rgba(255,0,0,0.6)',
-    strokeWidth: 1.5,
-    originX: 'center',
-    originY: 'center',
-    selectable: false,
-    evented: false,
-    excludeFromExport: true,
-  });
-  cursor.set('visible', false);
-  canvas.add(cursor);
-
-  canvas.defaultCursor = 'none';
-  canvas.freeDrawingCursor = 'none';
-
-  canvas.on('mouse:move', (e: any) => {
-    // Use getScenePoint to get coordinates in natural (scene) space,
-    // which accounts for Fabric's zoom/pan viewport transform
-    const pointer = canvas.getScenePoint(e.e);
-    cursor.set({ left: pointer.x, top: pointer.y, visible: true });
-    canvas.bringObjectToFront(cursor);
-    canvas.renderAll();
-  });
-
-  canvas.on('mouse:out', () => {
-    cursor.set('visible', false);
-    canvas.renderAll();
-  });
-
-  return cursor;
-}
-
-/** Update brush cursor appearance to match current mode and size */
-function updateBrushCursor(cursor: any, mode: BrushMode, size: number): void {
-  if (!cursor) return;
-  cursor.set({
-    radius: size / 2,
-    stroke: mode === 'keep' ? 'rgba(0,255,0,0.6)' : 'rgba(255,0,0,0.6)',
-  });
-}
-
-// ── Component ─────────────────────────────────────────────────────────
+type ActiveTool = 'magicwand' | 'brush';
 
 export function MaskEditorModal({
   originalImageUrl,
@@ -231,25 +35,34 @@ export function MaskEditorModal({
   onConfirm,
   onCancel,
 }: MaskEditorModalProps) {
+  // Canvas refs
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<any>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const initialMaskRef = useRef<ImageData | null>(null);
-  const cursorRef = useRef<any>(null);
-  const currentBrushModeRef = useRef<BrushMode>('erase');
 
+  // Tool refs
+  const pipelineRef = useRef<SelectionPipeline | null>(null);
+  const magicWandRef = useRef<MagicWandTool | null>(null);
+  const brushToolRef = useRef<BrushTool | null>(null);
+  const originalImageDataRef = useRef<ImageData | null>(null);
+  const tintBlobUrlRef = useRef<string | null>(null);
+  const tintObjRef = useRef<any>(null);
+  const initialMaskRef = useRef<ImageData | null>(null);
+
+  // UI state
+  const [activeTool, setActiveTool] = useState<ActiveTool>('magicwand');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [brushMode, setBrushMode] = useState<BrushMode>('erase');
   const [brushSize, setBrushSize] = useState(20);
   const [brushOpacity, setBrushOpacity] = useState(100);
+  const [threshold, setThreshold] = useState(15);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const [canApply, setCanApply] = useState(true);
-
-  // Display dimensions for CSS wrapper — computed during init, drives JSX layout.
-  // Includes natural dimensions (w, h) so JSX can size the inner CSS wrapper
-  // without reading a ref (ref updates don't trigger re-renders).
-  const [displayDims, setDisplayDims] = useState({
+  const [canApply] = useState(true);
+  const [hasPendingSelection, setHasPendingSelection] = useState(false);
+  const [displayDims, setDisplayDims] = useState<DisplayDims>({
     w: 0,
     h: 0,
     fitScale: 1,
@@ -257,15 +70,46 @@ export function MaskEditorModal({
     displayH: MAX_DISPLAY_HEIGHT,
   });
 
-  // Also stored in a ref for use by undo replay and mask operations
-  // (which run outside the render cycle and need synchronous access)
-  const imageDimsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  // ── Tint update callback ──────────────────────────────────────────
+
+  const handleTintUpdate = useCallback(async () => {
+    if (!maskCanvasRef.current || !fabricRef.current) return;
+    const canvas = fabricRef.current;
+
+    if (tintBlobUrlRef.current) URL.revokeObjectURL(tintBlobUrlRef.current);
+
+    const newTintUrl = await regenerateTint(maskCanvasRef.current);
+    tintBlobUrlRef.current = newTintUrl;
+
+    if (tintObjRef.current) {
+      canvas.remove(tintObjRef.current);
+    }
+
+    const { FabricImage } = await import('fabric');
+    const tintImg = await loadImg(newTintUrl);
+    const fabricTint = new FabricImage(tintImg, {
+      left: 0,
+      top: 0,
+      originX: 'left',
+      originY: 'top',
+      selectable: false,
+      evented: false,
+    });
+    canvas.add(fabricTint);
+    tintObjRef.current = fabricTint;
+
+    // Ensure tint is above background (index 0) but below brush strokes
+    const objects = canvas.getObjects();
+    if (objects.length > 1) {
+      canvas.moveTo(fabricTint, 0);
+    }
+    canvas.renderAll();
+  }, []);
 
   // ── Init effect ───────────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
-    let tintBlobUrl = '';
 
     const init = async () => {
       try {
@@ -274,9 +118,7 @@ export function MaskEditorModal({
 
         const w = origImg.naturalWidth;
         const h = origImg.naturalHeight;
-        imageDimsRef.current = { w, h };
 
-        // Compute display dimensions for CSS wrapper
         const fitScale = Math.min(MAX_DISPLAY_WIDTH / w, MAX_DISPLAY_HEIGHT / h, 1);
         const displayW = Math.round(w * fitScale);
         const displayH = Math.round(h * fitScale);
@@ -284,6 +126,7 @@ export function MaskEditorModal({
 
         // Build mask canvas + tint
         let maskCanvas: HTMLCanvasElement;
+        let tintBlobUrl: string;
         if (savedMaskDataUrl) {
           const maskImg = await loadImg(savedMaskDataUrl);
           if (cancelled) return;
@@ -295,77 +138,73 @@ export function MaskEditorModal({
         }
 
         maskCanvasRef.current = maskCanvas;
+        tintBlobUrlRef.current = tintBlobUrl;
         const maskCtx = maskCanvas.getContext('2d')!;
         initialMaskRef.current = maskCtx.getImageData(0, 0, w, h);
 
-        // Defer Fabric creation to next frame so DOM has reflowed
-        // with the new displayDims (CSS wrapper sized correctly).
-        // NOTE: requestAnimationFrame is not guaranteed to run after React 19's
-        // concurrent commit. If Fabric's Canvas constructor reads incorrect
-        // container dimensions on init, the fallback is to split Fabric creation
-        // into a separate useEffect gated on displayDims state.
+        // Cache original image data for selection tools
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tempCtx = tempCanvas.getContext('2d')!;
+        tempCtx.drawImage(origImg, 0, 0);
+        originalImageDataRef.current = tempCtx.getImageData(0, 0, w, h);
+
+        // Wait for DOM reflow
         await new Promise((resolve) => requestAnimationFrame(resolve));
         if (cancelled || !displayCanvasRef.current) return;
 
-        // Initialize Fabric.js — canvas at NATURAL dimensions, no zoom
+        // Initialize Fabric.js
         const fabric = await import('fabric');
         if (cancelled || !displayCanvasRef.current) return;
 
         const canvas = new fabric.Canvas(displayCanvasRef.current, {
-          isDrawingMode: true,
+          isDrawingMode: false, // Magic wand is default, not brush
           width: w,
           height: h,
           selection: false,
         });
         fabricRef.current = canvas;
 
-        // DEBUG: verify container measurements after visibility:hidden fix
-        const wrapperRect = displayCanvasRef.current?.parentElement?.getBoundingClientRect();
-        const fabricContainer = (displayCanvasRef.current?.closest('.canvas-container') || displayCanvasRef.current?.parentElement) as HTMLElement | null;
-        console.log('[MaskEditor] Image natural:', { w, h });
-        console.log('[MaskEditor] Fabric canvas size:', canvas.getWidth(), 'x', canvas.getHeight());
-        console.log('[MaskEditor] Wrapper bounding rect:', wrapperRect);
-        console.log('[MaskEditor] Fabric container element:', fabricContainer?.tagName, fabricContainer?.style?.cssText);
-        console.log('[MaskEditor] displayDims state at init:', { fitScale, displayW, displayH });
-
-        // Layer 1: Original image as background (natural size)
-        // Fabric.js 7 defaults to originX/Y: 'center' — must override to 'left'/'top'
+        // Background image
         const bgFabric = new fabric.FabricImage(origImg);
         bgFabric.set({ left: 0, top: 0, originX: 'left', originY: 'top' });
         canvas.backgroundImage = bgFabric;
 
-        // Layer 2: Red tint overlay (natural size, positioned at origin)
+        // Tint overlay
         const tintImg = await loadImg(tintBlobUrl);
         if (cancelled) return;
         const tintFabric = new fabric.FabricImage(tintImg);
-        tintFabric.set({ left: 0, top: 0, originX: 'left', originY: 'top', selectable: false, evented: false });
+        tintFabric.set({
+          left: 0,
+          top: 0,
+          originX: 'left',
+          originY: 'top',
+          selectable: false,
+          evented: false,
+        });
         canvas.add(tintFabric);
+        tintObjRef.current = tintFabric;
 
-        // Configure brush
-        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-        canvas.freeDrawingBrush.width = brushSize;
-        updateBrush(canvas, 'erase', brushSize, brushOpacity);
+        // Initialize selection pipeline
+        if (overlayCanvasRef.current) {
+          pipelineRef.current = new SelectionPipeline({
+            overlayCanvas: overlayCanvasRef.current,
+            maskCanvas,
+            initialMaskData: maskCtx.getImageData(0, 0, w, h),
+            onTintUpdate: handleTintUpdate,
+          });
+        }
 
-        // Brush cursor
-        const cursor = setupBrushCursor(canvas, fabric);
-        cursorRef.current = cursor;
-        updateBrushCursor(cursor, 'erase', brushSize);
+        // Initialize magic wand tool
+        magicWandRef.current = new MagicWandTool();
+        magicWandRef.current.activate(originalImageDataRef.current!);
 
-        // Stroke mirroring: path:created → tag + mirror to mask canvas
-        canvas.on('path:created', (e: any) => {
-          const path = e.path;
-          if (!path || !maskCanvasRef.current) return;
-
-          path.data = { maskMode: currentBrushModeRef.current };
-
-          const mc = maskCanvasRef.current;
-          if (mc.width !== w || mc.height !== h) {
-            console.error('Mask canvas dimension mismatch — disabling Apply');
-            setCanApply(false);
-            return;
-          }
-
-          mirrorPathToMask(path, mc);
+        // Initialize brush tool (created but NOT activated)
+        brushToolRef.current = new BrushTool({
+          fabricCanvas: canvas,
+          maskCanvas,
+          initialMaskData: initialMaskRef.current!,
         });
 
         canvas.renderAll();
@@ -382,65 +221,110 @@ export function MaskEditorModal({
 
     return () => {
       cancelled = true;
-      if (tintBlobUrl) URL.revokeObjectURL(tintBlobUrl);
+      pipelineRef.current?.destroy();
+      magicWandRef.current?.deactivate();
+      brushToolRef.current?.deactivate();
+      if (tintBlobUrlRef.current) URL.revokeObjectURL(tintBlobUrlRef.current);
       if (fabricRef.current) {
         fabricRef.current.dispose();
         fabricRef.current = null;
       }
       maskCanvasRef.current = null;
       initialMaskRef.current = null;
-      cursorRef.current = null;
+      tintObjRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Brush control effects ─────────────────────────────────────────
+  // ── Tool switching ────────────────────────────────────────────────
+
+  const switchTool = useCallback(
+    (tool: ActiveTool) => {
+      if (tool === activeTool) return;
+
+      // Cancel any pending selection
+      pipelineRef.current?.cancel();
+      setHasPendingSelection(false);
+
+      if (activeTool === 'brush') {
+        brushToolRef.current?.deactivate();
+        // Snapshot mask so pipeline undo doesn't cross brush work
+        pipelineRef.current?.snapshotInitialMask();
+      }
+
+      if (tool === 'brush') {
+        brushToolRef.current?.activate(brushMode, brushSize, brushOpacity);
+      }
+
+      setActiveTool(tool);
+    },
+    [activeTool, brushMode, brushSize, brushOpacity],
+  );
+
+  // ── Brush settings sync ───────────────────────────────────────────
 
   useEffect(() => {
-    currentBrushModeRef.current = brushMode;
-    if (fabricRef.current) {
-      updateBrush(fabricRef.current, brushMode, brushSize, brushOpacity);
-      updateBrushCursor(cursorRef.current, brushMode, brushSize);
+    if (activeTool === 'brush' && brushToolRef.current) {
+      brushToolRef.current.updateSettings(brushMode, brushSize, brushOpacity);
     }
-  }, [brushMode, brushSize, brushOpacity]);
+  }, [brushMode, brushSize, brushOpacity, activeTool]);
 
-  // Keyboard shortcuts
+  // ── Overlay canvas event handling (magic wand) ────────────────────
+
+  const handleOverlayPointerEvent = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (activeTool !== 'magicwand' || !magicWandRef.current || !pipelineRef.current) return;
+
+      const canvasEvent: CanvasEvent = {
+        type: e.type === 'mousedown' ? 'mousedown' : e.type === 'mousemove' ? 'mousemove' : 'mouseup',
+        x: Math.min(Math.max(e.nativeEvent.offsetX / displayDims.fitScale, 0), displayDims.w - 1),
+        y: Math.min(Math.max(e.nativeEvent.offsetY / displayDims.fitScale, 0), displayDims.h - 1),
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        nativeEvent: e.nativeEvent,
+      };
+
+      const mask = magicWandRef.current.onEvent(canvasEvent);
+      if (mask) {
+        if (canvasEvent.shiftKey && canvasEvent.type === 'mousedown') {
+          pipelineRef.current.addToSelection(mask);
+        } else if (canvasEvent.altKey && canvasEvent.type === 'mousedown') {
+          pipelineRef.current.subtractFromSelection(mask);
+        } else {
+          pipelineRef.current.setPendingMask(mask);
+        }
+        setThreshold(magicWandRef.current.getThreshold());
+        setHasPendingSelection(true);
+      }
+    },
+    [activeTool, displayDims],
+  );
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'x' || e.key === 'X') {
-        setBrushMode(prev => prev === 'keep' ? 'erase' : 'keep');
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        handleUndo();
+        pipelineRef.current?.commit(brushMode);
+        setHasPendingSelection(false);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        pipelineRef.current?.cancel();
+        setHasPendingSelection(false);
+      } else if (e.key === 'x' || e.key === 'X') {
+        setBrushMode((prev) => (prev === 'keep' ? 'erase' : 'keep'));
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        if (activeTool === 'brush') {
+          brushToolRef.current?.undo();
+        } else {
+          pipelineRef.current?.undo();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Undo ──────────────────────────────────────────────────────────
-
-  const handleUndo = useCallback(() => {
-    const canvas = fabricRef.current;
-    const mc = maskCanvasRef.current;
-    if (!canvas || !mc || !initialMaskRef.current) return;
-
-    const objects = canvas.getObjects();
-    const paths = objects.filter((o: any) => o.type === 'path');
-    if (paths.length === 0) return;
-
-    const lastPath = paths[paths.length - 1];
-    canvas.remove(lastPath);
-    canvas.renderAll();
-
-    const maskCtx = mc.getContext('2d')!;
-    maskCtx.putImageData(initialMaskRef.current, 0, 0);
-
-    const remainingPaths = paths.slice(0, -1);
-    for (const path of remainingPaths) {
-      mirrorPathToMask(path, mc);
-    }
-  }, []);
+  }, [activeTool, brushMode]);
 
   // ── Apply refinement ──────────────────────────────────────────────
 
@@ -482,7 +366,22 @@ export function MaskEditorModal({
 
         {/* Toolbar */}
         <div className="flex items-center gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-wrap">
-          {/* Brush mode toggle */}
+          {/* Tool selector */}
+          <div className="flex p-1 bg-gray-200 rounded-xl">
+            <button
+              onClick={() => switchTool('magicwand')}
+              className={cn(
+                'px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all',
+                activeTool === 'magicwand'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700',
+              )}
+            >
+              Magic Wand
+            </button>
+          </div>
+
+          {/* Keep/Erase toggle */}
           <div className="flex p-1 bg-gray-200 rounded-xl">
             {(['keep', 'erase'] as const).map((mode) => (
               <button
@@ -502,44 +401,78 @@ export function MaskEditorModal({
             ))}
           </div>
 
-          {/* Brush size */}
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Size</span>
-            <input
-              type="range"
-              min={5}
-              max={80}
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="w-24 accent-blue-600"
-            />
-            <span className="text-[9px] font-bold text-gray-400 w-6 text-right">{brushSize}</span>
-          </div>
+          {/* Threshold display (magic wand only) */}
+          {activeTool === 'magicwand' && (
+            <span className="text-[9px] font-bold text-gray-400">
+              Threshold: {threshold}
+            </span>
+          )}
 
-          {/* Brush opacity */}
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Opacity</span>
-            <input
-              type="range"
-              min={1}
-              max={100}
-              value={brushOpacity}
-              onChange={(e) => setBrushOpacity(Number(e.target.value))}
-              className="w-24 accent-blue-600"
-            />
-            <span className="text-[9px] font-bold text-gray-400 w-8 text-right">{brushOpacity}%</span>
-          </div>
+          {/* Advanced toggle */}
+          <button
+            onClick={() => {
+              const next = !showAdvanced;
+              setShowAdvanced(next);
+              if (next) switchTool('brush');
+              else switchTool('magicwand');
+            }}
+            className="text-[9px] font-bold text-gray-500 underline hover:text-gray-700 transition-colors"
+          >
+            {showAdvanced ? 'Hide Advanced' : 'Advanced'}
+          </button>
+
+          {/* Brush controls (shown when advanced/brush active) */}
+          {showAdvanced && activeTool === 'brush' && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                  Size
+                </span>
+                <input
+                  type="range"
+                  min={5}
+                  max={80}
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                  className="w-24 accent-blue-600"
+                />
+                <span className="text-[9px] font-bold text-gray-400 w-6 text-right">
+                  {brushSize}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">
+                  Opacity
+                </span>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={brushOpacity}
+                  onChange={(e) => setBrushOpacity(Number(e.target.value))}
+                  className="w-24 accent-blue-600"
+                />
+                <span className="text-[9px] font-bold text-gray-400 w-8 text-right">
+                  {brushOpacity}%
+                </span>
+              </div>
+            </>
+          )}
 
           {/* Keyboard hints */}
           <div className="ml-auto flex items-center gap-2 text-[8px] text-gray-400 font-bold uppercase tracking-widest">
+            <span>Enter: apply</span>
+            <span>Esc: cancel</span>
             <span>X: toggle</span>
             <span>⌘Z: undo</span>
           </div>
         </div>
 
-        {/* Canvas area — CSS transform handles scaling, Fabric at natural dimensions */}
-        <div className="flex items-center justify-center p-6 bg-gray-100 overflow-hidden"
-             style={{ minHeight: '400px' }}>
+        {/* Canvas area */}
+        <div
+          className="flex items-center justify-center p-6 bg-gray-100 overflow-hidden"
+          style={{ minHeight: '400px' }}
+        >
           {isLoading && !error && (
             <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest animate-pulse">
               Loading editor...
@@ -548,18 +481,19 @@ export function MaskEditorModal({
           {error && !isLoading && (
             <div className="text-center space-y-2">
               <p className="text-[10px] font-bold text-red-500">{error}</p>
-              <p className="text-[9px] text-gray-400">Check network connection and try again</p>
+              <p className="text-[9px] text-gray-400">
+                Check network connection and try again
+              </p>
             </div>
           )}
-          {/* Outer div: sized to display dimensions. Inner div: CSS-scales from natural to display.
-              Use visibility:hidden instead of display:none so Fabric can measure the container
-              during init (getBoundingClientRect returns zeros on display:none elements). */}
+
           <div
             style={{
               width: displayDims.displayW,
               height: displayDims.displayH,
               overflow: 'hidden',
               visibility: isLoading ? 'hidden' : 'visible',
+              position: 'relative',
             }}
           >
             <div
@@ -568,11 +502,27 @@ export function MaskEditorModal({
                 transformOrigin: 'top left',
                 width: displayDims.w || undefined,
                 height: displayDims.h || undefined,
+                position: 'relative',
               }}
             >
+              {/* Fabric.js display canvas */}
+              <canvas ref={displayCanvasRef} className="rounded-xl shadow-sm" />
+
+              {/* Selection overlay canvas (marching ants) */}
               <canvas
-                ref={displayCanvasRef}
-                className="rounded-xl shadow-sm"
+                ref={overlayCanvasRef}
+                width={displayDims.w || 1}
+                height={displayDims.h || 1}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  pointerEvents: activeTool === 'magicwand' ? 'auto' : 'none',
+                  cursor: activeTool === 'magicwand' ? 'crosshair' : 'default',
+                }}
+                onMouseDown={handleOverlayPointerEvent}
+                onMouseMove={handleOverlayPointerEvent}
+                onMouseUp={handleOverlayPointerEvent}
               />
             </div>
           </div>
@@ -580,6 +530,18 @@ export function MaskEditorModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          {/* Apply Selection button (visible when pending) */}
+          {hasPendingSelection && (
+            <button
+              onClick={() => {
+                pipelineRef.current?.commit(brushMode);
+                setHasPendingSelection(false);
+              }}
+              className="rounded-xl border border-blue-300 bg-blue-50 px-6 py-2.5 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:bg-blue-100 transition-all"
+            >
+              Apply Selection (Enter)
+            </button>
+          )}
           <button
             onClick={onCancel}
             className="rounded-xl border border-gray-200 px-6 py-2.5 text-[10px] font-black text-gray-500 uppercase tracking-widest hover:border-gray-300 transition-all"
