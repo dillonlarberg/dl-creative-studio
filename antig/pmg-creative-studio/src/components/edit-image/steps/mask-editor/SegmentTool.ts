@@ -65,21 +65,30 @@ export class SegmentTool implements SelectionTool {
         this.imageBase64 = this.imageCanvas.toDataURL('image/png');
       }
 
-      const createRes = await fetch('/replicate/predictions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          version: SAM_MODEL_VERSION,
-          input: {
-            image: this.imageBase64,
-            point_coords: [[Math.round(event.x), Math.round(event.y)]],
-            point_labels: [1],
-          },
-        }),
-        signal,
-      });
+      // Retry up to 3 times on 429 (rate limit)
+      let createRes: Response | null = null;
+      for (let retry = 0; retry < 3; retry++) {
+        if (signal.aborted) return;
+        createRes = await fetch('/replicate/predictions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            version: SAM_MODEL_VERSION,
+            input: {
+              image: this.imageBase64,
+              point_coords: [[Math.round(event.x), Math.round(event.y)]],
+              point_labels: [1],
+            },
+          }),
+          signal,
+        });
+        if (createRes.status !== 429) break;
+        const retryAfter = (await createRes.json()).retry_after ?? 5;
+        console.log(`[SegmentTool] Rate limited, retrying in ${retryAfter}s...`);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+      }
 
-      if (!createRes.ok) throw new Error(`Replicate POST failed: ${createRes.status}`);
+      if (!createRes?.ok) throw new Error(`Replicate POST failed: ${createRes?.status}`);
       const prediction = await createRes.json();
 
       let result = prediction;
@@ -99,16 +108,20 @@ export class SegmentTool implements SelectionTool {
       }
 
       const output = result.output;
+      // Use first individual mask (object at click point), not combined_mask (all objects)
       const maskUrl = typeof output === 'string'
         ? output
-        : output?.combined_mask ?? output?.[0];
+        : output?.individual_masks?.[0] ?? output?.combined_mask ?? output?.[0];
       if (!maskUrl) throw new Error('No mask URL in prediction output');
+      console.log('[SegmentTool] Mask URL:', maskUrl);
 
       const mask = await this.decodeMaskImage(maskUrl, signal);
       if (signal.aborted) return;
 
+      console.log('[SegmentTool] Mask decoded, pixels set:', mask.data.filter(v => v === 1).length, 'bounds:', mask.bounds);
       this.isProcessing = false;
       this.onMaskReady(mask, event);
+      console.log('[SegmentTool] onMaskReady called');
     } catch (err) {
       if (signal.aborted) return;
       console.error('[SegmentTool] Segmentation failed:', err);
@@ -124,6 +137,7 @@ export class SegmentTool implements SelectionTool {
       img.crossOrigin = 'anonymous';
 
       img.onload = () => {
+        console.log('[SegmentTool] Mask image loaded:', img.naturalWidth, 'x', img.naturalHeight);
         const canvas = document.createElement('canvas');
         canvas.width = this.imageWidth;
         canvas.height = this.imageHeight;
@@ -161,7 +175,7 @@ export class SegmentTool implements SelectionTool {
         });
       };
 
-      img.onerror = () => reject(new Error('Failed to load mask image'));
+      img.onerror = (e) => { console.error('[SegmentTool] Image load error:', e); reject(new Error('Failed to load mask image')); };
       img.src = url;
     });
   }
