@@ -31,9 +31,9 @@ This keeps the `SelectionTool` interface unchanged.
 ### Inference
 
 - **Model:** `meta/sam-2.1-base` on Replicate
-- **API:** Direct browser fetch to `https://api.replicate.com/v1/predictions`
-- **Auth:** `VITE_REPLICATE_API_TOKEN` environment variable
-- **Protocol:** This is a prototype — API token in the browser is acceptable
+- **API:** Vite dev proxy at `/replicate/*` → `https://api.replicate.com/v1/*` (avoids CORS — Replicate's API is server-to-server only)
+- **Auth:** `VITE_REPLICATE_API_TOKEN` env var, injected server-side by the Vite proxy via `Authorization` header. Never sent from browser.
+- **Protocol:** Dev-only prototype. Production would need a Firebase Function proxy (see TODOS.md).
 
 ### Interaction Flow
 
@@ -79,8 +79,9 @@ This keeps the `SelectionTool` interface unchanged.
 
 | File | Changes |
 |------|---------|
-| `MaskEditorModal.tsx` | Swap TextTool for SegmentTool. Update `ActiveTool` type from `'text'` to `'segment'`. Update overlay canvas `pointerEvents` and `cursor` conditions for `'segment'`. Pass `onMaskReady` callback. Simpler button — always enabled, no detection status. Add `destroy()` call in cleanup. |
+| `MaskEditorModal.tsx` | Swap TextTool for SegmentTool. Update `ActiveTool` type from `'text'` to `'segment'`. Update overlay canvas `pointerEvents` and `cursor` conditions for `'segment'`. Extract `applyMaskToSelection` helper from `handleOverlayPointerEvent` (shared by sync tools and async `onMaskReady`). Pass `onMaskReady` callback. Simpler button — always enabled, no detection status. Add `destroy()` call in cleanup. |
 | `types.ts` | Remove `TextRegion` |
+| `vite.config.ts` | Add `/replicate/*` proxy to Replicate API (injects auth header server-side) |
 | `.env` / `.env.example` | Add `VITE_REPLICATE_API_TOKEN` |
 
 ### Unchanged
@@ -97,11 +98,23 @@ After: `Magic Wand | Segment` (always enabled)
 
 ## API Details
 
+### Vite Dev Proxy
+
+Add to `vite.config.ts` proxy config:
+
+```ts
+'/replicate': {
+  target: 'https://api.replicate.com/v1',
+  changeOrigin: true,
+  rewrite: (path) => path.replace(/^\/replicate/, ''),
+  headers: { Authorization: `Bearer ${process.env.VITE_REPLICATE_API_TOKEN}` },
+}
+```
+
 ### Create Prediction
 
 ```
-POST https://api.replicate.com/v1/predictions
-Authorization: Bearer $VITE_REPLICATE_API_TOKEN
+POST /replicate/predictions    ← browser calls this (proxied)
 
 {
   "version": "<sam-2.1-base-version-hash>",
@@ -122,8 +135,7 @@ For large images (>2000px), downscale to max 1024px on the longest side before b
 ### Poll Prediction
 
 ```
-GET https://api.replicate.com/v1/predictions/{id}
-Authorization: Bearer $VITE_REPLICATE_API_TOKEN
+GET /replicate/predictions/{id}    ← browser calls this (proxied)
 ```
 
 - Poll every 1s
@@ -160,7 +172,8 @@ Called from `MaskEditorModal` cleanup effect, same as current `textToolRef.curre
 
 ## Testing
 
-- Unit tests for `SegmentTool`: mock fetch, verify mask conversion, verify `isProcessing` flag, verify event handling, verify `onMaskReady` callback
+- Unit tests for `SegmentTool`: mock fetch, verify mask conversion, verify `isProcessing` flag, verify event handling, verify `onMaskReady` callback, verify destroy/deactivate abort
+- Unit tests for `applyMaskToSelection` helper: 3 tests (shift=add, alt=subtract, default=pending)
 - Manual testing: click various objects in flat creatives, verify mask quality
 
 ## Future Work
