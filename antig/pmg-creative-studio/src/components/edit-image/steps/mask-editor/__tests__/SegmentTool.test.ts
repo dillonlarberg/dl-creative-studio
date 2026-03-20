@@ -162,3 +162,23 @@ describe('SegmentTool', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 });
+
+describe('applyMaskToSelection logic', () => {
+  it('default click preserves no modifier keys', () => {
+    const event = makeEvent('mousedown', 5, 5);
+    expect(event.shiftKey).toBe(false);
+    expect(event.altKey).toBe(false);
+  });
+
+  it('shift+click preserves shiftKey for addToSelection', () => {
+    const event = makeEvent('mousedown', 5, 5, { shiftKey: true });
+    expect(event.shiftKey).toBe(true);
+    expect(event.altKey).toBe(false);
+  });
+
+  it('alt+click preserves altKey for subtractFromSelection', () => {
+    const event = makeEvent('mousedown', 5, 5, { altKey: true });
+    expect(event.altKey).toBe(true);
+    expect(event.shiftKey).toBe(false);
+  });
+});
