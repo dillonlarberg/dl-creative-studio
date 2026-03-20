@@ -32,7 +32,7 @@ This keeps the `SelectionTool` interface unchanged.
 
 - **Model:** `meta/sam-2.1-base` on Replicate
 - **API:** Vite dev proxy at `/replicate/*` → `https://api.replicate.com/v1/*` (avoids CORS — Replicate's API is server-to-server only)
-- **Auth:** `VITE_REPLICATE_API_TOKEN` env var, injected server-side by the Vite proxy via `Authorization` header. Never sent from browser.
+- **Auth:** `REPLICATE_API_TOKEN` env var, injected server-side by the Vite proxy via `Authorization` header. Never sent from browser.
 - **Protocol:** Dev-only prototype. Production would need a Firebase Function proxy (see TODOS.md).
 
 ### Interaction Flow
@@ -82,7 +82,7 @@ This keeps the `SelectionTool` interface unchanged.
 | `MaskEditorModal.tsx` | Swap TextTool for SegmentTool. Update `ActiveTool` type from `'text'` to `'segment'`. Update overlay canvas `pointerEvents` and `cursor` conditions for `'segment'`. Extract `applyMaskToSelection` helper from `handleOverlayPointerEvent` (shared by sync tools and async `onMaskReady`). Pass `onMaskReady` callback. Simpler button — always enabled, no detection status. Add `destroy()` call in cleanup. |
 | `types.ts` | Remove `TextRegion` |
 | `vite.config.ts` | Add `/replicate/*` proxy to Replicate API (injects auth header server-side) |
-| `.env` / `.env.example` | Add `VITE_REPLICATE_API_TOKEN` |
+| `.env` / `.env.example` | Add `REPLICATE_API_TOKEN` |
 
 ### Unchanged
 
@@ -107,7 +107,7 @@ Add to `vite.config.ts` proxy config:
   target: 'https://api.replicate.com/v1',
   changeOrigin: true,
   rewrite: (path) => path.replace(/^\/replicate/, ''),
-  headers: { Authorization: `Bearer ${process.env.VITE_REPLICATE_API_TOKEN}` },
+  headers: { Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}` },
 }
 ```
 
