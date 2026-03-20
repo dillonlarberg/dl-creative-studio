@@ -4,7 +4,7 @@ import { cn } from '../../../utils/cn';
 import { proxyUrl } from '../utils/proxyUrl';
 import { applyMaskToAlpha } from '../utils/applyMaskToAlpha';
 
-import type { BrushMode, CanvasEvent, DisplayDims } from './mask-editor/types';
+import type { BinaryMask, BrushMode, CanvasEvent, DisplayDims } from './mask-editor/types';
 import {
   loadImg,
   buildMaskFromAlpha,
@@ -14,6 +14,7 @@ import {
 import { SelectionPipeline } from './mask-editor/SelectionPipeline';
 import { MagicWandTool } from './mask-editor/MagicWandTool';
 import { BrushTool } from './mask-editor/BrushTool';
+import { SegmentTool } from './mask-editor/SegmentTool';
 
 interface MaskEditorModalProps {
   originalImageUrl: string;
@@ -26,7 +27,22 @@ interface MaskEditorModalProps {
 const MAX_DISPLAY_WIDTH = 800;
 const MAX_DISPLAY_HEIGHT = 550;
 
-type ActiveTool = 'magicwand' | 'brush';
+type ActiveTool = 'magicwand' | 'segment' | 'brush';
+
+/** Convert a React mouse event to image-space CanvasEvent */
+function toCanvasEvent(
+  e: React.MouseEvent<HTMLCanvasElement>,
+  dims: DisplayDims,
+): CanvasEvent {
+  return {
+    type: e.type === 'mousedown' ? 'mousedown' : e.type === 'mousemove' ? 'mousemove' : 'mouseup',
+    x: Math.min(Math.max(e.nativeEvent.offsetX / dims.fitScale, 0), dims.w - 1),
+    y: Math.min(Math.max(e.nativeEvent.offsetY / dims.fitScale, 0), dims.h - 1),
+    shiftKey: e.shiftKey,
+    altKey: e.altKey,
+    nativeEvent: e.nativeEvent,
+  };
+}
 
 export function MaskEditorModal({
   originalImageUrl,
@@ -45,6 +61,7 @@ export function MaskEditorModal({
   const pipelineRef = useRef<SelectionPipeline | null>(null);
   const magicWandRef = useRef<MagicWandTool | null>(null);
   const brushToolRef = useRef<BrushTool | null>(null);
+  const segmentToolRef = useRef<SegmentTool | null>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
   const tintBlobUrlRef = useRef<string | null>(null);
   const tintObjRef = useRef<any>(null);
@@ -53,14 +70,13 @@ export function MaskEditorModal({
   // UI state
   const [activeTool, setActiveTool] = useState<ActiveTool>('magicwand');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [brushMode, setBrushMode] = useState<BrushMode>('erase');
+  const [selectionMode, setSelectionMode] = useState<BrushMode>('erase');
   const [brushSize, setBrushSize] = useState(20);
   const [brushOpacity, setBrushOpacity] = useState(100);
   const [threshold, setThreshold] = useState(15);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-  const [canApply] = useState(true);
   const [hasPendingSelection, setHasPendingSelection] = useState(false);
   const [displayDims, setDisplayDims] = useState<DisplayDims>({
     w: 0,
@@ -70,41 +86,59 @@ export function MaskEditorModal({
     displayH: MAX_DISPLAY_HEIGHT,
   });
 
-  // ── Tint update callback ──────────────────────────────────────────
+  // ── Tint update callback (D2: try/catch + toast) ─────────────────
 
   const handleTintUpdate = useCallback(async () => {
     if (!maskCanvasRef.current || !fabricRef.current) return;
     const canvas = fabricRef.current;
 
-    if (tintBlobUrlRef.current) URL.revokeObjectURL(tintBlobUrlRef.current);
+    try {
+      if (tintBlobUrlRef.current) URL.revokeObjectURL(tintBlobUrlRef.current);
 
-    const newTintUrl = await regenerateTint(maskCanvasRef.current);
-    tintBlobUrlRef.current = newTintUrl;
+      const newTintUrl = await regenerateTint(maskCanvasRef.current);
+      tintBlobUrlRef.current = newTintUrl;
 
-    if (tintObjRef.current) {
-      canvas.remove(tintObjRef.current);
+      if (tintObjRef.current) {
+        canvas.remove(tintObjRef.current);
+      }
+
+      const { FabricImage } = await import('fabric');
+      const tintImg = await loadImg(newTintUrl);
+      const fabricTint = new FabricImage(tintImg, {
+        left: 0,
+        top: 0,
+        originX: 'left',
+        originY: 'top',
+        selectable: false,
+        evented: false,
+      });
+
+      // D5: Insert at index 0 directly to avoid visual flash
+      canvas.insertAt(fabricTint, 0);
+      tintObjRef.current = fabricTint;
+      canvas.renderAll();
+    } catch (err) {
+      console.error('[MaskEditor] Tint update failed:', err);
+      setError('Tint preview failed — mask still saved. Try committing again.');
     }
-
-    const { FabricImage } = await import('fabric');
-    const tintImg = await loadImg(newTintUrl);
-    const fabricTint = new FabricImage(tintImg, {
-      left: 0,
-      top: 0,
-      originX: 'left',
-      originY: 'top',
-      selectable: false,
-      evented: false,
-    });
-    canvas.add(fabricTint);
-    tintObjRef.current = fabricTint;
-
-    // Ensure tint is above background (index 0) but below brush strokes
-    const objects = canvas.getObjects();
-    if (objects.length > 1) {
-      canvas.moveTo(fabricTint, 0);
-    }
-    canvas.renderAll();
   }, []);
+
+  // ── applyMaskToSelection helper ───────────────────────────────────
+
+  const applyMaskToSelection = useCallback(
+    (mask: BinaryMask, event: Pick<CanvasEvent, 'shiftKey' | 'altKey' | 'type'>) => {
+      if (!pipelineRef.current) return;
+      if (event.shiftKey && event.type === 'mousedown') {
+        pipelineRef.current.addToSelection(mask);
+      } else if (event.altKey && event.type === 'mousedown') {
+        pipelineRef.current.subtractFromSelection(mask);
+      } else {
+        pipelineRef.current.setPendingMask(mask);
+      }
+      setHasPendingSelection(true);
+    },
+    [],
+  );
 
   // ── Init effect ───────────────────────────────────────────────────
 
@@ -159,7 +193,7 @@ export function MaskEditorModal({
         if (cancelled || !displayCanvasRef.current) return;
 
         const canvas = new fabric.Canvas(displayCanvasRef.current, {
-          isDrawingMode: false, // Magic wand is default, not brush
+          isDrawingMode: false,
           width: w,
           height: h,
           selection: false,
@@ -196,15 +230,35 @@ export function MaskEditorModal({
           });
         }
 
-        // Initialize magic wand tool
+        // D1: Initialize magic wand tool with config object
         magicWandRef.current = new MagicWandTool();
-        magicWandRef.current.activate(originalImageDataRef.current!);
+        magicWandRef.current.activate({
+          imageData: originalImageDataRef.current!,
+          overlayCanvas: overlayCanvasRef.current!,
+          imageWidth: w,
+          imageHeight: h,
+        });
 
         // Initialize brush tool (created but NOT activated)
         brushToolRef.current = new BrushTool({
           fabricCanvas: canvas,
           maskCanvas,
           initialMaskData: initialMaskRef.current!,
+        });
+
+        // Initialize segment tool
+        const imageCanvas = document.createElement('canvas');
+        imageCanvas.width = w;
+        imageCanvas.height = h;
+        const imageCtx = imageCanvas.getContext('2d')!;
+        imageCtx.drawImage(origImg, 0, 0);
+
+        segmentToolRef.current = new SegmentTool({
+          onMaskReady: (mask, event) => {
+            if (cancelled) return;
+            applyMaskToSelection(mask, event);
+          },
+          imageCanvas,
         });
 
         canvas.renderAll();
@@ -224,6 +278,7 @@ export function MaskEditorModal({
       pipelineRef.current?.destroy();
       magicWandRef.current?.deactivate();
       brushToolRef.current?.deactivate();
+      segmentToolRef.current?.destroy();
       if (tintBlobUrlRef.current) URL.revokeObjectURL(tintBlobUrlRef.current);
       if (fabricRef.current) {
         fabricRef.current.dispose();
@@ -245,86 +300,99 @@ export function MaskEditorModal({
       pipelineRef.current?.cancel();
       setHasPendingSelection(false);
 
+      // Deactivate current tool
       if (activeTool === 'brush') {
         brushToolRef.current?.deactivate();
-        // Snapshot mask so pipeline undo doesn't cross brush work
         pipelineRef.current?.snapshotInitialMask();
+      } else if (activeTool === 'segment') {
+        segmentToolRef.current?.deactivate();
       }
 
+      // Activate new tool
       if (tool === 'brush') {
-        brushToolRef.current?.activate(brushMode, brushSize, brushOpacity);
+        brushToolRef.current?.activate(selectionMode, brushSize, brushOpacity);
+      } else if (tool === 'segment' && segmentToolRef.current && overlayCanvasRef.current && originalImageDataRef.current) {
+        segmentToolRef.current.activate({
+          imageData: originalImageDataRef.current,
+          overlayCanvas: overlayCanvasRef.current,
+          imageWidth: displayDims.w,
+          imageHeight: displayDims.h,
+        });
       }
 
       setActiveTool(tool);
     },
-    [activeTool, brushMode, brushSize, brushOpacity],
+    [activeTool, selectionMode, brushSize, brushOpacity, displayDims],
   );
 
   // ── Brush settings sync ───────────────────────────────────────────
 
   useEffect(() => {
     if (activeTool === 'brush' && brushToolRef.current) {
-      brushToolRef.current.updateSettings(brushMode, brushSize, brushOpacity);
+      brushToolRef.current.updateSettings(selectionMode, brushSize, brushOpacity);
     }
-  }, [brushMode, brushSize, brushOpacity, activeTool]);
+  }, [selectionMode, brushSize, brushOpacity, activeTool]);
 
-  // ── Overlay canvas event handling (magic wand) ────────────────────
+  // ── Overlay canvas event handling (magic wand + segment tool) ─────
 
   const handleOverlayPointerEvent = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (activeTool !== 'magicwand' || !magicWandRef.current || !pipelineRef.current) return;
+      if (!pipelineRef.current) return;
+      const canvasEvent = toCanvasEvent(e, displayDims);
+      let mask: BinaryMask | null = null;
 
-      const canvasEvent: CanvasEvent = {
-        type: e.type === 'mousedown' ? 'mousedown' : e.type === 'mousemove' ? 'mousemove' : 'mouseup',
-        x: Math.min(Math.max(e.nativeEvent.offsetX / displayDims.fitScale, 0), displayDims.w - 1),
-        y: Math.min(Math.max(e.nativeEvent.offsetY / displayDims.fitScale, 0), displayDims.h - 1),
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        nativeEvent: e.nativeEvent,
-      };
+      if (activeTool === 'magicwand' && magicWandRef.current) {
+        mask = magicWandRef.current.onEvent(canvasEvent);
+        if (mask) setThreshold(magicWandRef.current.getThreshold());
+      } else if (activeTool === 'segment' && segmentToolRef.current) {
+        segmentToolRef.current.onEvent(canvasEvent);
+        return;
+      }
 
-      const mask = magicWandRef.current.onEvent(canvasEvent);
       if (mask) {
-        if (canvasEvent.shiftKey && canvasEvent.type === 'mousedown') {
-          pipelineRef.current.addToSelection(mask);
-        } else if (canvasEvent.altKey && canvasEvent.type === 'mousedown') {
-          pipelineRef.current.subtractFromSelection(mask);
-        } else {
-          pipelineRef.current.setPendingMask(mask);
-        }
-        setThreshold(magicWandRef.current.getThreshold());
-        setHasPendingSelection(true);
+        applyMaskToSelection(mask, canvasEvent);
       }
     },
-    [activeTool, displayDims],
+    [activeTool, displayDims, applyMaskToSelection],
   );
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────
+  // ── Keyboard shortcuts (D4: resetDrag, D8: invert) ───────────────
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // D8: Cmd+Shift+I → invert selection (check before other Cmd combos)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        pipelineRef.current?.invertSelection();
+        return;
+      }
+
       if (e.key === 'Enter') {
         e.preventDefault();
-        pipelineRef.current?.commit(brushMode);
+        pipelineRef.current?.commit(selectionMode);
+        // D4: Reset drag state to prevent stale downPoint
+        magicWandRef.current?.resetDrag();
         setHasPendingSelection(false);
       } else if (e.key === 'Escape') {
         e.preventDefault();
         pipelineRef.current?.cancel();
+        magicWandRef.current?.resetDrag();
         setHasPendingSelection(false);
       } else if (e.key === 'x' || e.key === 'X') {
-        setBrushMode((prev) => (prev === 'keep' ? 'erase' : 'keep'));
+        setSelectionMode((prev) => (prev === 'keep' ? 'erase' : 'keep'));
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
         if (activeTool === 'brush') {
           brushToolRef.current?.undo();
         } else {
           pipelineRef.current?.undo();
+          magicWandRef.current?.resetDrag();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTool, brushMode]);
+  }, [activeTool, selectionMode]);
 
   // ── Apply refinement ──────────────────────────────────────────────
 
@@ -379,6 +447,17 @@ export function MaskEditorModal({
             >
               Magic Wand
             </button>
+            <button
+              onClick={() => switchTool('segment')}
+              className={cn(
+                'px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all',
+                activeTool === 'segment'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700',
+              )}
+            >
+              Segment
+            </button>
           </div>
 
           {/* Keep/Erase toggle */}
@@ -386,10 +465,10 @@ export function MaskEditorModal({
             {(['keep', 'erase'] as const).map((mode) => (
               <button
                 key={mode}
-                onClick={() => setBrushMode(mode)}
+                onClick={() => setSelectionMode(mode)}
                 className={cn(
                   'px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all',
-                  brushMode === mode
+                  selectionMode === mode
                     ? mode === 'keep'
                       ? 'bg-green-500 text-white shadow-sm'
                       : 'bg-red-500 text-white shadow-sm'
@@ -464,6 +543,7 @@ export function MaskEditorModal({
             <span>Enter: apply</span>
             <span>Esc: cancel</span>
             <span>X: toggle</span>
+            <span>⌘⇧I: invert</span>
             <span>⌘Z: undo</span>
           </div>
         </div>
@@ -508,7 +588,7 @@ export function MaskEditorModal({
               {/* Fabric.js display canvas */}
               <canvas ref={displayCanvasRef} className="rounded-xl shadow-sm" />
 
-              {/* Selection overlay canvas (marching ants) */}
+              {/* Selection overlay canvas (marching ants + text highlights) */}
               <canvas
                 ref={overlayCanvasRef}
                 width={displayDims.w || 1}
@@ -517,8 +597,8 @@ export function MaskEditorModal({
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  pointerEvents: activeTool === 'magicwand' ? 'auto' : 'none',
-                  cursor: activeTool === 'magicwand' ? 'crosshair' : 'default',
+                  pointerEvents: (activeTool === 'magicwand' || activeTool === 'segment') ? 'auto' : 'none',
+                  cursor: (activeTool === 'magicwand' || activeTool === 'segment') ? 'crosshair' : 'default',
                 }}
                 onMouseDown={handleOverlayPointerEvent}
                 onMouseMove={handleOverlayPointerEvent}
@@ -530,17 +610,28 @@ export function MaskEditorModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          {/* Apply Selection button (visible when pending) */}
+          {/* Invert + Apply Selection buttons (visible when pending) */}
           {hasPendingSelection && (
-            <button
-              onClick={() => {
-                pipelineRef.current?.commit(brushMode);
-                setHasPendingSelection(false);
-              }}
-              className="rounded-xl border border-blue-300 bg-blue-50 px-6 py-2.5 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:bg-blue-100 transition-all"
-            >
-              Apply Selection (Enter)
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  pipelineRef.current?.invertSelection();
+                }}
+                className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-2.5 text-[10px] font-black text-purple-600 uppercase tracking-widest hover:bg-purple-100 transition-all"
+              >
+                Invert
+              </button>
+              <button
+                onClick={() => {
+                  pipelineRef.current?.commit(selectionMode);
+                  magicWandRef.current?.resetDrag();
+                  setHasPendingSelection(false);
+                }}
+                className="rounded-xl border border-blue-300 bg-blue-50 px-6 py-2.5 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:bg-blue-100 transition-all"
+              >
+                Apply Selection (Enter)
+              </button>
+            </>
           )}
           <button
             onClick={onCancel}
@@ -550,7 +641,7 @@ export function MaskEditorModal({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={isApplying || !canApply}
+            disabled={isApplying}
             className="rounded-xl bg-blue-600 px-6 py-2.5 text-[10px] font-black text-white uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20 disabled:opacity-40"
           >
             {isApplying ? 'Applying...' : 'Apply Refinement'}
