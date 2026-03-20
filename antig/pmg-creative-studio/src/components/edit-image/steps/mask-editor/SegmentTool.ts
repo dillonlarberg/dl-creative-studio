@@ -76,8 +76,6 @@ export class SegmentTool implements SelectionTool {
             version: SAM_MODEL_VERSION,
             input: {
               image: this.imageBase64,
-              click_coordinates: `[[${Math.round(event.x)},${Math.round(event.y)}]]`,
-              click_labels: '[1]',
             },
           }),
           signal,
@@ -108,25 +106,71 @@ export class SegmentTool implements SelectionTool {
       }
 
       const output = result.output;
-      // Use first individual mask (object at click point), not combined_mask (all objects)
-      const maskUrl = typeof output === 'string'
-        ? output
-        : output?.individual_masks?.[0] ?? output?.combined_mask ?? output?.[0];
-      if (!maskUrl) throw new Error('No mask URL in prediction output');
-      console.log('[SegmentTool] Mask URL:', maskUrl);
+      const maskUrls: string[] = output?.individual_masks ?? [];
+      if (maskUrls.length === 0) throw new Error('No individual masks in output');
 
-      const mask = await this.decodeMaskImage(maskUrl, signal);
+      // Find the smallest mask that contains the click point
+      const clickX = Math.round(event.x);
+      const clickY = Math.round(event.y);
+      console.log(`[SegmentTool] Got ${maskUrls.length} masks, finding best match for click (${clickX}, ${clickY})`);
+
+      const bestMask = await this.findBestMask(maskUrls, clickX, clickY, signal);
       if (signal.aborted) return;
 
-      console.log('[SegmentTool] Mask decoded, pixels set:', mask.data.filter(v => v === 1).length, 'bounds:', mask.bounds);
+      if (!bestMask) {
+        console.log('[SegmentTool] No mask contains click point');
+        this.isProcessing = false;
+        return;
+      }
+
+      console.log('[SegmentTool] Best mask pixels:', bestMask.data.filter(v => v === 1).length, 'bounds:', bestMask.bounds);
       this.isProcessing = false;
-      this.onMaskReady(mask, event);
-      console.log('[SegmentTool] onMaskReady called');
+      this.onMaskReady(bestMask, event);
     } catch (err) {
       if (signal.aborted) return;
       console.error('[SegmentTool] Segmentation failed:', err);
       this.isProcessing = false;
     }
+  }
+
+  /**
+   * Load all mask images, find the smallest one that contains the click point.
+   * "Smallest" = fewest pixels set, giving the most precise selection.
+   */
+  private async findBestMask(
+    urls: string[],
+    clickX: number,
+    clickY: number,
+    signal: AbortSignal,
+  ): Promise<BinaryMask | null> {
+    // Load all masks in parallel
+    const masks = await Promise.all(
+      urls.map((url) => this.decodeMaskImage(url, signal).catch(() => null)),
+    );
+
+    let bestMask: BinaryMask | null = null;
+    let bestSize = Infinity;
+
+    for (const mask of masks) {
+      if (!mask) continue;
+
+      // Check if click point is inside this mask
+      const idx = clickY * this.imageWidth + clickX;
+      if (idx < 0 || idx >= mask.data.length || mask.data[idx] !== 1) continue;
+
+      // Count pixels (smaller = more precise)
+      let size = 0;
+      for (let i = 0; i < mask.data.length; i++) {
+        if (mask.data[i] === 1) size++;
+      }
+
+      if (size < bestSize) {
+        bestSize = size;
+        bestMask = mask;
+      }
+    }
+
+    return bestMask;
   }
 
   private async decodeMaskImage(url: string, signal: AbortSignal): Promise<BinaryMask> {
@@ -137,7 +181,6 @@ export class SegmentTool implements SelectionTool {
       img.crossOrigin = 'anonymous';
 
       img.onload = () => {
-        console.log('[SegmentTool] Mask image loaded:', img.naturalWidth, 'x', img.naturalHeight);
         const canvas = document.createElement('canvas');
         canvas.width = this.imageWidth;
         canvas.height = this.imageHeight;
@@ -175,7 +218,7 @@ export class SegmentTool implements SelectionTool {
         });
       };
 
-      img.onerror = (e) => { console.error('[SegmentTool] Image load error:', e); reject(new Error('Failed to load mask image')); };
+      img.onerror = () => reject(new Error('Failed to load mask image'));
       img.src = url;
     });
   }
