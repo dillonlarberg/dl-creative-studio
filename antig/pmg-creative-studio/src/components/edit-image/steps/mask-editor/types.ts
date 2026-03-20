@@ -19,15 +19,24 @@ export interface CanvasEvent {
 /** Brush mode — shared across tools */
 export type BrushMode = 'keep' | 'erase';
 
+/** Configuration passed to selection tools on activation */
+export interface SelectionToolConfig {
+  imageData: ImageData;
+  overlayCanvas: HTMLCanvasElement;
+  imageWidth: number;
+  imageHeight: number;
+}
+
 /**
  * Common interface for all selection tools.
- * MVP tools only need ImageData. Post-MVP PenTool may extend this
- * to accept a Fabric canvas reference if needed.
+ * All tools receive the same config; each tool uses what it needs.
  */
 export interface SelectionTool {
-  activate(imageData: ImageData): void;
+  activate(config: SelectionToolConfig): void;
   deactivate(): void;
   onEvent(event: CanvasEvent): BinaryMask | null;
+  /** Reset any in-progress interaction (e.g., drag state) */
+  resetDrag?(): void;
 }
 
 /** Display dimensions computed during init */
