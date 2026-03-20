@@ -76,8 +76,8 @@ export class SegmentTool implements SelectionTool {
             version: SAM_MODEL_VERSION,
             input: {
               image: this.imageBase64,
-              point_coords: [[Math.round(event.x), Math.round(event.y)]],
-              point_labels: [1],
+              click_coordinates: `[[${Math.round(event.x)},${Math.round(event.y)}]]`,
+              click_labels: '[1]',
             },
           }),
           signal,
