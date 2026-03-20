@@ -14,6 +14,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/replicate': {
+        target: 'https://api.replicate.com/v1',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/replicate/, ''),
+        headers: {
+          Authorization: `Bearer ${process.env.REPLICATE_API_TOKEN}`,
+        },
+      },
     },
   },
 })
