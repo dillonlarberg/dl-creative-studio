@@ -98,7 +98,10 @@ export class SegmentTool implements SelectionTool {
         throw new Error(`Prediction failed with status: ${result.status}`);
       }
 
-      const maskUrl = typeof result.output === 'string' ? result.output : result.output?.[0];
+      const output = result.output;
+      const maskUrl = typeof output === 'string'
+        ? output
+        : output?.combined_mask ?? output?.[0];
       if (!maskUrl) throw new Error('No mask URL in prediction output');
 
       const mask = await this.decodeMaskImage(maskUrl, signal);
