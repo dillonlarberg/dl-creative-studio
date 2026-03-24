@@ -36,4 +36,8 @@ Store only bounds-region data in undo stack instead of full-image Uint8Arrays. ~
 
 ### Production Replicate proxy
 **Priority:** P2 | **Size:** M
-The SAM segmentation tool uses a Vite dev proxy to call Replicate's API (CORS prevents direct browser calls). For production, add a Firebase Cloud Function that proxies to Replicate with the API token server-side. See `docs/superpowers/specs/2026-03-20-segment-tool-design.md` for context.
+Two features use Vite dev proxies to call Replicate's API (CORS prevents direct browser calls):
+1. **SAM segmentation tool** (`/replicate-api`) — mask editor segment tool
+2. **AI recommendation translator** (`/replicate-recommend`) — edit-image revamp
+
+For production, add a single Firebase Cloud Function that proxies to Replicate with the API token server-side, supporting both use cases via a path parameter or separate endpoints. See `docs/superpowers/specs/2026-03-20-segment-tool-design.md` and `docs/superpowers/specs/2026-03-24-edit-image-revamp-design.md` for context.

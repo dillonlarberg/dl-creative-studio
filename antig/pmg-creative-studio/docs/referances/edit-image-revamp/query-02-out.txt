@@ -1,0 +1,144 @@
+Dimensions: (42) ['ci_ad_id'," 'ad_id'"," 'platform'"," 'creative_id'"," 'hash'"," 'url'"," 'creative_type'"," 'video_shot_analysis'"," 'video_person_analysis'"," 'video_logo_analysis'"," 'video_text_analysis'"," 'video_speech_analysis'"," 'video_face_analysis'"," 'video_label_analysis'"," 'image_vision_analysis'"," 'text_tsvector'"," 'quick_pacing'"," 'quick_pacing_5_secs'"," 'dynamic_start'"," 'supers'"," 'supers_with_audio'"," 'brand_visuals'"," 'brand_visuals_5_secs'"," 'brand_mention_speech'"," 'brand_mention_speech_5_secs'"," 'product_visuals'"," 'product_visuals_5_secs'"," 'product_mention_text'"," 'product_mention_text_5_secs'"," 'product_mention_speech'"," 'product_mention_speech_5_secs'"," 'visible_face_5_secs'"," 'visible_face_close_up'"," 'presence_of_people'"," 'presence_of_people_5_secs'"," 'audio_speech_early'"," 'overall_pacing'"," 'call_to_action_speech'"," 'call_to_action_text'"," 'fatigue_status'"," 'peak_date'"," 'export_time']"
+Measures: 
+(2) ['cpm', 'ctr']
+0
+: 
+"cpm"
+1
+: 
+"ctr"
+length
+: 
+2
+[[Prototype]]
+: 
+Array(0)
+at
+: 
+ƒ at()
+concat
+: 
+ƒ concat()
+constructor
+: 
+ƒ Array()
+copyWithin
+: 
+ƒ copyWithin()
+entries
+: 
+ƒ entries()
+every
+: 
+ƒ every()
+fill
+: 
+ƒ fill()
+filter
+: 
+ƒ filter()
+find
+: 
+ƒ find()
+findIndex
+: 
+ƒ findIndex()
+findLast
+: 
+ƒ findLast()
+findLastIndex
+: 
+ƒ findLastIndex()
+flat
+: 
+ƒ flat()
+flatMap
+: 
+ƒ flatMap()
+forEach
+: 
+ƒ forEach()
+includes
+: 
+ƒ includes()
+indexOf
+: 
+ƒ indexOf()
+join
+: 
+ƒ join()
+keys
+: 
+ƒ keys()
+lastIndexOf
+: 
+ƒ lastIndexOf()
+length
+: 
+0
+map
+: 
+ƒ map()
+pop
+: 
+ƒ pop()
+push
+: 
+ƒ push()
+reduce
+: 
+ƒ reduce()
+reduceRight
+: 
+ƒ reduceRight()
+reverse
+: 
+ƒ reverse()
+shift
+: 
+ƒ shift()
+slice
+: 
+ƒ slice()
+some
+: 
+ƒ some()
+sort
+: 
+ƒ sort()
+splice
+: 
+ƒ splice()
+toLocaleString
+: 
+ƒ toLocaleString()
+toReversed
+: 
+ƒ toReversed()
+toSorted
+: 
+ƒ toSorted()
+toSpliced
+: 
+ƒ toSpliced()
+toString
+: 
+ƒ toString()
+unshift
+: 
+ƒ unshift()
+values
+: 
+ƒ values()
+with
+: 
+ƒ with()
+Symbol(Symbol.iterator)
+: 
+ƒ values()
+Symbol(Symbol.unscopables)
+: 
+{at: true, copyWithin: true, entries: true, fill: true, find: true, …}
+[[Prototype]]
+: 
+Object

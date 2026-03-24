@@ -1,0 +1,59 @@
+{
+  "results": [
+    {
+      "ci_ad_id": "615625",
+      "url": "https://creative-insights-images-prod.creative.alliplatform.com/ralph_lauren/meta/image/615625_120227364365330461.png",
+      "creative_type": "image",
+      "image_vision_analysis": "{\"text\":[\"ralphlauren\",\"Sponsored\",\"Instagram\",\"Shop\",\"now\",\"от\",\"^\",\"<\",\"ralphlauren\",\"Explore\",\"cool\",\"campus\",\"classics\",\"and\",\"charming\",\"signatures\",\",\",\"from\",\"varsity\",\"-\",\"inspired\",\"ja\",\"...\",\"more\"],\"faces\":[{\"joyLikelihood\":\"VERY_UNLIKELY\",\"angerLikelihood\":\"VERY_UNLIKELY\",\"sorrowLikelihood\":\"VERY_UNLIKELY\",\"surpriseLikelihood\":\"VERY_UNLIKELY\"}],\"links\":[],\"colors\":[{\"hexColor\":\"#f9f9f8\",\"imagePercentage\":35.198864340782166},{\"hexColor\":\"#d0bc9f\",\"imagePercentage\":6.666667014360428},{\"hexColor\":\"#293449\",\"imagePercentage\":2.9924241825938225},{\"hexColor\":\"#121114\",\"imagePercentage\":3.4090910106897354},{\"hexColor\":\"#971331\",\"imagePercentage\":0.14204545877873898},{\"hexColor\":\"#af9b7e\",\"imagePercentage\":6.704545766115189},{\"hexColor\":\"#897557\",\"imagePercentage\":5.018939450383186},{\"hexColor\":\"#645137\",\"imagePercentage\":2.8314393013715744},{\"hexColor\":\"#8a7145\",\"imagePercentage\":3.030303120613098},{\"hexColor\":\"#60521f\",\"imagePercentage\":1.6571968793869019}],\"labels\":[\"Sleeve\",\"Child\",\"Happiness\",\"Toddler\",\"Winter\",\"Child model\",\"Plaid\"],\"objects\":[\"Person\",\"Clothing\",\"Basket\"]}",
+      "brand_visuals": "false",
+      "call_to_action_text": "false",
+      "fatigue_status": "null",
+      "ctr": "null",
+      "cpm": "null"
+    },
+    {
+      "ci_ad_id": "629066",
+      "url": "https://creative-insights-images-prod.creative.alliplatform.com/ralph_lauren/meta/image/629066_120228735736080461.png",
+      "creative_type": "image",
+      "image_vision_analysis": "{\"text\":[\"ralphlauren\",\"Sponsored\",\"Instagram\",\"Shop\",\"now\",\"от\",\"ralphlauren\",\"Ralph\",\"Lauren\",\"at\",\"the\",\"US\",\"Open\",\"☑\",\"☑\",\"Discover\",\"bold\",\"sportswear\",\"celebrating\",\"traditio\",\"...\",\"more\"],\"faces\":[{\"joyLikelihood\":\"VERY_UNLIKELY\",\"angerLikelihood\":\"VERY_UNLIKELY\",\"sorrowLikelihood\":\"VERY_UNLIKELY\",\"surpriseLikelihood\":\"VERY_UNLIKELY\"}],\"links\":[\"https://www.ralphlauren.com/tennis-tournament-cg/r/boys-2-7\",\"https://www.ralphlauren.com/tennis-tournament-cg\"],\"colors\":[{\"hexColor\":\"#f8f7f8\",\"imagePercentage\":80.17992377281189},{\"hexColor\":\"#1e1a7a\",\"imagePercentage\":0.350378779694438},{\"hexColor\":\"#1c159a\",\"imagePercentage\":0.16098484629765153},{\"hexColor\":\"#2d2d69\",\"imagePercentage\":0.16098484629765153},{\"hexColor\":\"#daf5d6\",\"imagePercentage\":0.22727272007614374},{\"hexColor\":\"#228c47\",\"imagePercentage\":0.10416667209938169},{\"hexColor\":\"#3b854e\",\"imagePercentage\":0.08522727293893695},{\"hexColor\":\"#966f61\",\"imagePercentage\":1.0890151374042034},{\"hexColor\":\"#9b9ada\",\"imagePercentage\":0.0662878795992583},{\"hexColor\":\"#2c3039\",\"imagePercentage\":0.16098484629765153}],\"labels\":[\"Sleeve\"],\"objects\":[\"Person\",\"Footwear\",\"Clothing\",\"Shoe\",\"Sock\"]}",
+      "brand_visuals": "false",
+      "call_to_action_text": "false",
+      "fatigue_status": "null",
+      "ctr": "null",
+      "cpm": "null"
+    },
+    {
+      "ci_ad_id": "629225",
+      "url": "https://creative-insights-images-prod.creative.alliplatform.com/ralph_lauren/meta/image/629225_120228862141700461.png",
+      "creative_type": "image",
+      "image_vision_analysis": "{\"text\":[\"LIKEES\",\"ralphlauren\",\"Sponsored\",\"Instagram\",\"\\\"\",\"10\",\"2026\",\"MLB\",\"Shop\",\"now\",\"от\",\"N\",\"4\",\"^\",\"B\",\"ralphlauren\",\"Campus\",\"Classics\",\"Explore\",\"new\",\"arrivals\",\"inspired\",\"by\",\"sporting\",\"heri\",\"...\",\"more\"],\"faces\":[{\"joyLikelihood\":\"VERY_UNLIKELY\",\"angerLikelihood\":\"VERY_UNLIKELY\",\"sorrowLikelihood\":\"VERY_UNLIKELY\",\"surpriseLikelihood\":\"VERY_UNLIKELY\"}],\"links\":[\"https://www.instagram.com/reel/DNBr_ANyOh4/\",\"https://www.instagram.com/reel/DNEW6EASevG/\",\"https://www.instagram.com/reel/DNI_UP9gzvq/\",\"https://www.instagram.com/p/DJ23EdkoJyf/\",\"https://www.instagram.com/p/DLIWb4QoHId/\",\"https://www.instagram.com/reel/DKkKenhskfP/\",\"https://www.instagram.com/p/C1TuMwKASoE/\",\"https://www.instagram.com/p/C8b_4Ehu2y7/\",\"https://www.instagram.com/p/CSNRuXsHkzk/\",\"https://www.instagram.com/p/Ck3-ZVyPetI/\",\"https://www.instagram.com/reel/DLVL_eGs9TF/\",\"https://www.instagram.com/p/DDTJHSLt5gf/\",\"https://www.instagram.com/p/CrEy61HvHoK/\",\"https://www.instagram.com/p/CxDUqDUOQNE/\",\"https://www.instagram.com/reel/Czjrhs_PvEg/\",\"https://www.instagram.com/tv/CZfF5pnJEIg/\",\"https://www.instagram.com/p/DKpA43uRQ5N/\",\"https://www.instagram.com/p/DE_Pn7IP2_S/\",\"https://www.instagram.com/p/DMYCxdgsxbj/\",\"https://www.instagram.com/reel/CvQN9itglbw/?hl=en\",\"https://www.instagram.com/p/CyTIFDqul7t/\",\"https://www.instagram.com/reel/C5q1n7vuzsw/\",\"https://www.instagram.com/p/DAFPe9KtowM/\",\"https://www.instagram.com/poloralphlauren/reel/DNHJjITAAG4/\",\"https://www.instagram.com/p/DDsIXF9PxeN/\",\"https://www.instagram.com/p/C6uqCjXIWdY/\",\"https://www.instagram.com/p/DMyPDqhy7qU/\",\"https://www.instagram.com/p/DByT2R7xorq/?hl=en\",\"https://www.instagram.com/p/CYIErghrkSu/\",\"https://www.instagram.com/p/DCmxbW4SqWB/\",\"https://www.instagram.com/p/B7UZmgJgCw4/\",\"https://www.instagram.com/p/DKaG5pUgx6h/\",\"https://www.instagram.com/p/C2Soj9HgWB9/\",\"https://www.instagram.com/p/C7zLzMAOsdD/\",\"https://www.instagram.com/reel/DG_Ykx4va0I/?hl=en\",\"https://www.instagram.com/p/ClPeG6sOlml/\",\"https://www.instagram.com/p/B_VfE8sgxqD/\",\"https://www.instagram.com/p/C1nEo6hP0Px/\",\"https://www.instagram.com/p/CtACvNVgA9x/\",\"https://www.instagram.com/p/DL5tAZHvFOF/\",\"https://www.instagram.com/p/Cu11znBuSwL/\",\"https://www.instagram.com/p/C5wLrGCAaDD/\",\"https://www.instagram.com/p/C7T8-xVuN2S/\",\"https://www.instagram.com/p/DDnJlBGSHxu/\",\"https://www.instagram.com/p/DElQ49RgqKC/?hl=en\",\"https://www.instagram.com/p/CV3vV6DguE9/\",\"https://www.instagram.com/p/Cx8H8PLA2tW/\",\"https://www.instagram.com/p/CfmWQ2So56Q/\",\"https://www.instagram.com/p/CukP9Vpg5oo/\",\"https://www.instagram.com/p/CnpaXhqvnOG/?hl=en\"],\"colors\":[{\"hexColor\":\"#ddc1a4\",\"imagePercentage\":22.746212780475616},{\"hexColor\":\"#faf9f8\",\"imagePercentage\":35.9375},{\"hexColor\":\"#3e2e1a\",\"imagePercentage\":8.38068202137947},{\"hexColor\":\"#291e0d\",\"imagePercentage\":3.7405304610729218},{\"hexColor\":\"#4a2c16\",\"imagePercentage\":3.0871212482452393},{\"hexColor\":\"#181211\",\"imagePercentage\":4.583333432674408},{\"hexColor\":\"#634e35\",\"imagePercentage\":1.4962120912969112},{\"hexColor\":\"#cac3c0\",\"imagePercentage\":3.342803195118904},{\"hexColor\":\"#b19a80\",\"imagePercentage\":1.401515118777752},{\"hexColor\":\"#694831\",\"imagePercentage\":1.8939394503831863}],\"labels\":[\"Sleeve\",\"Fashion\",\"Jacket\",\"Denim\",\"Outerwear\",\"Collar\",\"Textile\",\"Pocket\",\"Brown\",\"Waist\",\"Fashion design\",\"Model\",\"Torso\",\"Fashion Model\",\"Button\",\"Leather\",\"Beanie\"],\"objects\":[\"Person\",\"Outerwear\",\"Jacket\",\"Pants\",\"Top\"]}",
+      "brand_visuals": "false",
+      "call_to_action_text": "false",
+      "fatigue_status": "null",
+      "ctr": "null",
+      "cpm": "null"
+    },
+    {
+      "ci_ad_id": "619757",
+      "url": "https://creative-insights-images-prod.creative.alliplatform.com/ralph_lauren/meta/image/619757_120227537355570461.png",
+      "creative_type": "image",
+      "image_vision_analysis": "{\"text\":[\"ralphlauren\",\"Sponsored\",\"Instagram\",\"POLO\",\"P\",\"Shop\",\"now\",\"от\",\"ralphlauren\",\"Back\",\"to\",\"School\",\"^\",\"<\",\"Shop\",\"charming\",\"new\",\"arrivals\",\"to\",\"set\",\"them\",\"up\",\"fo\",\"...\",\"more\"],\"faces\":[],\"links\":[],\"colors\":[{\"hexColor\":\"#899975\",\"imagePercentage\":4.441287741065025},{\"hexColor\":\"#c8c1a5\",\"imagePercentage\":9.526515007019043},{\"hexColor\":\"#a36f41\",\"imagePercentage\":1.7045455053448677},{\"hexColor\":\"#bb6b2d\",\"imagePercentage\":0.028409090009517968},{\"hexColor\":\"#121107\",\"imagePercentage\":2.964015118777752},{\"hexColor\":\"#a49c7d\",\"imagePercentage\":3.532196953892708},{\"hexColor\":\"#708561\",\"imagePercentage\":3.5795453935861588},{\"hexColor\":\"#867a5d\",\"imagePercentage\":2.5284091010689735},{\"hexColor\":\"#c48b5c\",\"imagePercentage\":0.6060605868697166},{\"hexColor\":\"#c5bcbc\",\"imagePercentage\":8.267045766115189}],\"labels\":[\"Carnivores\",\"Dog\",\"Dog Clothes\",\"Canidae\",\"Dog Supply\",\"Stuffed toy\",\"Toy\",\"Toy dog\",\"Puppy\",\"Teddy bear\",\"Pet Supply\"],\"objects\":[\"Clothing\"]}",
+      "brand_visuals": "false",
+      "call_to_action_text": "false",
+      "fatigue_status": "null",
+      "ctr": "null",
+      "cpm": "null"
+    },
+    {
+      "ci_ad_id": "619826",
+      "url": "https://creative-insights-images-prod.creative.alliplatform.com/ralph_lauren/meta/image/619826_120227541643440461.png",
+      "creative_type": "image",
+      "image_vision_analysis": "{\"text\":[\"ralphlauren\",\"Sponsored\",\"Instagram\",\"POLO\",\"Shop\",\"now\",\"от\",\"Σ\",\"✓\",\"ralphlauren\",\"Shop\",\"heritage\",\"style\",\",\",\"preppy\",\"classics\",\",\",\"and\",\"more\",\"for\",\"the\",\"year\",\"ahead\",\".\",\"Free\",\"shipping\",\"with\",\"a\",\"...\",\"more\"],\"faces\":[],\"links\":[],\"colors\":[{\"hexColor\":\"#1b161a\",\"imagePercentage\":18.541666865348816},{\"hexColor\":\"#9c6b40\",\"imagePercentage\":1.4962120912969112},{\"hexColor\":\"#d5c1a2\",\"imagePercentage\":12.121212482452393},{\"hexColor\":\"#472a13\",\"imagePercentage\":0.4640151746571064},{\"hexColor\":\"#794d25\",\"imagePercentage\":1.202651485800743},{\"hexColor\":\"#bf8f64\",\"imagePercentage\":0.6060605868697166},{\"hexColor\":\"#b09878\",\"imagePercentage\":2.035984769463539},{\"hexColor\":\"#8b7557\",\"imagePercentage\":1.2973484583199024},{\"hexColor\":\"#edddc3\",\"imagePercentage\":4.251893982291222},{\"hexColor\":\"#2f2c34\",\"imagePercentage\":4.66856062412262}],\"labels\":[\"Collar\",\"Bow tie\",\"Stuffed toy\",\"Toy\",\"Teddy bear\",\"Carnivores\",\"Button\",\"Plush\",\"Bear\",\"Wool\"],\"objects\":[\"Clothing\",\"Stuffed toy\"]}",
+      "brand_visuals": "false",
+      "call_to_action_text": "false",
+      "fatigue_status": "null",
+      "ctr": "null",
+      "cpm": "null"
+    }
+  ]
+}
