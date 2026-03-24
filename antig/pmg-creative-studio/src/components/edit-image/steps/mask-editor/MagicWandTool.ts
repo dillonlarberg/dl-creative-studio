@@ -1,5 +1,5 @@
 import MagicWand from 'magic-wand-tool';
-import type { BinaryMask, CanvasEvent, SelectionTool } from './types';
+import type { BinaryMask, CanvasEvent, SelectionTool, SelectionToolConfig } from './types';
 
 const DEFAULT_THRESHOLD = 15;
 const BLUR_RADIUS = 5;
@@ -21,7 +21,8 @@ export class MagicWandTool implements SelectionTool {
     isActive: false,
   };
 
-  activate(imageData: ImageData): void {
+  activate(config: SelectionToolConfig): void {
+    const { imageData } = config;
     this.state.imageData = imageData;
     this.state.image = {
       data: new Uint8Array(imageData.data.buffer),
@@ -56,6 +57,11 @@ export class MagicWandTool implements SelectionTool {
   /** Get the current threshold (for UI display) */
   getThreshold(): number {
     return this.state.currentThreshold;
+  }
+
+  /** Reset drag state — called on pipeline commit/cancel to prevent stale downPoint */
+  resetDrag(): void {
+    this.state.downPoint = null;
   }
 
   private handleMouseDown(event: CanvasEvent): BinaryMask | null {

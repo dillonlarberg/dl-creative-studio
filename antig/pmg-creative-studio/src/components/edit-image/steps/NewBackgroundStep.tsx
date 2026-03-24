@@ -105,9 +105,10 @@ export function NewBackgroundStep({
     }
   };
 
-  const isColorSelected = stepData.selectedBackground?.type === 'color';
-  const isImageSelected = stepData.selectedBackground?.type === 'image';
-  const selectedColorValue = isColorSelected ? stepData.selectedBackground.value : null;
+  const selectedBackground = stepData.selectedBackground;
+  const selectedColor = selectedBackground?.type === 'color' ? selectedBackground : null;
+  const selectedImage = selectedBackground?.type === 'image' ? selectedBackground : null;
+  const selectedColorValue = selectedColor?.value ?? null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
@@ -228,7 +229,7 @@ export function NewBackgroundStep({
                       onClick={() => selectImage(asset.url, asset.name || 'alli-asset')}
                       className={cn(
                         'group relative aspect-square overflow-hidden rounded-xl border-2 transition-all',
-                        isImageSelected && stepData.selectedBackground.url === asset.url
+                        selectedImage?.url === asset.url
                           ? 'border-blue-600 ring-2 ring-blue-200'
                           : 'border-gray-100 hover:border-blue-300',
                       )}
@@ -303,12 +304,12 @@ export function NewBackgroundStep({
         )}
 
         {/* Selected background preview */}
-        {isImageSelected && (
+        {selectedImage && (
           <div className="flex items-center gap-4 rounded-xl bg-gray-50 p-3 border border-gray-100">
-            <img src={stepData.selectedBackground.url} alt={stepData.selectedBackground.name} className="h-16 w-16 rounded-lg object-cover" />
+            <img src={selectedImage.url} alt={selectedImage.name} className="h-16 w-16 rounded-lg object-cover" />
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Selected Background</p>
-              <p className="text-xs font-bold text-gray-900 truncate max-w-xs">{stepData.selectedBackground.name}</p>
+              <p className="text-xs font-bold text-gray-900 truncate max-w-xs">{selectedImage.name}</p>
             </div>
           </div>
         )}

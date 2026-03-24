@@ -10,7 +10,6 @@ interface SegmentToolOptions {
 }
 
 export class SegmentTool implements SelectionTool {
-  private overlayCanvas: HTMLCanvasElement | null = null;
   private imageWidth = 0;
   private imageHeight = 0;
   private isActive = false;
@@ -26,7 +25,6 @@ export class SegmentTool implements SelectionTool {
   }
 
   activate(config: SelectionToolConfig): void {
-    this.overlayCanvas = config.overlayCanvas;
     this.imageWidth = config.imageWidth;
     this.imageHeight = config.imageHeight;
     this.isActive = true;
@@ -53,7 +51,6 @@ export class SegmentTool implements SelectionTool {
     this.isProcessing = false;
     this.abortController?.abort();
     this.abortController = null;
-    this.overlayCanvas = null;
   }
 
   private async segment(event: CanvasEvent): Promise<void> {

@@ -1284,7 +1284,7 @@ export default function UseCaseWizardPage() {
             // edit-image uses a flat object across all steps. Save it under
             // every step key so that stale downstream data (e.g. old
             // extractedImageUrl) is always overwritten on restore.
-            let updatedStepData;
+            let updatedStepData: CreativeRecord['stepData'];
             if (useCaseId === 'edit-image') {
                 updatedStepData = { ...creative?.stepData };
                 steps.forEach(s => { updatedStepData[s.id] = firestoreStepData; });

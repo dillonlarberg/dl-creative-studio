@@ -55,7 +55,8 @@ const FAKE_MASK_URL = 'https://replicate.delivery/fake-mask.png';
 
 function mockFetchSuccess() {
   let callCount = 0;
-  global.fetch = vi.fn(async (url: string) => {
+  globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     if (url.includes('/replicate/predictions') && !url.includes(FAKE_PREDICTION_ID)) {
       return {
         ok: true,
@@ -70,7 +71,7 @@ function mockFetchSuccess() {
           json: async () => ({
             id: FAKE_PREDICTION_ID,
             status: 'succeeded',
-            output: FAKE_MASK_URL,
+            output: { individual_masks: [FAKE_MASK_URL] },
           }),
         } as Response;
       }
@@ -87,19 +88,21 @@ function mockFetchSuccess() {
 }
 
 function mockFetchFailure() {
-  global.fetch = vi.fn(async () => {
+  globalThis.fetch = vi.fn(async (_input: RequestInfo | URL) => {
     throw new TypeError('Network error');
   });
 }
 
+type OnMaskReady = (mask: BinaryMask, event: CanvasEvent) => void;
+
 describe('SegmentTool', () => {
   let tool: SegmentTool;
-  let onMaskReady: ReturnType<typeof vi.fn>;
+  let onMaskReady: ReturnType<typeof vi.fn<OnMaskReady>>;
   let imageCanvas: HTMLCanvasElement;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    onMaskReady = vi.fn();
+    onMaskReady = vi.fn<OnMaskReady>();
     imageCanvas = createMockCanvas(10, 10);
     tool = new SegmentTool({ onMaskReady, imageCanvas });
     tool.activate(makeConfig());

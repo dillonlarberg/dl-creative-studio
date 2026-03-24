@@ -1,0 +1,230 @@
+{
+  "nodes": [
+    {
+      "id": "file:src/components/edit-image/steps/mask-editor/types.ts",
+      "type": "file",
+      "label": "mask-editor/types.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 55,
+        "description": "TypeScript interfaces and types for the mask editor tool system: BinaryMask, CanvasEvent, SelectionTool, SelectionToolConfig, DisplayDims, UndoEntry, BrushMode"
+      }
+    },
+    {
+      "id": "file:src/components/edit-image/types.ts",
+      "type": "file",
+      "label": "edit-image/types.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 41,
+        "description": "Types for the edit-image wizard workflow: EditType, EditImageStepData (multi-step form state), EditImageStepProps"
+      }
+    },
+    {
+      "id": "file:src/components/edit-image/utils/applyMaskToAlpha.ts",
+      "type": "file",
+      "label": "applyMaskToAlpha.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 68,
+        "description": "Applies a white/black mask canvas to original image alpha channel via Canvas API, returns PNG data URL"
+      }
+    },
+    {
+      "id": "file:src/components/edit-image/utils/compositeImage.ts",
+      "type": "file",
+      "label": "compositeImage.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 50,
+        "description": "Composites a foreground PNG over a solid color or image background using Canvas API, returns PNG Blob"
+      }
+    },
+    {
+      "id": "file:src/components/edit-image/utils/proxyUrl.ts",
+      "type": "file",
+      "label": "proxyUrl.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 26,
+        "description": "Wraps external image URLs with the CORS proxy endpoint (VITE_EXTRACT_API_URL); passes through data:/blob:/same-origin URLs unchanged"
+      }
+    },
+    {
+      "id": "file:src/constants/useCases.ts",
+      "type": "file",
+      "label": "useCases.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 139,
+        "description": "Defines USE_CASES (8 creative workflows), PLATFORM_SIZES (ad dimensions), AI_PROVIDERS (OpenAI/Google/Stability), SOCIAL_WIREFRAMES (15 HTML ad templates)"
+      }
+    },
+    {
+      "id": "file:src/firebase.ts",
+      "type": "file",
+      "label": "firebase.ts",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 25,
+        "description": "Firebase SDK initialization; exports auth, db (Firestore), storage, functions singletons and default app instance"
+      }
+    },
+    {
+      "id": "file:src/main.tsx",
+      "type": "file",
+      "label": "main.tsx",
+      "properties": {
+        "language": "typescript",
+        "sizeLines": 10,
+        "description": "React app entry point — mounts App component into #root DOM node inside StrictMode"
+      }
+    },
+    {
+      "id": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:applyMaskToAlpha",
+      "type": "func",
+      "label": "applyMaskToAlpha",
+      "properties": {
+        "signature": "async (originalImageUrl: string, maskCanvas: HTMLCanvasElement) => Promise<string>",
+        "description": "Reads mask luminance channel and sets each original image pixel's alpha accordingly; validates dimension match"
+      }
+    },
+    {
+      "id": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:loadImage",
+      "type": "func",
+      "label": "loadImage (applyMaskToAlpha)",
+      "properties": {
+        "signature": "(url: string) => Promise<HTMLImageElement>",
+        "description": "Loads image with CORS support; skips crossOrigin for data/blob URLs"
+      }
+    },
+    {
+      "id": "func:src/components/edit-image/utils/compositeImage.ts:compositeImage",
+      "type": "func",
+      "label": "compositeImage",
+      "properties": {
+        "signature": "async (foregroundUrl: string, background: {type:'color';value:string}|{type:'image';url:string;name:string}) => Promise<Blob>",
+        "description": "Draws background fill/image then composites foreground PNG on top; cover-scales background image"
+      }
+    },
+    {
+      "id": "func:src/components/edit-image/utils/compositeImage.ts:loadImage",
+      "type": "func",
+      "label": "loadImage (compositeImage)",
+      "properties": {
+        "signature": "(url: string) => Promise<HTMLImageElement>",
+        "description": "Local loadImage helper with crossOrigin=anonymous"
+      }
+    },
+    {
+      "id": "func:src/components/edit-image/utils/proxyUrl.ts:proxyUrl",
+      "type": "func",
+      "label": "proxyUrl",
+      "properties": {
+        "signature": "(url: string) => string",
+        "description": "Returns proxy-wrapped URL for external images; passes data:/blob:/same-origin URLs through unchanged"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/components/edit-image/utils/applyMaskToAlpha.ts",
+      "target": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:applyMaskToAlpha",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/components/edit-image/utils/applyMaskToAlpha.ts",
+      "target": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:loadImage",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/components/edit-image/utils/compositeImage.ts",
+      "target": "func:src/components/edit-image/utils/compositeImage.ts:compositeImage",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/components/edit-image/utils/compositeImage.ts",
+      "target": "func:src/components/edit-image/utils/compositeImage.ts:loadImage",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/components/edit-image/utils/proxyUrl.ts",
+      "target": "func:src/components/edit-image/utils/proxyUrl.ts:proxyUrl",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:applyMaskToAlpha",
+      "target": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:loadImage",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "func:src/components/edit-image/utils/compositeImage.ts:compositeImage",
+      "target": "func:src/components/edit-image/utils/compositeImage.ts:loadImage",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/components/edit-image/types.ts",
+      "target": "file:src/services/clientAssetHouse.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/constants/useCases.ts",
+      "target": "file:src/types/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "file:src/App.tsx",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/components/edit-image/utils/applyMaskToAlpha.ts",
+      "target": "func:src/components/edit-image/utils/applyMaskToAlpha.ts:applyMaskToAlpha",
+      "type": "exports",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/components/edit-image/utils/compositeImage.ts",
+      "target": "func:src/components/edit-image/utils/compositeImage.ts:compositeImage",
+      "type": "exports",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/components/edit-image/utils/proxyUrl.ts",
+      "target": "func:src/components/edit-image/utils/proxyUrl.ts:proxyUrl",
+      "type": "exports",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/firebase.ts",
+      "target": "file:src/services/auth.ts",
+      "type": "depends_on",
+      "weight": 0.6,
+      "note": "auth singleton consumed by auth service"
+    },
+    {
+      "source": "file:src/firebase.ts",
+      "target": "file:src/services/creative.ts",
+      "type": "depends_on",
+      "weight": 0.6,
+      "note": "db/storage singletons consumed by creative service"
+    },
+    {
+      "source": "file:src/firebase.ts",
+      "target": "file:src/services/videoService.ts",
+      "type": "depends_on",
+      "weight": 0.6,
+      "note": "functions singleton consumed by video service"
+    }
+  ]
+}

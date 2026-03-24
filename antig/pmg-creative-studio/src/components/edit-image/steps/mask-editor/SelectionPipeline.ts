@@ -1,7 +1,7 @@
 import type { BinaryMask, BrushMode, UndoEntry } from './types';
 import { startMarchingAnts, type MarchingAntsHandle } from './marchingAnts';
 
-const MAX_UNDO_DEPTH = 20;
+const MAX_UNDO_DEPTH = 10;
 
 export interface SelectionPipelineConfig {
   overlayCanvas: HTMLCanvasElement;
@@ -95,6 +95,39 @@ export class SelectionPipeline {
 
   hasPending(): boolean {
     return this.pendingMask !== null;
+  }
+
+  /** Invert the pending selection — flip 0s and 1s */
+  invertSelection(): void {
+    if (!this.pendingMask) return;
+
+    const { data, width, height } = this.pendingMask;
+    const inverted = new Uint8Array(width * height);
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        inverted[idx] = data[idx] === 1 ? 0 : 1;
+        if (inverted[idx] === 1) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    const invertedMask: BinaryMask = {
+      data: inverted,
+      width,
+      height,
+      bounds: minX <= maxX
+        ? { minX, minY, maxX, maxY }
+        : { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+    };
+
+    this.setPendingMask(invertedMask);
   }
 
   /** Reset undo stack and snapshot new initial mask (called on tool switch from brush) */

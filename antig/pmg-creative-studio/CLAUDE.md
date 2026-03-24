@@ -22,7 +22,13 @@ cd local-services/image-edit-api
 uvicorn main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-No test framework is currently configured.
+```bash
+# Tests (Vitest)
+npm test             # Run unit tests
+npm run test:watch   # Run Vitest in watch mode
+```
+
+Vitest is configured for unit tests (`src/**/__tests__/**/*.test.ts`). E2E tests are not yet configured.
 
 ## Architecture
 
@@ -70,3 +76,24 @@ The platform supports 8 creative workflows: `image-resize`, `edit-image`, `new-i
 - **ESLint**: Flat config (v9) with TypeScript parser + React hooks rules
 - **Tailwind CSS 4** via `@tailwindcss/vite` plugin
 - **Image edit API URL**: Configurable via `VITE_IMAGE_EDIT_API_URL` (defaults to `http://127.0.0.1:8001`)
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available skills:
+- `/plan-ceo-review` — CEO-level plan review
+- `/plan-eng-review` — Engineering plan review
+- `/plan-design-review` — Design plan review
+- `/design-consultation` — Design consultation
+- `/review` — Code review
+- `/ship` — Ship workflow
+- `/browse` — Headless browser for web browsing, QA, and dogfooding
+- `/qa` — QA testing
+- `/qa-only` — QA testing only (no code changes)
+- `/qa-design-review` — QA with design review
+- `/setup-browser-cookies` — Configure browser cookies for authenticated browsing
+- `/retro` — Retrospective
+- `/document-release` — Document a release
+
+If gstack skills aren't working, run `cd .claude/skills/gstack && ./setup` to build the binary and register skills.
