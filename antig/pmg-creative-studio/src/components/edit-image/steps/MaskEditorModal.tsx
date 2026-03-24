@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Canvas as FabricCanvas, FabricImage } from 'fabric';
 import { cn } from '../../../utils/cn';
 import { proxyUrl } from '../utils/proxyUrl';
 import { applyMaskToAlpha } from '../utils/applyMaskToAlpha';
@@ -54,7 +55,7 @@ export function MaskEditorModal({
   // Canvas refs
   const displayCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
-  const fabricRef = useRef<any>(null);
+  const fabricRef = useRef<FabricCanvas | null>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Tool refs
@@ -102,7 +103,6 @@ export function MaskEditorModal({
         canvas.remove(tintObjRef.current);
       }
 
-      const { FabricImage } = await import('fabric');
       const tintImg = await loadImg(newTintUrl);
       const fabricTint = new FabricImage(tintImg, {
         left: 0,
@@ -114,7 +114,7 @@ export function MaskEditorModal({
       });
 
       // D5: Insert at index 0 directly to avoid visual flash
-      canvas.insertAt(fabricTint, 0);
+      canvas.insertAt(0, fabricTint);
       tintObjRef.current = fabricTint;
       canvas.renderAll();
     } catch (err) {
@@ -189,10 +189,9 @@ export function MaskEditorModal({
         if (cancelled || !displayCanvasRef.current) return;
 
         // Initialize Fabric.js
-        const fabric = await import('fabric');
         if (cancelled || !displayCanvasRef.current) return;
 
-        const canvas = new fabric.Canvas(displayCanvasRef.current, {
+        const canvas = new FabricCanvas(displayCanvasRef.current, {
           isDrawingMode: false,
           width: w,
           height: h,
@@ -201,14 +200,14 @@ export function MaskEditorModal({
         fabricRef.current = canvas;
 
         // Background image
-        const bgFabric = new fabric.FabricImage(origImg);
+        const bgFabric = new FabricImage(origImg);
         bgFabric.set({ left: 0, top: 0, originX: 'left', originY: 'top' });
         canvas.backgroundImage = bgFabric;
 
         // Tint overlay
         const tintImg = await loadImg(tintBlobUrl);
         if (cancelled) return;
-        const tintFabric = new fabric.FabricImage(tintImg);
+        const tintFabric = new FabricImage(tintImg);
         tintFabric.set({
           left: 0,
           top: 0,
