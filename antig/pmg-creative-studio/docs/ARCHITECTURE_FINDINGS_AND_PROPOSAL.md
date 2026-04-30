@@ -171,7 +171,7 @@ src/
 │   └── feed-processing/  ...
 ├── platform/                        # ⬅ NEW. Cross-cutting concerns owned by no single app.
 │   ├── auth/                        # current-user, /me, token refresh
-│   ├── client/                      # selected-client context, custom claims
+│   ├── client/                      # selected-client context (URL-driven), Alli /clients reader
 │   ├── firebase/                    # firestore/storage init, typed paths
 │   ├── ui/                          # shadcn primitives, AppLayout, Breadcrumbs
 │   └── analytics/
@@ -229,68 +229,105 @@ Why this shape:
 - **Per-app subtree** means each app owns its own collections; you can index them independently, you can delete an app's data with one path, and an app's schema changes don't touch siblings.
 - **Members subcollection** establishes which user UIDs may access a client. Replaces today's `localStorage` trust model.
 
-### 3.3 Custom claims for cheap, correct rules
+### 3.3 Email allowlist for prototype-grade access control
 
-On login, a Cloud Function (callable, e.g. `syncClientClaims`) calls Alli `/clients` for the authenticated user, computes the allowed slugs, and writes them to Firebase custom claims:
+Originally proposed: Firebase custom claims with per-client membership (`token.clients: string[]`). Revised after the prototype/scale conversation: **hardcoded email allowlist in the rules files**, ≤10 PMG users.
 
-```ts
-admin.auth().setCustomUserClaims(uid, { clients: ['ralph_lauren', 'sharkninja'] });
+Trade-off accepted: any allowlisted PMG user can read any client's data via direct Firestore SDK calls. The application UI still filters the client picker via Alli `/clients`, so a typical user only sees clients they're entitled to. The database itself does not enforce per-client least privilege. This is acceptable for a prototype with internal trusted users; if SOC2 audit pressure later demands database-enforced per-client membership, the migration to custom claims is incremental (drop the email allowlist, add `syncClientClaims`, swap the rule predicate).
+
+Path scoping (`clients/{slug}/apps/{appId}/...`) is unchanged and remains the SOC2-relevant control: client data lives in physically separate subtrees, deletable independently, never co-mingled.
+
+`firestore.rules` becomes:
+
 ```
+rules_version = '2';
 
-Then `firestore.rules` becomes:
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAlliStudioUser() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email in [
+               'diego.escobar@pmg.com',
+               // ...up to ~10 emails. One line per PMG hire.
+             ];
+    }
 
-```
-match /clients/{clientSlug} {
-  allow read: if isMember(clientSlug);
-  match /profile {
-    allow read, write: if isMember(clientSlug);
-  }
-  match /apps/{appId}/{document=**} {
-    allow read, write: if isMember(clientSlug);
-  }
-  match /members/{userUid} {
-    allow read: if isMember(clientSlug);
-    allow write: if false;                 // members are managed server-side
-  }
-}
+    match /clients/{clientSlug}/{document=**} {
+      allow read, write: if isAlliStudioUser();
+    }
 
-function isMember(slug) {
-  return request.auth != null
-      && slug in request.auth.token.clients;
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
 }
 ```
 
 Same shape for `storage.rules`:
 ```
-match /clients/{clientSlug}/{allPaths=**} {
-  allow read, write: if request.auth != null
-                     && clientSlug in request.auth.token.clients;
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAlliStudioUser() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email in [
+               'diego.escobar@pmg.com',
+               // ...
+             ];
+    }
+
+    match /clients/{clientSlug}/{allPaths=**} {
+      allow read, write: if isAlliStudioUser();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
 }
 ```
-And remove the `if true` upload rule entirely — uploads must go under `clients/{slug}/...`.
+The previously-permissive `/uploads/{slug}/**` path is removed entirely. Uploads must go under `clients/{slug}/...`.
 
 ### 3.4 Server-side enforcement for Functions
 
-Every callable function gets a 5-line guard:
+Every callable function gets two guards. The first checks the caller is a known PMG user; the second checks the resource being operated on belongs to the asserted client.
 
 ```ts
-function assertClient(context: CallableContext, clientSlug: string) {
-  const claims = context.auth?.token as { clients?: string[] } | undefined;
-  if (!claims?.clients?.includes(clientSlug)) {
-    throw new HttpsError('permission-denied', 'Not a member of client');
+const ALLI_STUDIO_USERS: ReadonlySet<string> = new Set([
+  'diego.escobar@pmg.com',
+  // ...
+]);
+
+function assertAlliStudioUser(context: CallableContext) {
+  const token = context.auth?.token;
+  if (!token?.email_verified || !ALLI_STUDIO_USERS.has(token.email ?? '')) {
+    throw new HttpsError('permission-denied', 'Not an Alli Studio user');
+  }
+}
+
+function assertResourceClient(clientSlug: string, storagePath: string) {
+  const expectedPrefix = `clients/${clientSlug}/`;
+  if (!storagePath.startsWith(expectedPrefix)) {
+    throw new HttpsError('permission-denied', 'Resource path does not belong to the asserted client');
   }
 }
 ```
 
-`analyzeVideoForCutdowns`, `processVideoCutdowns`, and any new app function take `clientSlug` + `appId` and call `assertClient` first.
+`analyzeVideoForCutdowns`, `processVideoCutdowns`, and any future app function take `clientSlug` + `videoStoragePath` (not arbitrary `videoUrl`) and call both guards. `assertAlliStudioUser` runs first, then `assertResourceClient`. The IDOR called out in the eng review (a member of one client passing a foreign URL) is closed by the second guard regardless of how user identity is checked.
 
-### 3.5 React layer — `ClientContext` replaces `localStorage`
+The `ALLI_STUDIO_USERS` set lives in a shared module imported by every function so the allowlist exists in exactly two places: `firestore.rules` and one TypeScript constant. PR 2 includes a unit test that asserts the two lists match (catches drift when someone updates one but not the other).
+
+### 3.5 React layer — `ClientProvider` driven by URL
 
 A single `ClientProvider` at the app root:
-- Reads claims from the ID token.
-- Exposes `{ currentClient, allowedClients, setCurrentClient }`.
-- Refuses to set a client not in `allowedClients`.
+- Reads `clientSlug` from `useParams()`. The URL is the source of truth for the active client.
+- Reads `allowedClients` from Alli `/clients` proxy (the existing `getClientsProxy` Cloud Function), cached per session.
+- Validates that the URL `clientSlug` is in `allowedClients`. Redirects to `/select-client` if not.
+- Exposes `{ currentClient, allowedClients }`. No `setCurrentClient` — switching client means navigating to a new URL.
 - All app code reads `useCurrentClient()`; no component reaches into `localStorage`.
+
+Cross-tab consistency comes free from URL-as-source-of-truth: tab A on `/ralph_lauren/edit-image` and tab B on `/sharkninja/edit-image` are unambiguously operating on different clients.
 
 Service layer becomes path-typed:
 
@@ -309,11 +346,13 @@ Each app's `services/creatives.ts` calls only its own path. Cross-app reads are 
 
 This is a prototype on a Firebase project independent of any production system. Existing creatives are drafts and demos with no production value. The 4 brand profiles in `clientAssetHouse` (Ralph Lauren, Shark Ninja, Apple Services, plus any others — **excluding the `pmg` doc, which is an artifact**) are the only data worth keeping. Phased dual-write/backfill is unnecessary overhead; we rebuild instead.
 
-**Branch strategy:** A long-lived `dev` branch holds the rebuild. Each step below ships as its own short-lived feature branch off `dev`, PRs into `dev`, and deploys to an isolated Firebase project. When `dev` is fully baked, `dev` → `main`. Firebase Hosting versions every deploy, so any step is one-click rollback-able from the Firebase console.
+**Branch strategy:** A long-lived `dev` branch holds the rebuild. Each step below ships as its own short-lived feature branch off `dev`, PRs into `dev`. When `dev` is fully baked, `dev` → `main` and a single coordinated production deploy follows. Firebase Hosting versions every deploy, so any deploy is one-click rollback-able from the Firebase console.
+
+**Environment:** the rebuild stays in the existing `automated-creative-e10d7` Firebase project. Creative Intelligence runs in the same project on a separate named Firestore database (`sbd-creative-intelligence`); Firestore rules are scoped per database, so the rebuild's rules on `(default)` cannot affect Creative Intelligence. No new Firebase project is created. Local dev iteration uses Firebase emulators (`firebase emulators:start`).
 
 | Step | Branch | Goal |
 |------|--------|------|
-| **1. Schema + rules + claims** | `feat/scoped-schema` | Stand up `clients/{slug}/...` schema; deploy locked-down `firestore.rules` + `storage.rules`; deploy `syncClientClaims` Cloud Function; build `ClientProvider`. Re-import the (filtered) brand profiles via a one-shot script. Verify login + client switching work end-to-end against the new Firebase project. |
+| **1. Schema + rules + email allowlist** | `feat/scoped-schema` | Stand up `clients/{slug}/...` schema; deploy locked-down `firestore.rules` + `storage.rules` with `isAlliStudioUser()` email-allowlist predicate (verified against Firebase emulators); add `assertAlliStudioUser` + `assertResourceClient` shared Cloud Function guards; build URL-driven `ClientProvider`. Re-import the (filtered) brand profiles via a one-shot idempotent script that runs against the existing `(default)` database. Verify allowlisted user can access, non-allowlisted denied, end-to-end against the emulator suite. |
 | **2. App registry + WizardShell + first app** | `feat/app-registry` | Build `src/apps/_registry.ts`, the `AppManifest` contract, `WizardShell`, per-app top-level routing in `App.tsx`. Extract `edit-image` (already half-modular) as the contract validator. Old apps still work via a slimmed-down `UseCaseWizardPage`. |
 | **3. Image apps** | `feat/extract-image-apps` | Extract `resize-image` and `new-image`. They share shape with `edit-image`, so the manifest pattern transfers cleanly. |
 | **4. Simple video apps** | `feat/extract-video-apps` | Extract `edit-video` and `new-video`. |
@@ -402,15 +441,15 @@ Rule of thumb: **never** put per-app route definitions in a central router file.
 
 ## 5. Concrete next steps (one-week slice for Step 1)
 
-Step 1 of the migration plan (Schema + rules + claims) is the only blocking work; everything after it can ship at a sustainable pace.
+Step 1 of the migration plan (Schema + rules + email allowlist) is the only blocking work; everything after it can ship at a sustainable pace.
 
-1. **Day 1:** Stand up the new Firebase project (or new Firestore database in the existing project). Add `clients/{slug}/...` schema definitions to `platform/firebase/paths.ts`. Write the export-and-reimport script for the 4 brand profiles (excluding `pmg`).
-2. **Day 2:** Deploy `syncClientClaims` Cloud Function. Build `ClientProvider`. Wire the login flow to call the function and force-refresh the ID token before the client picker renders.
-3. **Day 3:** Write and deploy the new `firestore.rules` and `storage.rules` with `isMember(slug)` predicates. Verify denied operations are visible in Cloud Logging (named conditions for readability).
-4. **Day 4:** Migrate `creativeService` and `clientAssetHouseService` to write under the new paths. Re-run the brand profile import. Smoke test the `edit-image` flow end-to-end.
+1. **Day 1:** Add `clients/{slug}/...` schema definitions to `platform/firebase/paths.ts`. Set up Firebase emulators (`firebase emulators:start`) for local iteration. Write the brand-profile import script (idempotent + `--dry-run`) — it reads from the existing `(default).clientAssetHouse/*` and writes to `(default).clients/{slug}/profile`, skipping the `pmg` artifact.
+2. **Day 2:** Build `assertAlliStudioUser` + `assertResourceClient` shared Cloud Function guards with unit tests. Build URL-driven `ClientProvider` that reads `useParams().clientSlug` and validates against Alli `/clients`.
+3. **Day 3:** Write and deploy the new `firestore.rules` and `storage.rules` with `isAlliStudioUser()` email-allowlist predicate. Verify allowlisted user can access, non-allowlisted denied, unverified-email denied via emulator tests.
+4. **Day 4:** Migrate `creativeService` and `clientAssetHouseService` to write under the new paths. Re-run the brand profile import. Smoke test the `edit-image` flow end-to-end against emulators.
 5. **Day 5:** Open `feat/app-registry` branch (Step 2). Build the manifest contract and `WizardShell`. Extract `edit-image`.
 
-After Day 5, the SOC2 risk is closed and the modularization pattern is validated. Steps 3–7 of the migration plan happen at a comfortable pace from there.
+After Day 5, the SOC2-relevant data physical separation is in place and the modularization pattern is validated. Steps 3–7 of the migration plan happen at a comfortable pace from there.
 
 ---
 
@@ -421,8 +460,8 @@ The following decisions were locked in during the architecture grilling session 
 | # | Decision | Resolution | Reasoning |
 |---|----------|------------|-----------|
 | 1 | **PMG vs clients** | PMG is the agency / org, **not a client**. Only end-brands (`ralph_lauren`, `sharkninja`, `apple_services`, etc.) are clients. The existing `clientAssetHouse/pmg` document is an artifact and is **not migrated**. No org layer in the schema. | Every user is a PMG employee; PMG itself never appears in the client-selection list. Adding an org layer for hypothetical cross-client features would propagate complexity to every read/write for no current benefit. |
-| 2 | **Migration approach** | Wipe & rebuild on a dev branch + isolated Firebase project. Re-import only the end-brand profiles. Drop all existing `creatives/*` documents. | Prototype with no production users. Existing data is drafts and demos. Phased dual-write/backfill is overhead with no upside in this context. |
-| 3 | **Membership / auth** | Firebase custom claims (`token.clients: string[]`). A `syncClientClaims` Cloud Function calls Alli `/clients` on login and writes the user's allowed slugs as claims. Rules check `slug in request.auth.token.clients`. A hidden "Sync clients" debug button covers mid-session client additions. | Steady-state runtime is identical to today's permissive setup; only login pays a one-time ~500ms cost. The Firestore-membership-doc alternative (Option B) would add ~30–80ms to every operation via `get()` in rules. |
+| 2 | **Migration approach** | Wipe & rebuild in place on the existing `automated-creative-e10d7` Firebase project, `(default)` Firestore. Creative Intelligence is isolated on the named database `sbd-creative-intelligence` — rules are per-database so it is unaffected. Local dev iteration uses Firebase emulators. Re-import only the end-brand profiles via a one-shot idempotent script. Drop all existing `creatives/*` documents. | Prototype with no production users for Alli Studio; Creative Intelligence runs alongside on a separate named DB and is mathematically isolated. A new Firebase project would add IAM, billing, and Hosting setup overhead for no isolation benefit beyond what the named-DB boundary already provides. |
+| 3 | **Membership / auth** | **Hardcoded email allowlist in `firestore.rules` and `storage.rules`.** ≤10 PMG users; rules check `request.auth.token.email_verified == true && email in [allowlist]`. Cloud Functions use the same allowlist via a shared `assertAlliStudioUser` helper. Path scoping (`clients/{slug}/apps/{appId}/...`) provides data physical separation; per-client database-enforced least privilege is **not** enforced — any allowlisted user can read any client via direct Firestore SDK. The application UI still filters the client picker via Alli `/clients`. | Prototype scale (≤10 users) makes a hardcoded list manageable. Custom claims with per-client membership add `syncClientClaims` Cloud Function complexity, token refresh ceremony, and a 6-state bootstrap state machine — overkill when the application UI already does the per-client filtering and there is no external SOC2 audit pressure. The SOC2-relevant control (physical data separation per client) is preserved by path scoping; the access-control layer is what was simplified. Future migration to per-client claims is incremental: drop the email allowlist, add `syncClientClaims`, swap the rule predicate. |
 | 4 | **Modularization scope** | Big bang, executed iteratively across multiple PRs. Feature branches off `dev`, PRs merge into `dev`. `dev` → `main` when fully baked. Firebase Hosting versions every deploy for instant rollback. | Solo developer + free rollback eliminates the merge-risk argument for a phased monolith-coexists approach. Doing all 8 apps in one branch produces one coherent story and avoids carrying a "legacy wizard" code path. |
 | 5 | **Routing** | Per-app top-level routes. Each manifest declares `basePath` and `routes[]`; the shell mounts them. No central routes table beyond the registry. | Almost every app is multi-screen. A single `/create/:useCaseId` dispatcher would force every app to reinvent nested-route conventions. Per-app namespaces let each app grow (`library`, `templates`, `history`) without coordinating. |
 | 6 | **Audit logging** | Skipped for prototype. Revisit when a customer or auditor requires it. | Cloud Audit Logs (free, infrastructure-level) remain available as a one-checkbox upgrade if needed; application-layer audit trails are not worth building speculatively. |

@@ -59,31 +59,30 @@ Install vitest + testing-library + Firebase rules unit testing, configure for Re
 
 See: `2026-04-30-pr1-test-runner-setup.md`
 
-## PR 2 preview — Schema + rules + claims
+## PR 2 preview — Schema + rules + email allowlist
+
+**Environment:** rebuild stays in `automated-creative-e10d7`. Creative Intelligence runs in the same project on `sbd-creative-intelligence` (named DB). Firestore rules are scoped per database, so deploying new rules to `(default)` cannot affect Creative Intelligence. No new Firebase project. Local iteration via Firebase emulators (`firebase emulators:start`).
+
+**Auth model (revised after the prototype/scale conversation):** instead of custom claims with per-client membership, use a **hardcoded email allowlist** in the rules files. ≤10 PMG users; any allowlisted user can access any client. Path scoping (`clients/{slug}/apps/{appId}/...`) still gives data physical separation; the access-control layer is just simpler. No `syncClientClaims` Cloud Function, no token refresh ceremony, no claims-pending bootstrap state machine. Migration to per-client claims is a future option if SOC2 audit pressure requires it.
 
 Build (in this order):
-1. New Firebase project (`automated-creative-dev`).
-2. `src/platform/firebase/paths.ts` — typed path helpers, no string templates outside this file.
-3. `functions/src/_shared/assertClient.ts` — caller membership guard.
-4. `functions/src/_shared/assertResourceClient.ts` — resource ownership guard for URL/path inputs.
-5. `functions/src/syncClientClaims.ts` — Alli `/clients` → Firebase custom claims, with retry + empty-list + oversize handling.
-6. `firestore.rules` + `storage.rules` — `isMember(slug)` predicate, locked-down everywhere else.
-7. `src/platform/client/ClientProvider.tsx` — reads claims, exposes `currentClient`/`allowedClients`/`setCurrentClient`. URL-driven (`useParams().clientSlug`).
-8. Bootstrap state machine — six pages: anonymous, claims pending, sync failed, no access, one-client auto-select, multi-client picker.
-9. `scripts/import-brand-profiles.ts` — idempotent + `--dry-run`.
+1. `src/platform/firebase/paths.ts` — typed path helpers, no string templates outside this file.
+2. `functions/src/_shared/assertAlliStudioUser.ts` — caller email allowlist guard (`request.auth.token.email_verified == true && email in ALLOWLIST`).
+3. `functions/src/_shared/assertResourceClient.ts` — resource path is under the asserted client's prefix. Independent of the user identity check; closes the IDOR called out in the eng review for `analyzeVideoForCutdowns` / `processVideoCutdowns`.
+4. `firestore.rules` + `storage.rules` — `isAlliStudioUser()` predicate (verified email + allowlist), default-deny everywhere else. Allowlist defined as a function literal at the top of the rules file so a new hire is one line.
+5. `src/platform/client/ClientProvider.tsx` — reads selected client from `useParams().clientSlug`, validates against the user's Alli `/clients` proxy response (used by the picker UI). URL is the source of truth for active client; tabs cannot disagree.
+6. `scripts/import-brand-profiles.ts` — idempotent + `--dry-run`. Reads existing `(default).clientAssetHouse/*` (excluding `pmg`), writes to `(default).clients/{slug}/profile`.
 
 Tests (all written first, RED → GREEN):
 - `paths.ts` unit tests (compile-time slug+appId requirement, runtime path strings).
-- `assertClient` unit tests (member, non-member, missing claim).
+- `assertAlliStudioUser` unit tests (allowlisted + verified email, allowlisted + unverified email, non-allowlisted, missing token).
 - `assertResourceClient` unit tests (matching client path, mismatched client path, malformed input).
-- `syncClientClaims` integration tests against mocked Alli (success, transient error, empty list, oversize).
-- `firestore.rules` emulator tests (member can read/write own client subtree, non-member denied, unauthenticated denied, default-deny holds).
-- `storage.rules` emulator tests (same shape; `/uploads/{slug}/**` denied for all).
-- `ClientProvider` smoke test (unallowed `setCurrentClient` is a no-op).
-- Bootstrap state machine component tests (each of 6 states renders correctly + transitions).
-- Brand-profile import idempotency test (running twice = same end state).
+- `firestore.rules` emulator tests (allowlisted user can read/write any `clients/{slug}/**`, non-allowlisted denied, unverified-email denied, unauthenticated denied, default-deny holds outside `clients/`).
+- `storage.rules` emulator tests (same shape; previously-permissive `/uploads/{slug}/**` is denied for all).
+- `ClientProvider` smoke test (renders when URL `clientSlug` is in the user's Alli client list, redirects when not).
+- Brand-profile import idempotency test (running twice = same end state, `--dry-run` writes nothing).
 
-PR 2 is the largest of the rebuild. Plan written after PR 1 lands.
+PR 2 is one focused PR — much smaller than originally scoped. Plan written after PR 1 lands.
 
 ## PR 3 preview — App registry + WizardShell + edit-image
 
@@ -128,15 +127,18 @@ After PR 10, the monolith is gone. `dev` is feature-complete.
 ## PR 11 — Promote dev → main
 
 This is a cutover runbook, not a code PR:
-1. Verify all 10 prior PRs deployed cleanly to the `automated-creative-dev` Firebase project.
-2. Run smoke tests against dev project for each of the 8 apps + login + client switching.
-3. Verify rules tests pass against dev project's rules.
-4. Decide promotion strategy:
-   - **Option A:** swap Firebase Hosting site — point the existing `automated-creative-e10d7` hosting site at the dev project's build artifacts.
-   - **Option B:** rename — make `automated-creative-dev` the new prod project, update `.firebaserc`, archive the old project.
-5. Merge `dev` → `main` in git.
-6. Deploy main to production hosting.
-7. Cutover runbook completes when production traffic is on the new schema with no rule denials in Cloud Logging.
+1. Verify the `dev` branch passes all tests (`npm run test:run` + Firestore rules emulator suite + Cloud Functions tests).
+2. Smoke-test `dev` locally against Firebase emulators for each of the 8 apps + login + client switching.
+3. Optionally smoke-test `dev` against `automated-creative-e10d7` by deploying to a separate Hosting target (multi-site Hosting, e.g. a `dev` site alongside the existing default site) without touching the production rules. Skip if local emulator coverage is sufficient.
+4. Coordinated production cutover (single deploy):
+   a. Run the brand-profile import script once against `(default)` Firestore — copies existing `clientAssetHouse/{slug}` docs to `clients/{slug}/profile` (excluding `pmg`). Idempotent; safe to re-run.
+   b. Deploy new Cloud Functions (`syncClientClaims`, updated `analyzeVideoForCutdowns`, `processVideoCutdowns`).
+   c. Deploy new frontend bundle (reads from `clients/{slug}/...` paths).
+   d. Deploy new `firestore.rules` + `storage.rules` (locks down `(default)` to `isMember(slug)`).
+   Steps b/c/d should be one `firebase deploy` invocation so there is no window where rules + code are out of sync.
+5. After cutover, drop the obsolete `creatives/*` and `clientAssetHouse/*` collections from `(default)` (one-time cleanup script).
+6. Merge `dev` → `main` in git.
+7. Cutover runbook completes when production traffic is on the new schema with no `permission-denied` rule denials in Cloud Logging and Creative Intelligence (on `sbd-creative-intelligence`) is unaffected.
 
 ## Out-of-scope reminders (from PRD)
 
