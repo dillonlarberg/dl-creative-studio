@@ -24,6 +24,17 @@ const navigation = [
     { name: 'Client Asset House', href: '/client-asset-house', icon: BookOpenIcon },
 ];
 
+function nameFromEmail(email?: string): string {
+    if (!email || typeof email !== 'string') return '';
+    const local = email.split('@')[0];
+    if (!local) return '';
+    return local
+        .split(/[._-]+/)
+        .filter(Boolean)
+        .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+}
+
 export default function AppLayout() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -33,6 +44,40 @@ export default function AppLayout() {
     const [search, setSearch] = useState('');
     const [loadingClients, setLoadingClients] = useState(false);
     const [clientError, setClientError] = useState<string | null>(null);
+    const [userName, setUserName] = useState<string>('');
+
+    useEffect(() => {
+        let cancelled = false;
+        alliService
+            .getMe()
+            .then((me) => {
+                if (cancelled) return;
+                const u = me?.user ?? me ?? {};
+                const explicit =
+                    u.name ||
+                    u.fullName ||
+                    [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+                    [u.first_name, u.last_name].filter(Boolean).join(' ').trim() ||
+                    u.displayName ||
+                    '';
+                setUserName(explicit || nameFromEmail(u.email) || u.email || '');
+            })
+            .catch((err) => {
+                console.error('Failed to load user profile from /me:', err);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    const userInitials = userName
+        ? userName
+              .split(/\s+/)
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0]?.toUpperCase() ?? '')
+              .join('')
+        : '';
 
     useEffect(() => {
         const clientStr = localStorage.getItem('selectedClient');
@@ -155,10 +200,10 @@ export default function AppLayout() {
                 <div className="border-t border-gray-200 p-4">
                     <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-medium text-white">
-                            DL
+                            {userInitials || '...'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="truncate text-sm font-medium text-gray-900">Dillon Larberg</p>
+                            <p className="truncate text-sm font-medium text-gray-900">{userName || 'Loading...'}</p>
                             <button
                                 onClick={() => setIsDrawerOpen(true)}
                                 className="truncate text-xs text-blue-600 hover:text-blue-500 font-medium text-left w-full"
