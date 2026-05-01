@@ -2,6 +2,30 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+---
+
+## Progress (last updated 2026-05-01 evening, mid-session)
+
+| Task | Status | Commit |
+|---|---|---|
+| 1. Branch off dev | ✅ Done | `1b513d1` (this plan) |
+| 2. Shared types `src/apps/types.ts` | ✅ Done | `3d7b438` |
+| 3. Drop `paths.profile` (Option B) | ✅ Done | `e7592d3` — emulator-based `npm run test:rules` not yet re-run, do that on resume |
+| 4. App registry | ⏳ Pending — start here | — |
+| 5. WizardShell + usePersistedStepData | ⏳ Pending | — |
+| 6. Extract edit-image | ⏳ Pending | — |
+| 7. Mount per-app route | ⏳ Pending | — |
+| 8. Regression sweep | ⏳ Pending | — |
+| 9. Open PR + update INDEX | ⏳ Pending | — |
+
+**Pick up on next computer:**
+1. `git checkout feat/app-registry && git pull --ff-only` — should show 3 commits ahead of `dev`.
+2. Confirm `49/49` unit tests still green: `npm run test:run`.
+3. Start emulator (`npm run emulators:start` in another terminal) and run `npm run test:rules` to verify the import-brand-profiles change didn't break anything before moving on.
+4. Resume at **Task 4** below — build `src/apps/_registry.ts`.
+
+---
+
 **Goal:** Stand up the per-app modular framework that replaces the 4,311-line `UseCaseWizardPage.tsx` monolith. Three pieces ship together: the `_registry` of app manifests with boot-time validation, the generic `WizardShell` implementing the 7-method contract, and the first concrete app — `edit-image` — extracted out of the monolith. After PR 3 lands on `dev`, PRs 4–9 are independent and can run in parallel worktrees because they all follow the same template `edit-image` validates here.
 
 **Architecture:** Each app exports a `manifest.ts` (id, basePath, steps, lifecycle hooks), an `AppRoot.tsx` (mount point), and `steps.ts` (per-step validate/render). `WizardShell.tsx` is the generic runtime — owns navigation, persistence, breadcrumbs, history; calls into the manifest's contract methods. `_registry.ts` lazy-imports manifests and validates `basePath` uniqueness at boot. Routes mount under `/:clientSlug/${manifest.basePath}/*` so the URL is the source of truth for both active client AND active app.
