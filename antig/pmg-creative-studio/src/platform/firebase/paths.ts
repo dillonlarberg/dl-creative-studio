@@ -7,7 +7,7 @@
  * and (where relevant) an appId are always supplied.
  *
  * Schema:
- *   clients/{slug}                                  ← profile metadata
+ *   clients/{slug}                                  ← brand profile fields live on this doc
  *     /assets/{assetId}                             ← brand assets
  *     /apps/{appId}                                 ← per-app subtree
  *       /creatives/{creativeId}                     ← drafts, completed runs
@@ -36,7 +36,6 @@ const root = (slug: ClientSlug) => `clients/${slug}`;
 
 export const paths = {
   client: (slug: ClientSlug) => root(slug),
-  profile: (slug: ClientSlug) => `${root(slug)}/profile`,
 
   assets: (slug: ClientSlug) => `${root(slug)}/assets`,
   asset: (slug: ClientSlug, id: AssetId) => `${root(slug)}/assets/${id}`,

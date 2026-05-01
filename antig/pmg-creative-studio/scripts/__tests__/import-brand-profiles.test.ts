@@ -26,7 +26,7 @@ beforeEach(async () => {
 });
 
 describe('importBrandProfiles', () => {
-  it('copies clientAssetHouse/{slug} docs to clients/{slug}/profile/data', async () => {
+  it('copies clientAssetHouse/{slug} docs onto clients/{slug} doc', async () => {
     const ctx = env.authenticatedContext('admin', {});
     const db = ctx.firestore();
 
@@ -46,7 +46,7 @@ describe('importBrandProfiles', () => {
     expect(result.imported.sort()).toEqual(['ralph_lauren', 'sharkninja']);
     expect(result.skipped).toEqual([]);
 
-    const rl = await db.doc('clients/ralph_lauren/profile/data').get();
+    const rl = await db.doc('clients/ralph_lauren').get();
     expect(rl.exists).toBe(true);
     expect(rl.data()?.primaryColor).toBe('#000');
   });
@@ -63,7 +63,7 @@ describe('importBrandProfiles', () => {
     expect(result.imported).toEqual(['ralph_lauren']);
     expect(result.excluded).toEqual(['pmg']);
 
-    const pmgProfile = await db.doc('clients/pmg/profile/data').get();
+    const pmgProfile = await db.doc('clients/pmg').get();
     expect(pmgProfile.exists).toBe(false);
   });
 
@@ -81,7 +81,7 @@ describe('importBrandProfiles', () => {
     expect(second.imported).toEqual([]);
     expect(second.skipped).toEqual(['ralph_lauren']); // already up to date
 
-    const profile = await db.doc('clients/ralph_lauren/profile/data').get();
+    const profile = await db.doc('clients/ralph_lauren').get();
     expect(profile.data()?.primaryColor).toBe('#000');
   });
 
@@ -96,7 +96,7 @@ describe('importBrandProfiles', () => {
     expect(result.imported).toEqual([]);
     expect(result.planned).toEqual(['ralph_lauren']);
 
-    const profile = await db.doc('clients/ralph_lauren/profile/data').get();
+    const profile = await db.doc('clients/ralph_lauren').get();
     expect(profile.exists).toBe(false);
   });
 });

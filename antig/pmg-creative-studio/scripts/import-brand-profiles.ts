@@ -22,7 +22,7 @@ interface FirestoreLike {
   };
   doc(path: string): {
     get(): Promise<{ exists: boolean | (() => boolean); data(): Record<string, unknown> | undefined }>;
-    set(data: Record<string, unknown>): Promise<unknown>;
+    set(data: Record<string, unknown>, options?: { merge?: boolean }): Promise<unknown>;
   };
 }
 
@@ -58,7 +58,9 @@ export async function importBrandProfiles(
     const sourceData = doc.data();
     const sourceHash = contentHash(sourceData);
 
-    const targetRef = db.doc(`clients/${slug}/profile/data`);
+    // Profile fields live directly on the clients/{slug} doc.
+    // assets/ and apps/ subcollections hang off it.
+    const targetRef = db.doc(`clients/${slug}`);
     const targetDoc = await targetRef.get();
 
     if (docExists(targetDoc)) {
@@ -78,7 +80,9 @@ export async function importBrandProfiles(
       continue;
     }
 
-    await targetRef.set({ ...sourceData, _importHash: sourceHash });
+    // merge:true so re-runs leave non-profile fields (added by other code paths)
+    // intact on the clients/{slug} doc.
+    await targetRef.set({ ...sourceData, _importHash: sourceHash }, { merge: true });
     result.imported.push(slug);
   }
 
