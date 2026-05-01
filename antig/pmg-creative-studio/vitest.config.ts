@@ -11,12 +11,15 @@ export default defineConfig({
     include: [
       'src/**/*.test.{ts,tsx}',
       'src/**/__tests__/**/*.test.{ts,tsx}',
+      'functions/src/**/*.test.ts',
+      'functions/src/**/__tests__/**/*.test.ts',
     ],
     exclude: [
       'node_modules',
       'dist',
       '.firebase',
-      'functions',
+      'functions/node_modules',
+      'functions/lib',
     ],
     coverage: {
       provider: 'v8',
