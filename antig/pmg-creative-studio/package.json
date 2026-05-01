@@ -11,7 +11,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "emulators:start": "firebase emulators:start --only auth,firestore,storage",
-    "test:rules": "vitest run --config vitest.rules.config.ts"
+    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "import-brand-profiles": "tsx scripts/import-brand-profiles.ts",
+    "import-brand-profiles:dry": "tsx scripts/import-brand-profiles.ts --dry-run"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -44,6 +46,7 @@
     "firebase-tools": "^13.35.1",
     "globals": "^16.5.0",
     "jsdom": "^25.0.1",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.1",
