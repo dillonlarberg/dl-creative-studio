@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { USE_CASES } from '../constants/useCases';
+import { getRegistry } from '../apps/_registry';
 import { cn } from '../utils/cn';
 import {
     ArrowsPointingOutIcon,
@@ -139,6 +140,15 @@ export default function CreatePage() {
 
 function UseCaseCard({ useCase, disabled }: { useCase: typeof USE_CASES[number], disabled?: boolean }) {
     const Icon = iconMap[useCase.icon] || SparklesIcon;
+    // Registry-driven nav: tiles for apps that have been extracted into the new
+    // framework (currently template-builder; PRs 4-9 add the rest) route to
+    // /:clientSlug/${manifest.basePath}. Other tiles fall through to the
+    // legacy /create/:useCaseId route until their app is extracted.
+    const manifest = getRegistry().find((m) => m.id === useCase.id);
+    const tileClient = JSON.parse(localStorage.getItem('selectedClient') || '{}') as { slug?: string };
+    const target = manifest && tileClient.slug
+        ? `/${tileClient.slug}/${manifest.basePath}`
+        : `/create/${useCase.id}`;
     const content = (
         <>
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100" />
@@ -172,7 +182,7 @@ function UseCaseCard({ useCase, disabled }: { useCase: typeof USE_CASES[number],
 
     return (
         <Link
-            to={`/create/${useCase.id}`}
+            to={target}
             className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-card hover:shadow-elevated hover:border-blue-300"
         >
             {content}

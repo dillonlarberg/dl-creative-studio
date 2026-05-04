@@ -9,6 +9,8 @@ import UseCaseWizardPage from './pages/use-cases/UseCaseWizardPage';
 import ClientSelectPage from './pages/ClientSelectPage';
 import LoginPage from './pages/LoginPage';
 import ClientAssetHousePage from './pages/ClientAssetHousePage';
+import { ClientProvider } from './platform/client/ClientProvider';
+import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -37,6 +39,15 @@ export default function App() {
         <Route element={user ? <AppLayout /> : <Navigate to="/login" />}>
           <Route path="/" element={<CreatePage />} />
           <Route path="/create" element={<Navigate to="/" replace />} />
+          {/* New per-app routes (rebuild) — must come before the legacy /create/:useCaseId catch. */}
+          <Route
+            path="/:clientSlug/template-builder/*"
+            element={
+              <ClientProvider>
+                <TemplateBuilderAppRoot />
+              </ClientProvider>
+            }
+          />
           <Route path="/create/:useCaseId" element={<UseCaseWizardPage />} />
           <Route path="/select-client" element={<ClientSelectPage />} />
           <Route path="/client-asset-house" element={<ClientAssetHousePage />} />
