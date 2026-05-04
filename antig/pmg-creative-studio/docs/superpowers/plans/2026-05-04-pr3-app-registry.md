@@ -4,25 +4,33 @@
 
 ---
 
-## Progress (last updated 2026-05-01 evening, mid-session)
+## Progress (last updated 2026-05-04, mid-session)
 
 | Task | Status | Commit |
 |---|---|---|
 | 1. Branch off dev | ✅ Done | `1b513d1` (this plan) |
 | 2. Shared types `src/apps/types.ts` | ✅ Done | `3d7b438` |
-| 3. Drop `paths.profile` (Option B) | ✅ Done | `e7592d3` — emulator-based `npm run test:rules` not yet re-run, do that on resume |
-| 4. App registry | ⏳ Pending — start here | — |
-| 5. WizardShell + usePersistedStepData | ⏳ Pending | — |
-| 6. Extract edit-image | ⏳ Pending | — |
+| 3. Drop `paths.profile` (Option B) | ✅ Done | `e7592d3` — emulator-based `npm run test:rules` not yet re-run |
+| 4. App registry | ✅ Done | `2411445` |
+| 5. WizardShell + usePersistedStepData | ✅ Done | `768ef9b` |
+| 6. Extract **template-builder** (was edit-image) | ⏳ Pending — restart here | — |
 | 7. Mount per-app route | ⏳ Pending | — |
 | 8. Regression sweep | ⏳ Pending | — |
 | 9. Open PR + update INDEX | ⏳ Pending | — |
 
-**Pick up on next computer:**
-1. `git checkout feat/app-registry && git pull --ff-only` — should show 3 commits ahead of `dev`.
-2. Confirm `49/49` unit tests still green: `npm run test:run`.
-3. Start emulator (`npm run emulators:start` in another terminal) and run `npm run test:rules` to verify the import-brand-profiles change didn't break anything before moving on.
-4. Resume at **Task 4** below — build `src/apps/_registry.ts`.
+### Redirect: edit-image → template-builder (2026-05-04)
+
+The original Task 6 attempted to extract **edit-image** from the monolith and committed at `f3b4390`. That commit was **hard-reset and dropped** because the monolith does not actually contain per-step JSX for edit-image — only the step ID list at line 345. Edit-image was a prototype/pitch where only `SelectAnalyzeStep.tsx` was ever fully built; the describe/model/review/approve steps were spec'd but never implemented. The extraction agent had to author net-new UI for 4/5 steps, which violated the "lift JSX verbatim" thesis of PR 3.
+
+**New choice: template-builder.** It has 11 `useCaseId === 'template-builder'` branches in the monolith including substantial JSX at lines 2219 and 4233, plus the conditional `next()` skip-ahead logic at lines 1219/1245/1248 that the simpler apps don't exercise. Picking the gnarliest extraction first means WizardShell's 7-method contract gets pressure-tested against the hardest case. The live route at `https://automated-creative-e10d7.web.app/create/template-builder` is the source-of-truth for expected behavior.
+
+The original PR sequence put template-builder last (PR 9). With this redirect, edit-image and template-builder swap slots — edit-image becomes a later, design-reviewed PR.
+
+**Pick up:**
+1. `git checkout feat/app-registry && git pull --ff-only` — should show 5 commits ahead of `dev` (plan, types, paths, registry, WizardShell).
+2. `npm run test:run` — should show 66/66 green.
+3. Start emulator + run `npm run test:rules` to verify the import-brand-profiles change.
+4. Resume at **Task 6 (template-builder)** below.
 
 ---
 
