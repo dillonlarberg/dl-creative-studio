@@ -1,7 +1,9 @@
 import type { AppManifest } from './types';
+import templateBuilderManifest from './template-builder/manifest';
 
 // Per-app manifests are registered here as they land. Task 6 of PR 3 adds
-// edit-image. PRs 4-9 add the rest. Keep this list alphabetized by basePath.
+// template-builder (redirect from edit-image). PRs 4-9 add the rest.
+// Keep this list alphabetized by basePath.
 
 /**
  * Boot-time-validated list of every app module mounted in this build.
@@ -50,7 +52,7 @@ export function buildRegistry(manifests: AppManifest[]): readonly AppManifest[] 
   return Object.freeze([...manifests]);
 }
 
-const MANIFESTS: AppManifest[] = [];
+const MANIFESTS: AppManifest[] = [templateBuilderManifest as AppManifest];
 
 const REGISTRY = buildRegistry(MANIFESTS);
 
