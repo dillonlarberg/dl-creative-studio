@@ -1,17 +1,39 @@
-import type { WizardStep } from '../../types';
+import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData } from '../types';
 
 /**
  * Source step — Connect Data.
  *
- * Lifted from UseCaseWizardPage.tsx lines 2695-2952.
+ * PLACEHOLDER: full JSX is monolith UseCaseWizardPage.tsx lines 2695-2952
+ * and depends on closure state (`isFetchingFeeds`, `dataSources`,
+ * `feedListError`, `selectedFeed`, `feedSampleData`, `feedMetadata`,
+ * `currentFeedIndex`, `isLoading`) plus three async handlers
+ * (`fetchDataSources`, `fetchFeedSample`) that read/write that state.
  *
- * Validate gate (mirrors monolith line 4235): selectedFeed must be set.
+ * The lift requires either:
+ *   1. Hoisting all those into local `useState` + porting `fetchFeedSample`
+ *      (~150 lines) into _internal/handlers.ts, or
+ *   2. Building a TemplateBuilderContext to share fetched data sources
+ *      across mapping/generate/refine — which is the cleaner long-term
+ *      shape.
  *
- * Side effects: the monolith's effect at line 713 ensures dataSources are
- * fetched on entering this step. That fetch (`fetchDataSources` line ~660)
- * lives in the alliService — port it via `onEnter` in the follow-up.
+ * Deferred to a follow-up; the placeholder still routes Next correctly
+ * because validate() reads `selectedFeed` from stepData.
  */
+
+function SourceStepBody({ stepData }: StepRenderProps<TemplateBuilderStepData>) {
+  return (
+    <div className="p-8 text-gray-500">
+      <p className="text-sm font-bold mb-2">
+        Source step — placeholder pending JSX lift
+      </p>
+      <p className="text-xs text-gray-400">
+        Verbatim JSX lives in UseCaseWizardPage.tsx lines 2695-2952.
+        selectedFeed in step data: {stepData.selectedFeed ? 'set' : 'not set'}
+      </p>
+    </div>
+  );
+}
 
 export const sourceStep: WizardStep<TemplateBuilderStepData> = {
   id: 'source',
@@ -22,15 +44,5 @@ export const sourceStep: WizardStep<TemplateBuilderStepData> = {
     return { ok: true };
   },
 
-  onEnter: async () => {
-    // TODO(PR3-Task6 follow-up): port the data-source fetch effect from
-    // UseCaseWizardPage.tsx line 713. Persist results via mergeStepData
-    // or local state inside the rendered component.
-  },
-
-  render: () => {
-    // TODO(PR3-Task6 follow-up): lift verbatim JSX from
-    //   src/pages/use-cases/UseCaseWizardPage.tsx lines 2695-2952.
-    return null;
-  },
+  render: (props) => <SourceStepBody {...props} />,
 };

@@ -1,25 +1,33 @@
-import type { WizardStep } from '../../types';
+import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData } from '../types';
 
 /**
  * Mapping step — Map Fields.
  *
- * Lifted from UseCaseWizardPage.tsx lines 2953-3567.
+ * PLACEHOLDER: full JSX is monolith UseCaseWizardPage.tsx lines 2953-3567.
+ * Heavy reliance on closure state (`feedSampleData`, `feedMetadata`,
+ * `feedMappings`, `requirements`, `currentFeedIndex`, `textStressTest`)
+ * plus the FilledTemplatePreview side-by-side preview.
  *
- * Validate gate (monolith line 4236): every Dynamic-category requirement
- * must have a feed-mapping entry.
- *
- * Critical contract feature: this step's `next()` override mirrors monolith
- * lines 1245-1250, the gnarliest skip-ahead in the whole monolith:
- *
- *   - If `selectedWireframe` is set: jump to `refine` (skip `generate`).
- *     The wireframe is already a finalized template — no candidate
- *     generation needed.
- *   - Else (no wireframe — pure-AI flow): advance by index to `generate`,
- *     and the original code synchronously kicks off `generateCandidates()`
- *     as a side effect. We move the kickoff into `generate.onEnter` so the
- *     contract stays clean (`next()` returns; `onEnter` does the work).
+ * Deferred to a follow-up; the next() override is preserved so the
+ * skip-to-`refine` wireframe path still works once the JSX lands.
  */
+
+function MappingStepBody({ stepData }: StepRenderProps<TemplateBuilderStepData>) {
+  const reqCount = stepData.requirements?.length ?? 0;
+  const mapCount = Object.keys(stepData.feedMappings ?? {}).length;
+  return (
+    <div className="p-8 text-gray-500">
+      <p className="text-sm font-bold mb-2">
+        Mapping step — placeholder pending JSX lift
+      </p>
+      <p className="text-xs text-gray-400">
+        Verbatim JSX lives in UseCaseWizardPage.tsx lines 2953-3567.
+        Requirements: {reqCount}, mappings recorded: {mapCount}
+      </p>
+    </div>
+  );
+}
 
 export const mappingStep: WizardStep<TemplateBuilderStepData> = {
   id: 'mapping',
@@ -36,13 +44,6 @@ export const mappingStep: WizardStep<TemplateBuilderStepData> = {
     return { ok: true };
   },
 
-  /**
-   * Mirrors monolith lines 1245 + 1248.
-   *
-   *   line 1245: wireframe path → return 'refine' (skip generate).
-   *   line 1248: no-wireframe path → advance by index (returns undefined),
-   *              and `generate.onEnter` triggers candidate generation.
-   */
   next: ({ stepData }) => {
     if (stepData.selectedWireframe) {
       return 'refine';
@@ -50,9 +51,5 @@ export const mappingStep: WizardStep<TemplateBuilderStepData> = {
     return undefined;
   },
 
-  render: () => {
-    // TODO(PR3-Task6 follow-up): lift verbatim JSX from
-    //   src/pages/use-cases/UseCaseWizardPage.tsx lines 2953-3567.
-    return null;
-  },
+  render: (props) => <MappingStepBody {...props} />,
 };

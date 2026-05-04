@@ -80,4 +80,9 @@ export interface TemplateBuilderStepData {
 
   // --- export step ---
   selectedRatios?: string[];
+
+  // Index signature so TemplateBuilderStepData satisfies the
+  // `StepData = Record<string, unknown>` constraint on WizardStep<S>
+  // and StepRenderProps<S>.
+  [k: string]: unknown;
 }
