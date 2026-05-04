@@ -14,15 +14,15 @@
 
 | # | Branch | Plan file | Depends on | Status |
 |---|--------|-----------|------------|--------|
-| 1 | `feat/test-runner` | `2026-04-30-pr1-test-runner-setup.md` | — | Plan written |
-| 2 | `feat/scoped-schema` | (written after PR 1 lands) | 1 | Pending |
-| 3 | `feat/app-registry` | (written after PR 2 lands) | 2 | Pending |
+| 1 | `feat/test-runner` | `2026-04-30-pr1-test-runner-setup.md` | — | Merged |
+| 2 | `feat/scoped-schema` | `2026-05-01-pr2-scoped-schema.md` | 1 | Merged |
+| 3 | `feat/app-registry` | `2026-05-04-pr3-app-registry.md` | 2 | In review |
 | 4 | `feat/extract-resize-image` | (written after PR 3 lands) | 3 | Pending |
 | 5 | `feat/extract-new-image` | (written after PR 3 lands) | 3 | Pending |
 | 6 | `feat/extract-edit-video` | (written after PR 3 lands) | 3 | Pending |
 | 7 | `feat/extract-new-video` | (written after PR 3 lands) | 3 | Pending |
 | 8 | `feat/extract-video-cutdown` | (written after PR 3 lands) | 3 | Pending |
-| 9 | `feat/extract-template-builder` | (written after PR 3 lands) | 3 | Pending |
+| 9 | `feat/extract-edit-image` (was template-builder; swapped — see PR 3 redirect note) | (written after PR 3 lands) | 3 | Pending |
 | 10 | `feat/extract-feed-and-cleanup` | (written after PRs 4-9 land) | 4-9 | Pending |
 | 11 | `dev` → `main` promotion | (cutover runbook) | 10 | Pending |
 
