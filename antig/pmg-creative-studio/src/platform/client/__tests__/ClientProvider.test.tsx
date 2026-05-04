@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ClientProvider } from '../ClientProvider';
 import { useCurrentClient } from '../useCurrentClient';
-import * as alliService from '@/services/alli';
+import * as alliService from '../../../services/alli';
 
-vi.mock('@/services/alli', () => ({
+vi.mock('../../../services/alli', () => ({
   alliService: {
     getClients: vi.fn(),
   },

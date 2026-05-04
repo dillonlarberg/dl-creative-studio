@@ -3,14 +3,10 @@ import { paths, type AppId } from '../paths';
 
 describe('paths', () => {
   describe('client', () => {
-    it('returns the client root path', () => {
+    it('returns the client doc path — profile fields live on this doc', () => {
+      // The clients/{slug} doc itself holds profile fields (name, brand colors,
+      // fonts, etc). assets/ and apps/ hang off it as subcollections.
       expect(paths.client('ralph_lauren')).toBe('clients/ralph_lauren');
-    });
-  });
-
-  describe('profile', () => {
-    it('returns the brand profile path', () => {
-      expect(paths.profile('ralph_lauren')).toBe('clients/ralph_lauren/profile');
     });
   });
 

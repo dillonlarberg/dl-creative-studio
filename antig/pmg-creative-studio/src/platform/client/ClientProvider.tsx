@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
-import { alliService } from '@/services/alli';
+import { alliService } from '../../services/alli';
 
 export interface Client {
   slug: string;
   name: string;
-  id: string;
+  id?: string;
 }
 
 interface ClientContextValue {
