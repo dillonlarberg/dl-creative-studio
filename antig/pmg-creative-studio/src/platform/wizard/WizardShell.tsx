@@ -188,6 +188,49 @@ export function WizardShell<S extends StepData = StepData>({
       return;
     }
 
+    // Async submit takes precedence over sync next. If submit rejects, we
+    // stay on the current step and surface the error — no navigation, no
+    // state mutation. Pending state is shown via isLoading throughout.
+    if (currentStep.submit) {
+      setIsLoading(true);
+      try {
+        const result = await currentStep.submit(buildContext());
+        let targetIndex = currentStepIndex + 1;
+        if (result?.nextStepId) {
+          const idx = manifest.steps.findIndex((s) => s.id === result.nextStepId);
+          if (idx >= 0) {
+            targetIndex = idx;
+          } else {
+            console.warn(
+              `WizardShell: step "${currentStep.id}".submit() returned unknown nextStepId "${result.nextStepId}" — falling back to advance-by-index.`
+            );
+          }
+        }
+        if (targetIndex === currentStepIndex) {
+          // Step explicitly chose to stay (e.g. "no cuts selected" guard).
+          return;
+        }
+        if (targetIndex >= manifest.steps.length) return;
+        // Use a guarded advance that doesn't double-set isLoading.
+        const incoming = manifest.steps[targetIndex];
+        if (!incoming) return;
+        const ctx = buildContext();
+        if (currentStep.onLeave) await currentStep.onLeave(ctx);
+        if (incoming.onEnter) await incoming.onEnter(ctx);
+        navigateToStep(incoming.id, true);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Submit failed';
+        setValidationError(message);
+        console.warn(
+          `WizardShell: step "${currentStep.id}".submit() rejected —`,
+          err
+        );
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
     let targetIndex = currentStepIndex + 1;
     if (currentStep.next) {
       const proposed = currentStep.next(buildContext());
@@ -212,6 +255,7 @@ export function WizardShell<S extends StepData = StepData>({
     buildContext,
     manifest.steps,
     advanceToIndex,
+    navigateToStep,
   ]);
 
   const goBack = useCallback(() => {

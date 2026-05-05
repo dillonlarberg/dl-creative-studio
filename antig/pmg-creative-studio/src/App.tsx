@@ -39,7 +39,19 @@ export default function App() {
         <Route element={user ? <AppLayout /> : <Navigate to="/login" />}>
           <Route path="/" element={<CreatePage />} />
           <Route path="/create" element={<Navigate to="/" replace />} />
-          {/* New per-app routes (rebuild) — must come before the legacy /create/:useCaseId catch. */}
+          {/* AdLabs route group (Step 0 of v1 plan). The dashboard mounts at
+              /adlabs/:clientSlug/ and per-app routes nest under it. The legacy
+              /:clientSlug/template-builder/* mount stays for backwards-compat
+              until Step 1 ships and the legacy route is redirected. */}
+          <Route
+            path="/adlabs/:clientSlug/template-builder/*"
+            element={
+              <ClientProvider>
+                <TemplateBuilderAppRoot />
+              </ClientProvider>
+            }
+          />
+          {/* Legacy per-app routes — must come before the legacy /create/:useCaseId catch. */}
           <Route
             path="/:clientSlug/template-builder/*"
             element={

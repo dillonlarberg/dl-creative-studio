@@ -53,6 +53,21 @@ export interface WizardStep<S extends StepData = StepData> {
   onEnter?: (ctx: StepContext<S>) => void | Promise<void>;
   onLeave?: (ctx: StepContext<S>) => void | Promise<void>;
   next?: (ctx: StepContext<S>) => string | undefined;
+  /**
+   * Async navigation hook. Used by lifted apps (e.g. video-cutdown) whose
+   * Continue button must kick off long-running server work (Gemini analysis,
+   * FFmpeg stitching) before deciding the next step. The shell awaits
+   * `submit` while showing pending state, then routes to `nextStepId` (or
+   * falls through to advance-by-index if undefined).
+   *
+   * Contract: if `submit` rejects, the user stays on the current step and
+   * the error surfaces via step-local state. The shell does NOT navigate
+   * and does NOT mutate any persisted state on rejection. Step components
+   * are responsible for deferring writes until `submit` resolves.
+   *
+   * If both `submit` and `next` are defined, `submit` wins.
+   */
+  submit?: (ctx: StepContext<S>) => Promise<{ nextStepId?: string }>;
 }
 
 export interface AppManifest<S extends StepData = StepData> {

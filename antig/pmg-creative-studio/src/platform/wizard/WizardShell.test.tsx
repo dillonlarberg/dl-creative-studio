@@ -30,8 +30,11 @@ interface FakeData {
 function makeManifest(overrides?: {
   validateA?: WizardStep<FakeData>['validate'];
   nextB?: WizardStep<FakeData>['next'];
+  submitB?: WizardStep<FakeData>['submit'];
   onLeaveA?: WizardStep<FakeData>['onLeave'];
+  onLeaveB?: WizardStep<FakeData>['onLeave'];
   onEnterB?: WizardStep<FakeData>['onEnter'];
+  onEnterC?: WizardStep<FakeData>['onEnter'];
 }): AppManifest<FakeData> {
   const validateA: WizardStep<FakeData>['validate'] =
     overrides?.validateA ??
@@ -69,6 +72,8 @@ function makeManifest(overrides?: {
     name: 'Step B',
     validate: () => ({ ok: true }),
     next: overrides?.nextB,
+    submit: overrides?.submitB,
+    onLeave: overrides?.onLeaveB,
     onEnter: overrides?.onEnterB,
     render: ({ stepData }) => (
       <p data-testid="step-b-body">B body — foo={String(stepData.foo ?? 'none')}</p>
@@ -82,6 +87,7 @@ function makeManifest(overrides?: {
     id: 'c',
     name: 'Step C',
     validate: () => ({ ok: true }),
+    onEnter: overrides?.onEnterC,
     render: () => <p data-testid="step-c-body">C body (terminal)</p>,
   };
 
@@ -367,5 +373,123 @@ describe('WizardShell', () => {
     ).toBe('true');
     // The latest pathname should be /wizard/b, written via navigate.
     expect(seenPaths.at(-1)).toBe('/wizard/b');
+  });
+
+  // ---------------------------------------------------------------------
+  // Step 0 of AdLabs v1 plan: async submit contract.
+  // Tracer tests gating completeness of the contract change.
+  // ---------------------------------------------------------------------
+
+  it('async submit: shell awaits submit and navigates to returned nextStepId', async () => {
+    const order: string[] = [];
+    let resolveSubmit: ((v: { nextStepId?: string }) => void) | null = null;
+    const manifest = makeManifest({
+      submitB: () =>
+        new Promise<{ nextStepId?: string }>((resolve) => {
+          order.push('submit-start');
+          resolveSubmit = resolve;
+        }),
+      onLeaveB: () => {
+        order.push('leave-b');
+      },
+      onEnterC: () => {
+        order.push('enter-c');
+      },
+    });
+    renderShell(manifest, ['/wizard/b']);
+    await screen.findByTestId('step-b-body');
+
+    await act(async () => {
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
+    });
+
+    // Submit is in-flight: pending state visible, still on b.
+    await waitFor(() => expect(order).toContain('submit-start'));
+    expect(screen.getByTestId('step-b-body')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Synchronizing|Continue/i })
+    ).toBeDisabled();
+
+    // Resolve. Shell should fire onLeave(b) → onEnter(c) → render c.
+    await act(async () => {
+      resolveSubmit?.({ nextStepId: 'c' });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('step-c-body')).toBeInTheDocument()
+    );
+    expect(order).toEqual(['submit-start', 'leave-b', 'enter-c']);
+  });
+
+  it('async submit: rejection keeps user on current step and surfaces error', async () => {
+    const onLeaveB = vi.fn();
+    const onEnterC = vi.fn();
+    const manifest = makeManifest({
+      submitB: async () => {
+        throw new Error('boom');
+      },
+      onLeaveB,
+      onEnterC,
+    });
+    renderShell(manifest, ['/wizard/b']);
+    await screen.findByTestId('step-b-body');
+
+    await act(async () => {
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
+    });
+
+    // Wait a tick for the rejection to settle.
+    await waitFor(() => {
+      expect(screen.getByTestId('step-b-body')).toBeInTheDocument();
+    });
+
+    // Critical: no navigation occurred, no side effects fired.
+    expect(screen.queryByTestId('step-c-body')).not.toBeInTheDocument();
+    expect(onLeaveB).not.toHaveBeenCalled();
+    expect(onEnterC).not.toHaveBeenCalled();
+
+    // Error surfaces via the wizard validation error region.
+    expect(await screen.findByTestId('wizard-validation-error')).toHaveTextContent(
+      'boom'
+    );
+  });
+
+  it('async submit: returning current stepId stays on the step (no advance)', async () => {
+    const onLeaveB = vi.fn();
+    const manifest = makeManifest({
+      submitB: async () => ({ nextStepId: 'b' }),
+      onLeaveB,
+    });
+    renderShell(manifest, ['/wizard/b']);
+    await screen.findByTestId('step-b-body');
+
+    await act(async () => {
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('step-b-body')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('step-c-body')).not.toBeInTheDocument();
+    expect(onLeaveB).not.toHaveBeenCalled();
+  });
+
+  it('async submit: precedence — submit wins over next when both defined', async () => {
+    const nextB = vi.fn(() => 'a');
+    const manifest = makeManifest({
+      submitB: async () => ({ nextStepId: 'c' }),
+      nextB,
+    });
+    renderShell(manifest, ['/wizard/b']);
+    await screen.findByTestId('step-b-body');
+
+    await act(async () => {
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('step-c-body')).toBeInTheDocument()
+    );
+    expect(nextB).not.toHaveBeenCalled();
   });
 });
