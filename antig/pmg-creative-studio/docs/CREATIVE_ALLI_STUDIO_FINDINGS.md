@@ -363,7 +363,77 @@ No app-specific logic lives in WizardShell. Apps are fully self-contained.
 
 ---
 
-## 8. Open Questions for the Meeting
+## 8. External Review — Codex Verdict (2026-05-05)
+
+Codex was given the full codebase, all wireframes, and the findings doc. Reviewed as expert SWE, FDE, and marketing strategist.
+
+### Verdict
+Proceed with Phase 0 + Phase 1 now. Hard freeze on Phase 2 until the scene graph/render format is locked. Earliest credible demo of both paths: **week of May 25, 2026** — one working Create new flow, one Resize existing flow, seeded templates, tenant-scoped services, and narrow/mocked rendering.
+
+### SWE
+- App registry + WizardShell is directionally right but has two gaps: `App.tsx` hard-codes the Template Builder route (bundle bloat at 10 apps), and `_registry.ts` statically imports only Template Builder (needs lazy routing at scale).
+- WizardShell lacks persisted-data loading state and route guards.
+- Firestore schema in `paths.ts` is the right tenant boundary but incomplete for SOC2 — rules currently allow any authenticated PMG user to access any client subtree. Missing: per-client membership claims, roles, audit logs, field validation, approval permissions, retention policy, tenant checks in Cloud Functions.
+- **Phase 1 is actively blocked by service drift** — `creative.ts`, `templates.ts`, `batches.ts`, and `clientAssetHouse.ts` all write to flat legacy collections. Rules already default-deny those paths. Migration to `clients/{slug}/apps/{appId}/...` must happen before Phase 1 ships.
+- Render infrastructure recommendation: **Cloud Tasks + Cloud Run**. One task per render tile, deterministic task IDs, idempotent worker, retry only failed tiles. Avoids Cloud Functions' 9-min timeout. Decide before Phase 2 architecture starts.
+- HTML injection is not viable as the batch engine's canonical format (see scene graph decision above and Phase 2 callout).
+- Auth: keep Firebase Auth through Phase 1. Add an auth adapter layer now so Clerk can replace it later without touching every service.
+
+### Front-end / Design
+- UX logic is internally consistent. Create new is slot/math heavy; Edit existing is correctly lighter.
+- `mini-app-resize-existing.html` is the strongest wireframe — the asset-first banner, locked scene copy, and grayed-out sizes make the mental model clear.
+- Missing demo states: empty template library, brand kit unavailable, slot validation failure, render failure state, performance-data-pending state, approval/review gate, cost/time confirmation before batch kicks off.
+- First batch editor build priority: slot value entry, live Cartesian math display, output-size toggles, 12–20 virtualized preview cards, confirm callout, job creation, partial retry. That is the "I get it" moment. Slot Compare comes after.
+- Expensive as designed: full canvas editor with layers/handles/AI copy, live 180-tile render grid, and performance insights panel. Scope these carefully for Phase 2.
+- Design system is viable. Needs extension before build: status tokens, density rules, data grid patterns, progress/tile components, semantic app badges, focus states, modals, toasts, chart styles.
+- Terminology bug: `types/index.ts` says `optimize-existing`; product language is `edit-existing`. Fix before the build expands.
+
+### Marketing Strategy
+- Core loop is right for a performance agency. Missing experiment discipline: hypothesis tagging, audience/placement metadata, spend-weighted performance, statistical confidence, baseline/control creative, fatigue windows, approval status, trafficking IDs.
+- Variant ID (`RL_Summer_H2_C2_I3`) is the right machine key, wrong primary label. Show human-readable slot values first — `Up to 50% Off · Shop Now · Product Hero` — and surface the ID as a copyable technical reference.
+- The Alli moat is real but only if used more deeply than competitors (Bannerflow, Celtra, Smartly, Marpipe). Justified if: prefilling from Alli campaign context, enforcing PMG/client brand rules, pushing assets back into Alli workflows, and measuring performance without manual joins.
+- Daily usage comes from removing handoffs, not from a nicer canvas. Media strategists return for faster learning cycles: seed from winner, generate the next test, export with correct naming, preserve approvals, explain what changed.
+
+### Top 3 project killers (Codex)
+1. Switching from HTML injection to scene graph after Phase 2 starts — full rebuild.
+2. Underestimating render queue, idempotency, and partial retry complexity.
+3. Weak Alli performance data joins or latency making "seed from winner" feel fake.
+
+### Single most important decision (Codex)
+Lock the canonical template/scene graph format before writing more Phase 2 code. **Decided: JSON scene graph. See Phase 2 callout above.**
+
+---
+
+## 9. Claude's Verdict + Feedback (2026-05-05)
+
+Reviewed as the author of this document and all wireframes, with full session context.
+
+### Verdict
+Proceed. The product thesis is strong and the two-path model is the right architectural spine. Phase 1 scope is correct and achievable by May 25 if the service migration is prioritized immediately. The scene graph decision is the right call and is now locked. The biggest non-technical risk is template supply — Phase 0 needs a committed owner on the creative team before Phase 1 sprint starts.
+
+### What's strong
+- **The Alli closed loop is the real differentiator.** No third-party tool can close the brief → batch → campaign → performance → next batch cycle without owning the platform. This is the argument to lead with in every stakeholder conversation.
+- **The two-path model is clean and defensible.** "Create new" and "Edit existing" diverge at the first screen for good reason. Keep resisting any pressure to merge them into one flow with a toggle.
+- **The app registry + WizardShell pattern is the right long-term investment.** Each new mini-app is one folder + one registry entry. The overhead is front-loaded; the payoff compounds as apps are added.
+- **Resize to New Sizes is the right Phase 1 proof.** It has no Canvas Editor or batch engine dependency, it validates WizardShell in the Edit existing path, and it ships something real in both paths before Phase 2 commits to the heavy machinery.
+
+### What needs attention
+- **Service migration is the immediate blocker.** Nothing else in Phase 1 ships until `creative.ts`, `templates.ts`, `batches.ts`, and `clientAssetHouse.ts` are writing to `clients/{slug}/apps/{appId}/...`. This is the first PR of Phase 1.
+- **The `optimize-existing` → `edit-existing` rename** in `types/index.ts` is a 5-minute fix that should happen before the Edit existing path is built. Terminology drift between code and product language creates confusion as the team grows.
+- **Empty and error states are missing from the wireframes.** The demo will hit them. The dashboard with zero jobs, the template picker with no templates, and a failed render tile are all states that need to be designed before the batch engine is built — not after.
+- **Auth adapter layer before Clerk migration.** The Firebase → Clerk migration should not touch every service. An adapter wrapping `auth.ts` now means the migration is a one-file swap later.
+- **Alli Insights CTAs need a defined destination.** The Performance Feedback wireframe shows "Create urgency-first batch →" as a CTA but the destination is unspecified. If it pre-fills the Batch Generator, the loop is closed. If it goes to a blank form, the insight was decorative. This needs to be decided before the Performance Feedback view is built.
+
+### What I'd do first (in order)
+1. Rename `optimize-existing` → `edit-existing` in `types/index.ts` — 5 minutes, clears technical debt before it spreads.
+2. Migrate all four services to tenant-isolated paths — Phase 1 is blocked without this.
+3. Confirm Phase 0 template owner on the creative team — product is unusable without seed templates.
+4. Define the JSON scene graph schema (even a draft) — Phase 2 architecture depends on it.
+5. Design the 3 critical missing states: empty dashboard, empty template picker, failed render tile.
+
+---
+
+## 10. Open Questions for the Meeting
 
 1. **Render infrastructure:** Where do renders actually run? Cloud Functions have a 9-min timeout — batch jobs of 180 renders need a job queue (Cloud Tasks, BullMQ on Cloud Run, or similar). Decision required before Phase 2 starts.
 2. **Template format: DECIDED — JSON scene graph from the start.** The Batch Generator will use a JSON scene graph as its canonical format, not HTML injection. Phase 2 will include a one-time converter that takes the existing HTML templates and produces a simple JSON layer list. This pays a small upfront cost to avoid a full rebuild if multi-size re-layout or delta rendering is needed later. `injectIntoHtml.ts` stays in place for the Template Builder preview (it already works there) but is not extended into the batch engine. See below for full rationale.
