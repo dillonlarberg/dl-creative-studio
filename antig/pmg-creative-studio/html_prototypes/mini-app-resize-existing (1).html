@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resize to New Sizes — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --sidebar-text: #A8B3CF;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --danger: #EF4444;
+    --gold: #D97706;
+    --gold-light: #FEF3C7;
+    --teal: #0D9488;
+    --teal-light: #F0FDFA;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; font-size: 13px; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--sidebar-bg); display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .logo-icon { width: 28px; height: 28px; background: var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 0.5px; text-transform: uppercase; margin-left: 36px; }
+  .client-pill { margin: 14px 18px; background: rgba(255,255,255,0.07); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+  .client-avatar { width: 22px; height: 22px; border-radius: 4px; background: #C9A96E; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: var(--sidebar-text); }
+
+  /* Step nav */
+  .step-nav { padding: 16px 0; flex: 1; }
+  .step-nav-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sidebar-text); padding: 0 18px 10px; }
+  .step-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px; cursor: pointer; position: relative; }
+  .step-item + .step-item::before { content: ''; position: absolute; top: 0; left: 26px; width: 1px; height: 10px; background: rgba(255,255,255,0.1); }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; margin-top: 1px;
+  }
+  .step-done .step-num { background: var(--teal); color: white; }
+  .step-active .step-num { background: var(--blue); color: white; }
+  .step-pending .step-num { background: rgba(255,255,255,0.1); color: var(--sidebar-text); }
+  .step-text { flex: 1; }
+  .step-label { font-size: 12px; font-weight: 600; }
+  .step-done .step-label { color: var(--sidebar-text); }
+  .step-active .step-label { color: white; }
+  .step-pending .step-label { color: var(--sidebar-text); }
+  .step-sublabel { font-size: 11px; color: var(--sidebar-text); margin-top: 1px; opacity: 0.8; }
+  .step-active .step-sublabel { color: #8BA8E8; opacity: 1; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* TOPBAR */
+  .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .bc-part { color: var(--text-muted); cursor: pointer; }
+  .bc-sep { color: var(--border); }
+  .bc-current { color: var(--text-primary); font-weight: 600; }
+  .app-type-badge { background: var(--teal-light); color: var(--teal); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.2px; border: 1px solid rgba(13,148,136,0.2); }
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-teal { background: var(--teal); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* PAGE */
+  .page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* PATH INDICATOR BANNER */
+  .path-banner {
+    background: var(--teal-light); border: 1px solid rgba(13,148,136,0.2);
+    border-radius: var(--radius); padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--teal);
+  }
+  .path-banner svg { flex-shrink: 0; }
+  .path-banner strong { font-weight: 700; }
+
+  /* SECTION CARDS */
+  .step-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .step-section.active { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(12,105,234,0.08); }
+  .step-section.done { opacity: 0.85; }
+
+  .step-section-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .step-section.done .step-section-header { border-bottom: none; }
+  .step-section.pending .step-section-header { border-bottom: none; }
+  .step-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+  .badge-done { background: var(--teal); color: white; }
+  .badge-active { background: var(--blue); color: white; }
+  .badge-pending { background: var(--border); color: var(--text-muted); }
+  .step-section-title { font-size: 13px; font-weight: 700; color: var(--text-primary); flex: 1; }
+  .step-section.pending .step-section-title { color: var(--text-muted); }
+  .step-section-edit { font-size: 11px; color: var(--blue); cursor: pointer; font-weight: 600; }
+
+  .step-section-body { padding: 18px; }
+
+  /* ── STEP 1: Select asset ── */
+  .asset-search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+  .search-input {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-size: 12px; color: var(--text-primary);
+    background: var(--white);
+  }
+  .search-input:focus { outline: none; border-color: var(--blue); }
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-chip {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; background: var(--white);
+  }
+  .filter-chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+  .filter-chip:hover:not(.active) { background: var(--bg); }
+
+  .asset-pick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .asset-pick-card {
+    border: 2px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; cursor: pointer; transition: all 0.15s;
+    background: var(--white); position: relative;
+  }
+  .asset-pick-card:hover { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+  .asset-pick-card.selected { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(12,105,234,0.15); }
+  .asset-pick-thumb { width: 100%; aspect-ratio: 4/3; background: #1A1A2E; overflow: hidden; }
+  .asset-pick-thumb svg { width: 100%; height: 100%; }
+  .asset-pick-info { padding: 8px 10px; }
+  .asset-pick-name { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .asset-pick-id { font-size: 10px; font-family: monospace; color: var(--text-muted); margin-bottom: 5px; }
+  .asset-pick-sizes { display: flex; gap: 4px; flex-wrap: wrap; }
+  .size-chip { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 3px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+  .selected-check {
+    position: absolute; top: 6px; right: 6px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--blue); display: flex; align-items: center; justify-content: center;
+  }
+  .selected-check svg { width: 10px; height: 10px; stroke: white; }
+
+  /* Done summary card */
+  .done-summary { display: flex; align-items: center; gap: 14px; }
+  .done-thumb { width: 64px; height: 48px; border-radius: 5px; background: #1A1A2E; overflow: hidden; flex-shrink: 0; }
+  .done-thumb svg { width: 100%; height: 100%; }
+  .done-info { flex: 1; }
+  .done-label { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+  .done-meta { font-size: 11px; color: var(--text-muted); }
+  .done-sizes { display: flex; gap: 4px; margin-top: 5px; }
+
+  /* ── STEP 2: Pick new sizes ── */
+  .sizes-context { display: flex; gap: 16px; margin-bottom: 16px; }
+  .sizes-context-asset { display: flex; align-items: center; gap: 10px; background: var(--bg); border-radius: var(--radius); padding: 10px 12px; flex: 1; }
+  .sizes-context-thumb { width: 48px; height: 36px; border-radius: 4px; background: #1A1A2E; overflow: hidden; flex-shrink: 0; }
+  .sizes-context-thumb svg { width: 100%; height: 100%; }
+  .sizes-context-info { flex: 1; min-width: 0; }
+  .sizes-context-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sizes-context-id { font-size: 10px; font-family: monospace; color: var(--text-muted); }
+
+  .size-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .size-option {
+    border: 2px solid var(--border); border-radius: var(--radius);
+    padding: 14px; cursor: pointer; transition: all 0.15s;
+    background: var(--white); position: relative;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .size-option:hover:not(.already-exists) { border-color: var(--blue-mid); }
+  .size-option.selected { border-color: var(--blue); background: var(--blue-light); }
+  .size-option.already-exists { border-color: var(--border); background: #F9FAFB; opacity: 0.7; cursor: default; }
+
+  .size-option-preview {
+    width: 100%; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); border-radius: 4px; padding: 10px 0;
+    position: relative; overflow: hidden;
+  }
+  .size-rect { background: rgba(12,105,234,0.15); border: 1.5px solid var(--blue-mid); border-radius: 2px; }
+  .size-option.selected .size-rect { background: rgba(12,105,234,0.25); border-color: var(--blue); }
+  .size-option.already-exists .size-rect { background: #E5E7EB; border-color: #D1D5DB; }
+
+  .size-option-label { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .size-option.already-exists .size-option-label { color: var(--text-muted); }
+  .size-option-dims { font-size: 10px; color: var(--text-muted); }
+  .size-already-badge { font-size: 10px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 3px; }
+  .size-already-badge svg { width: 10px; height: 10px; stroke: var(--success); }
+  .size-selected-check {
+    position: absolute; top: 8px; right: 8px;
+    width: 16px; height: 16px; border-radius: 50%; background: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .size-selected-check svg { width: 9px; height: 9px; stroke: white; }
+
+  /* ── STEP 3: Confirm + Generate ── */
+  .confirm-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .confirm-card { background: var(--bg); border-radius: var(--radius); padding: 14px; }
+  .confirm-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; }
+  .confirm-asset-row { display: flex; align-items: center; gap: 10px; }
+  .confirm-thumb { width: 64px; height: 48px; border-radius: 5px; background: #1A1A2E; overflow: hidden; flex-shrink: 0; }
+  .confirm-thumb svg { width: 100%; height: 100%; }
+  .confirm-asset-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+  .confirm-asset-id { font-size: 10px; font-family: monospace; color: var(--text-muted); margin-top: 2px; }
+  .confirm-new-sizes { display: flex; flex-direction: column; gap: 8px; }
+  .confirm-size-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--white); border-radius: 5px; border: 1px solid var(--border); }
+  .confirm-size-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+  .confirm-size-dims { font-size: 11px; color: var(--text-muted); }
+  .confirm-size-status { font-size: 10px; font-weight: 600; color: var(--blue); background: var(--blue-light); padding: 2px 7px; border-radius: 10px; }
+
+  .confirm-cta { display: flex; gap: 10px; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .confirm-note { font-size: 11px; color: var(--text-muted); flex: 1; }
+
+  /* ── STEP 4: Done ── */
+  .done-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .done-render-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .done-render-thumb { width: 100%; aspect-ratio: 16/9; background: #1A1A2E; overflow: hidden; position: relative; }
+  .done-render-thumb svg { width: 100%; height: 100%; }
+  .done-render-overlay { position: absolute; inset: 0; background: rgba(12,105,234,0.85); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+  .done-render-card:hover .done-render-overlay { opacity: 1; }
+  .dl-btn { background: white; color: var(--blue); border: none; border-radius: 5px; font-size: 11px; font-weight: 700; padding: 6px 14px; cursor: pointer; }
+  .done-render-meta { padding: 8px 10px; }
+  .done-render-id { font-size: 10px; font-family: monospace; color: var(--text-muted); }
+  .done-render-size { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-top: 2px; }
+
+  .done-actions { display: flex; gap: 10px; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+  .done-success-msg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--success); font-weight: 600; }
+  .done-success-msg svg { width: 14px; height: 14px; stroke: var(--success); }
+
+  /* Bottom nav */
+  .bottom-nav { flex-shrink: 0; background: var(--white); border-top: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+  .bottom-nav-step { font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"/></svg></div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative</div>
+  </div>
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+
+  <div class="step-nav">
+    <div class="step-nav-label">Resize to New Sizes</div>
+
+    <!-- Step 1: done -->
+    <div class="step-item step-done">
+      <div class="step-num">✓</div>
+      <div class="step-text">
+        <div class="step-label">Select asset</div>
+        <div class="step-sublabel">RL_Summer_H2_C2_I3</div>
+      </div>
+    </div>
+
+    <!-- Step 2: active -->
+    <div class="step-item step-active">
+      <div class="step-num">2</div>
+      <div class="step-text">
+        <div class="step-label">Pick new sizes</div>
+        <div class="step-sublabel">2 sizes selected</div>
+      </div>
+    </div>
+
+    <!-- Step 3: pending -->
+    <div class="step-item step-pending">
+      <div class="step-num">3</div>
+      <div class="step-text">
+        <div class="step-label">Confirm &amp; generate</div>
+        <div class="step-sublabel">Review before rendering</div>
+      </div>
+    </div>
+
+    <!-- Step 4: pending -->
+    <div class="step-item step-pending">
+      <div class="step-num">4</div>
+      <div class="step-text">
+        <div class="step-label">Download</div>
+        <div class="step-sublabel">Assets ready</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="bc-part">Edit existing</span>
+      <span class="bc-sep">/</span>
+      <span class="bc-current">Resize to New Sizes</span>
+    </div>
+    <span class="app-type-badge">Edit existing</span>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">Cancel</button>
+    </div>
+  </header>
+
+  <div class="page">
+
+    <!-- Path distinction banner -->
+    <div class="path-banner">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#0D9488" stroke-width="1.4"/><path d="M7 4v3.5l2 2" stroke="#0D9488" stroke-width="1.3" stroke-linecap="round"/></svg>
+      <span><strong>Asset-first workflow.</strong> You're starting from an existing rendered variant — no template selection or slot filling required. The scene graph is already locked in.</span>
+    </div>
+
+    <!-- ── STEP 1: Select asset — DONE ── -->
+    <div class="step-section done">
+      <div class="step-section-header">
+        <div class="step-badge badge-done">✓</div>
+        <div class="step-section-title">Select asset</div>
+        <span class="step-section-edit">Edit</span>
+      </div>
+      <!-- Collapsed summary only -->
+      <div class="step-section-body">
+        <div class="done-summary">
+          <div class="done-thumb">
+            <svg viewBox="0 0 64 48">
+              <rect width="64" height="48" fill="#1A1A2E"/>
+              <rect x="36" y="4" width="24" height="32" rx="2" fill="#2A2A4A"/>
+              <circle cx="52" cy="18" r="8" fill="#C9A96E" opacity=".25"/>
+              <text x="4" y="18" font-size="5" fill="#C9A96E" font-family="sans-serif">Up to</text>
+              <text x="4" y="25" font-size="8" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+              <rect x="4" y="30" width="22" height="7" rx="1.5" fill="#C9A96E"/>
+              <text x="15" y="35.5" font-size="4" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+              <rect x="0" y="0" width="64" height="48" fill="none" stroke="#D97706" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div class="done-info">
+            <div class="done-label">"Up to 50% Off" — Summer Sale 2026</div>
+            <div class="done-meta">Ralph Lauren · Summer Banner template</div>
+            <div class="done-sizes">
+              <span class="size-chip" style="background:#ECFDF5; color:#065F46; border-color:#A7F3D0;">1080×1080 ✓</span>
+              <span class="size-chip" style="background:#ECFDF5; color:#065F46; border-color:#A7F3D0;">1080×1920 ✓</span>
+              <span class="size-chip" style="color:var(--text-muted);">Missing: 1200×628, 1080×1350, 300×250</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Pick new sizes — ACTIVE ── -->
+    <div class="step-section active">
+      <div class="step-section-header">
+        <div class="step-badge badge-active">2</div>
+        <div class="step-section-title">Pick new sizes</div>
+      </div>
+      <div class="step-section-body">
+
+        <!-- Context strip -->
+        <div class="sizes-context">
+          <div class="sizes-context-asset">
+            <div class="sizes-context-thumb">
+              <svg viewBox="0 0 48 36">
+                <rect width="48" height="36" fill="#1A1A2E"/>
+                <text x="3" y="13" font-size="4" fill="#C9A96E" font-family="sans-serif">Up to</text>
+                <text x="3" y="19" font-size="6" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+                <rect x="3" y="23" width="18" height="6" rx="1" fill="#C9A96E"/>
+                <rect x="0" y="0" width="48" height="36" fill="none" stroke="#D97706" stroke-width="1"/>
+              </svg>
+            </div>
+            <div class="sizes-context-info">
+              <div class="sizes-context-name">"Up to 50% Off" — Summer Sale</div>
+              <div class="sizes-context-id">RL_Summer_H2_C2_I3</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; font-size:11px; color:var(--text-muted); gap:6px; background:var(--bg); border-radius:var(--radius); padding:10px 14px;">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="#5C6478" stroke-width="1.2"/><path d="M6 4v2.5L8 8" stroke="#5C6478" stroke-width="1.1" stroke-linecap="round"/></svg>
+            Scene graph locked — slot content will not change
+          </div>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
+          Select the sizes you want to generate. Sizes already rendered are shown below — they won't be re-rendered.
+        </div>
+
+        <div class="size-grid">
+
+          <!-- 1:1 — already exists -->
+          <div class="size-option already-exists">
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:38px; height:38px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Square</div>
+              <div class="size-option-dims">1080 × 1080</div>
+            </div>
+            <div class="size-already-badge">
+              <svg viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Already rendered
+            </div>
+          </div>
+
+          <!-- 9:16 — already exists -->
+          <div class="size-option already-exists">
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:22px; height:38px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Story / Reel</div>
+              <div class="size-option-dims">1080 × 1920</div>
+            </div>
+            <div class="size-already-badge">
+              <svg viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Already rendered
+            </div>
+          </div>
+
+          <!-- 16:9 — selected -->
+          <div class="size-option selected">
+            <div class="size-selected-check">
+              <svg viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:54px; height:30px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Landscape</div>
+              <div class="size-option-dims">1200 × 628</div>
+            </div>
+            <div style="font-size:10px; color:var(--blue); font-weight:600;">Selected · will render</div>
+          </div>
+
+          <!-- 4:5 — selected -->
+          <div class="size-option selected">
+            <div class="size-selected-check">
+              <svg viewBox="0 0 9 9" fill="none"><path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:30px; height:38px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Portrait</div>
+              <div class="size-option-dims">1080 × 1350</div>
+            </div>
+            <div style="font-size:10px; color:var(--blue); font-weight:600;">Selected · will render</div>
+          </div>
+
+          <!-- Pinterest — unselected -->
+          <div class="size-option">
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:24px; height:36px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Pinterest</div>
+              <div class="size-option-dims">1000 × 1500</div>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted);">Click to select</div>
+          </div>
+
+          <!-- Display — unselected -->
+          <div class="size-option">
+            <div class="size-option-preview" style="height:64px;">
+              <div class="size-rect" style="width:50px; height:40px;"></div>
+            </div>
+            <div>
+              <div class="size-option-label">Display</div>
+              <div class="size-option-dims">300 × 250</div>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted);">Click to select</div>
+          </div>
+
+        </div>
+
+        <div style="margin-top:14px; font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+          <span style="font-weight:700; color:var(--blue);">2 new sizes selected</span>
+          <span style="color:var(--border);">·</span>
+          <span>2 renders will be generated</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Confirm — PENDING ── -->
+    <div class="step-section pending">
+      <div class="step-section-header">
+        <div class="step-badge badge-pending">3</div>
+        <div class="step-section-title" style="color:var(--text-muted);">Confirm &amp; generate</div>
+      </div>
+      <div class="step-section-body" style="opacity:0.5; pointer-events:none;">
+        <div class="confirm-layout">
+          <div class="confirm-card">
+            <div class="confirm-label">Source asset</div>
+            <div class="confirm-asset-row">
+              <div class="confirm-thumb">
+                <svg viewBox="0 0 64 48">
+                  <rect width="64" height="48" fill="#1A1A2E"/>
+                  <text x="4" y="20" font-size="7" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+                  <rect x="4" y="28" width="22" height="8" rx="2" fill="#C9A96E"/>
+                  <rect x="0" y="0" width="64" height="48" fill="none" stroke="#D97706" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <div>
+                <div class="confirm-asset-name">"Up to 50% Off"</div>
+                <div class="confirm-asset-id">RL_Summer_H2_C2_I3</div>
+              </div>
+            </div>
+          </div>
+          <div class="confirm-card">
+            <div class="confirm-label">New sizes to generate</div>
+            <div class="confirm-new-sizes">
+              <div class="confirm-size-row">
+                <div><div class="confirm-size-name">Landscape</div><div class="confirm-size-dims">1200 × 628</div></div>
+                <span class="confirm-size-status">Will render</span>
+              </div>
+              <div class="confirm-size-row">
+                <div><div class="confirm-size-name">Portrait</div><div class="confirm-size-dims">1080 × 1350</div></div>
+                <span class="confirm-size-status">Will render</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="confirm-cta">
+          <span class="confirm-note">2 renders · estimated 30 sec · scene graph unchanged</span>
+          <button class="btn btn-teal">Generate 2 renders</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: Done — PENDING ── -->
+    <div class="step-section pending">
+      <div class="step-section-header">
+        <div class="step-badge badge-pending">4</div>
+        <div class="step-section-title" style="color:var(--text-muted);">Download</div>
+      </div>
+      <div class="step-section-body" style="opacity:0.5; pointer-events:none;">
+        <div class="done-grid">
+          <div class="done-render-card">
+            <div class="done-render-thumb" style="aspect-ratio:16/9;">
+              <svg viewBox="0 0 320 180">
+                <rect width="320" height="180" fill="#1A1A2E"/>
+                <rect x="170" y="14" width="136" height="136" rx="6" fill="#232340"/>
+                <text x="18" y="70" font-size="24" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+                <rect x="18" y="90" width="100" height="28" rx="5" fill="#C9A96E"/>
+                <text x="68" y="108" font-size="11" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+                <rect x="0" y="0" width="320" height="180" fill="none" stroke="#D97706" stroke-width="2.5"/>
+              </svg>
+              <div class="done-render-overlay"><button class="dl-btn">Download</button></div>
+            </div>
+            <div class="done-render-meta">
+              <div class="done-render-id">RL_Summer_H2_C2_I3</div>
+              <div class="done-render-size">1200 × 628 · Landscape</div>
+            </div>
+          </div>
+          <div class="done-render-card">
+            <div class="done-render-thumb" style="aspect-ratio:4/5;">
+              <svg viewBox="0 0 240 300">
+                <rect width="240" height="300" fill="#1A1A2E"/>
+                <rect x="30" y="20" width="180" height="160" rx="6" fill="#232340"/>
+                <circle cx="160" cy="90" r="50" fill="#C9A96E" opacity=".2"/>
+                <text x="18" y="215" font-size="22" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+                <rect x="18" y="234" width="90" height="26" rx="5" fill="#C9A96E"/>
+                <text x="63" y="251" font-size="10" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+                <rect x="0" y="0" width="240" height="300" fill="none" stroke="#D97706" stroke-width="2.5"/>
+              </svg>
+              <div class="done-render-overlay"><button class="dl-btn">Download</button></div>
+            </div>
+            <div class="done-render-meta">
+              <div class="done-render-id">RL_Summer_H2_C2_I3</div>
+              <div class="done-render-size">1080 × 1350 · Portrait</div>
+            </div>
+          </div>
+        </div>
+        <div class="done-actions">
+          <div class="done-success-msg">
+            <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke-width="1.3"/><path d="M4.5 7l2 2L9.5 5" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            2 assets saved to Ralph Lauren / Summer 2026
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto;">Download all (ZIP)</button>
+          <button class="btn btn-primary btn-sm">Add to asset library</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <button class="btn btn-ghost btn-sm">← Back</button>
+    <span class="bottom-nav-step">Step 2 of 4 · Pick new sizes</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;">Continue →</button>
+  </div>
+
+</div>
+
+</body>
+</html>

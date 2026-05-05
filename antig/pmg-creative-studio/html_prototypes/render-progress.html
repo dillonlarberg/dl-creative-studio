@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Render Progress — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --sidebar-text: #A8B3CF;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --gold: #D97706;
+    --gold-light: #FEF3C7;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; font-size: 13px; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--sidebar-bg); display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .logo-icon { width: 28px; height: 28px; background: var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 0.5px; text-transform: uppercase; margin-left: 36px; }
+  .client-pill { margin: 14px 18px; background: rgba(255,255,255,0.07); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+  .client-avatar { width: 22px; height: 22px; border-radius: 4px; background: #C9A96E; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: var(--sidebar-text); }
+  .sidebar-section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sidebar-text); padding: 12px 18px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; color: var(--sidebar-text); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(12,105,234,0.2); color: white; border-right: 2px solid var(--blue); }
+  .nav-item svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-badge { margin-left: auto; background: var(--blue); color: white; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* TOP BAR */
+  .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .breadcrumb-part { color: var(--text-muted); cursor: pointer; }
+  .breadcrumb-sep { color: var(--border); }
+  .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+  .app-type-badge { background: var(--blue-light); color: var(--blue); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.2px; border: 1px solid rgba(12,105,234,0.2); }
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-danger { background: #FEF2F2; border: 1px solid #FECACA; color: var(--danger); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* PAGE LAYOUT */
+  .page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* JOB HEADER CARD */
+  .job-header-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px;
+  }
+  .job-header-top { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+  .job-client-dot { width: 10px; height: 10px; border-radius: 50%; background: #C9A96E; flex-shrink: 0; margin-top: 5px; }
+  .job-header-info { flex: 1; }
+  .job-header-name { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .job-header-meta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .job-meta-chip { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .job-meta-chip strong { color: var(--text-secondary); font-weight: 600; }
+  .job-header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ETA badge */
+  .eta-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--blue-light); border: 1px solid var(--blue-mid);
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; color: var(--blue);
+  }
+  .eta-pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* Big progress bar */
+  .big-progress { }
+  .big-progress-labels { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .big-progress-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+  .big-progress-count { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .big-progress-track { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+  .big-progress-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--blue) 0%, #3B82F6 100%); transition: width 0.5s; position: relative; }
+  .big-progress-shimmer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 60px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer { 0%{transform:translateX(-60px)} 100%{transform:translateX(60px)} }
+  .big-progress-sub { display: flex; gap: 16px; margin-top: 8px; }
+  .progress-stat { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .progress-stat-val { font-weight: 700; }
+  .progress-stat-val.done { color: var(--success); }
+  .progress-stat-val.running { color: var(--blue); }
+  .progress-stat-val.queued { color: var(--text-muted); }
+
+  /* CONTENT LAYOUT */
+  .content-cols { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+
+  /* VARIANT TILE GRID */
+  .tile-grid-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .tile-grid-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .tile-grid-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .tile-legend { display: flex; gap: 12px; }
+  .tile-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .tile-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .tile-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+  .tile {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.1s;
+  }
+  .tile:hover { transform: scale(1.3); z-index: 10; }
+  .tile.done { background: var(--success); }
+  .tile.rendering {
+    background: var(--blue);
+    animation: tile-pulse 1s infinite;
+  }
+  @keyframes tile-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .tile.queued { background: #D1D5E0; }
+  .tile.failed { background: var(--danger); }
+
+  /* Tile tooltip on hover */
+  .tile-tooltip {
+    position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+    background: var(--sidebar-bg); color: white;
+    font-size: 9px; padding: 3px 6px; border-radius: 3px;
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.1s;
+    z-index: 20;
+  }
+  .tile:hover .tile-tooltip { opacity: 1; }
+
+  /* Row labels */
+  .tile-rows { }
+  .tile-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .tile-row-label { font-size: 9px; color: var(--text-muted); width: 48px; flex-shrink: 0; text-align: right; font-family: monospace; }
+  .tile-row-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; flex: 1; }
+
+  /* LIVE LOG */
+  .log-panel { background: var(--sidebar-bg); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+  .log-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .log-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--sidebar-text); display: flex; align-items: center; gap: 6px; }
+  .log-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 1.5s infinite; }
+  .log-clear { font-size: 10px; color: var(--sidebar-text); cursor: pointer; }
+  .log-entries { display: flex; flex-direction: column; gap: 0; overflow-y: auto; max-height: 480px; }
+  .log-entry { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; gap: 8px; align-items: flex-start; }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { font-size: 10px; color: var(--sidebar-text); font-family: monospace; flex-shrink: 0; padding-top: 1px; }
+  .log-icon { font-size: 11px; flex-shrink: 0; }
+  .log-msg { font-size: 11px; color: #C8D0E0; line-height: 1.4; flex: 1; }
+  .log-msg .log-id { color: #6B9CF4; font-family: monospace; font-size: 10px; }
+  .log-msg.success { color: #6EE7B7; }
+  .log-msg.error { color: #FCA5A5; }
+  .log-msg.info { color: #C8D0E0; }
+
+  /* QUICK STATS PANEL */
+  .quick-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 0; }
+  .qs-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .qs-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 4px; }
+  .qs-value { font-size: 20px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+  .qs-value.done { color: var(--success); }
+  .qs-value.running { color: var(--blue); }
+  .qs-value.queued { color: var(--text-muted); }
+  .qs-sub { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+  /* Completed variants preview strip -->
+  .completed-strip-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .completed-strip-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .completed-strip-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .completed-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .completed-tile { flex-shrink: 0; width: 80px; border-radius: 5px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); cursor: pointer; transition: all 0.15s; }
+  .completed-tile:hover { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+  .completed-tile-thumb { width: 80px; height: 60px; background: #1A1A2E; overflow: hidden; }
+  .completed-tile-thumb svg { width: 100%; height: 100%; }
+  .completed-tile-id { padding: 4px 5px; font-size: 9px; font-family: monospace; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .completed-tile-more { flex-shrink: 0; width: 80px; height: 60px; display: flex; align-items: center; justify-content: center; background: var(--bg); border-radius: 5px; border: 1px dashed var(--border); cursor: pointer; }
+  .completed-tile-more span { font-size: 11px; color: var(--blue); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"/></svg></div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative</div>
+  </div>
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+  <div class="sidebar-section-label">Workspace</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Dashboard</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Templates</a>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".7"/></svg>Batch Jobs <span class="nav-badge">3</span></a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1L9 5H13L9.5 7.5L11 12L7 9L3 12L4.5 7.5L1 5H5L7 1Z" opacity=".8"/></svg>Assets</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 13c0-3 2.7-5 6-5s6 2 6 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Brand Kit</a>
+  <div class="sidebar-section-label" style="margin-top:8px;">Create New</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="2" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.2"/></svg>Create Static Ad</a>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".8"/></svg>Batch Generator</a>
+  <div class="sidebar-section-label" style="margin-top:6px;">Edit Existing</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h2M8 5v4" stroke="currentColor" stroke-width="1.2"/></svg>Resize to New Sizes</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 12l3-3 2 2 4-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Edit &amp; Tweak</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="3" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 6l3 1.5L6 9V6z" fill="currentColor"/></svg>Video Cutdown</a>
+  <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 10V6h2.5v4H2zM5.5 10V3H8v7H5.5zM9 10V8h2.5v2H9z" opacity=".8"/></svg>Performance</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Export History</a>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-part">Batch Jobs</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Summer Sale 2026 — Display + Social</span>
+    </div>
+    <span class="app-type-badge">Create new</span>
+    <div class="topbar-actions">
+      <div class="eta-badge">
+        <div class="eta-pulse"></div>
+        ETA 4 min 12 sec
+      </div>
+      <button class="btn btn-ghost btn-sm">Edit Slots</button>
+      <button class="btn btn-danger btn-sm">Cancel Job</button>
+    </div>
+  </header>
+
+  <div class="page">
+
+    <!-- Job header card -->
+    <div class="job-header-card">
+      <div class="job-header-top">
+        <div class="job-client-dot"></div>
+        <div class="job-header-info">
+          <div class="job-header-name">Summer Sale 2026 — Display + Social</div>
+          <div class="job-header-meta">
+            <div class="job-meta-chip">Ralph Lauren</div>
+            <div class="job-meta-chip"><strong>60</strong>&nbsp;variants (5 headline × 3 CTA × 4 image)</div>
+            <div class="job-meta-chip"><strong>3</strong>&nbsp;sizes (1:1, 9:16, 16:9)</div>
+            <div class="job-meta-chip"><strong>180</strong>&nbsp;total renders</div>
+            <div class="job-meta-chip">Started 09:42 AM</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Big progress bar -->
+      <div class="big-progress">
+        <div class="big-progress-labels">
+          <span class="big-progress-label">Render Progress</span>
+          <span class="big-progress-count">105 / 180 renders</span>
+        </div>
+        <div class="big-progress-track">
+          <div class="big-progress-fill" style="width:58.3%;">
+            <div class="big-progress-shimmer"></div>
+          </div>
+        </div>
+        <div class="big-progress-sub">
+          <div class="progress-stat"><span class="progress-stat-val done">105</span>&nbsp;done</div>
+          <div class="progress-stat"><span class="progress-stat-val running">3</span>&nbsp;rendering now</div>
+          <div class="progress-stat"><span class="progress-stat-val queued">72</span>&nbsp;queued</div>
+          <div class="progress-stat" style="margin-left:auto;">Worker pool: <span class="progress-stat-val running">3</span> / 4 active</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="quick-stats">
+      <div class="qs-card">
+        <div class="qs-label">Completed</div>
+        <div class="qs-value done">105</div>
+        <div class="qs-sub">renders · 35 variants</div>
+      </div>
+      <div class="qs-card">
+        <div class="qs-label">Rendering now</div>
+        <div class="qs-value running">3</div>
+        <div class="qs-sub">concurrent workers</div>
+      </div>
+      <div class="qs-card">
+        <div class="qs-label">Queued</div>
+        <div class="qs-value queued">72</div>
+        <div class="qs-sub">renders remaining</div>
+      </div>
+    </div>
+
+    <!-- Tile grid + log -->
+    <div class="content-cols">
+
+      <!-- Left: tile grid -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Tile grid -->
+        <div class="tile-grid-wrap">
+          <div class="tile-grid-header">
+            <div class="tile-grid-title">All 180 renders — one tile per render</div>
+            <div class="tile-legend">
+              <div class="tile-legend-item"><div class="tile-legend-dot" style="background:var(--success);"></div>Done</div>
+              <div class="tile-legend-item"><div class="tile-legend-dot" style="background:var(--blue);"></div>Rendering</div>
+              <div class="tile-legend-item"><div class="tile-legend-dot" style="background:#D1D5E0;"></div>Queued</div>
+            </div>
+          </div>
+
+          <!-- Tile rows (15 rows × 12 columns = 180 tiles) -->
+          <div class="tile-rows">
+
+            <!-- Row 1: H1 · 1:1 (12 tiles: 3 CTA × 4 Image = 12) — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H1 · 1:1</div>
+              <div class="tile-row-grid">
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C1_I1 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C1_I2 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C1_I3 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C1_I4 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C2_I1 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C2_I2 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C2_I3 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C2_I4 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C3_I1 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C3_I2 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C3_I3 · 1:1</div></div>
+                <div class="tile done"><div class="tile-tooltip">RL_H1_C3_I4 · 1:1</div></div>
+              </div>
+            </div>
+
+            <!-- Row 2: H1 · 9:16 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H1 · 9:16</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 3: H1 · 16:9 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H1 · 16:9</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 4: H2 · 1:1 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H2 · 1:1</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 5: H2 · 9:16 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H2 · 9:16</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 6: H2 · 16:9 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H2 · 16:9</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 7: H3 · 1:1 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H3 · 1:1</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 8: H3 · 9:16 — all done -->
+            <div class="tile-row">
+              <div class="tile-row-label">H3 · 9:16</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+              </div>
+            </div>
+
+            <!-- Row 9: H3 · 16:9 — 9 done, 3 rendering -->
+            <div class="tile-row">
+              <div class="tile-row-label">H3 · 16:9</div>
+              <div class="tile-row-grid">
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div><div class="tile done"></div><div class="tile done"></div><div class="tile done"></div>
+                <div class="tile done"></div>
+                <div class="tile rendering"><div class="tile-tooltip">Rendering… RL_H3_C3_I2 · 16:9</div></div>
+                <div class="tile rendering"><div class="tile-tooltip">Rendering… RL_H3_C3_I3 · 16:9</div></div>
+                <div class="tile rendering"><div class="tile-tooltip">Rendering… RL_H3_C3_I4 · 16:9</div></div>
+              </div>
+            </div>
+
+            <!-- Row 10: H4 · 1:1 — all queued -->
+            <div class="tile-row">
+              <div class="tile-row-label">H4 · 1:1</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+
+            <!-- Rows 11–15: all queued (H4 9:16, H4 16:9, H5 1:1, H5 9:16, H5 16:9) -->
+            <div class="tile-row">
+              <div class="tile-row-label">H4 · 9:16</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+            <div class="tile-row">
+              <div class="tile-row-label">H4 · 16:9</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+            <div class="tile-row">
+              <div class="tile-row-label">H5 · 1:1</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+            <div class="tile-row">
+              <div class="tile-row-label">H5 · 9:16</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+            <div class="tile-row">
+              <div class="tile-row-label">H5 · 16:9</div>
+              <div class="tile-row-grid">
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+                <div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div><div class="tile queued"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Completed variants preview strip -->
+        <div class="completed-strip-wrap">
+          <div class="completed-strip-header">
+            <span style="font-size:12px; font-weight:700; color:var(--text-primary);">Recently completed</span>
+            <span style="font-size:11px; color:var(--blue); cursor:pointer; font-weight:600;">View all 35 →</span>
+          </div>
+          <div class="completed-strip">
+
+            <div class="completed-tile">
+              <div class="completed-tile-thumb">
+                <svg viewBox="0 0 80 60"><rect width="80" height="60" fill="#1A1A2E"/><circle cx="55" cy="22" r="12" fill="#C9A96E" opacity=".2"/><text x="5" y="22" font-size="5" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Refresh Your</text><text x="5" y="30" font-size="5" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Wardrobe</text><rect x="5" y="36" width="28" height="10" rx="2" fill="#C9A96E"/><text x="19" y="43" font-size="4" fill="white" text-anchor="middle" font-family="sans-serif">Shop Now</text></svg>
+              </div>
+              <div class="completed-tile-id">H3_C3_I1 · 16:9</div>
+            </div>
+
+            <div class="completed-tile">
+              <div class="completed-tile-thumb">
+                <svg viewBox="0 0 80 60"><rect width="80" height="60" fill="#1A1A2E"/><text x="5" y="26" font-size="6" fill="white" font-family="sans-serif" font-weight="bold">Refresh</text><text x="5" y="34" font-size="6" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Wardrobe</text><rect x="5" y="38" width="28" height="10" rx="2" fill="#C9A96E"/></svg>
+              </div>
+              <div class="completed-tile-id">H3_C2_I4 · 16:9</div>
+            </div>
+
+            <div class="completed-tile">
+              <div class="completed-tile-thumb">
+                <svg viewBox="0 0 80 60"><rect width="80" height="60" fill="#1A1A2E"/><text x="5" y="28" font-size="7" fill="white" font-family="sans-serif" font-weight="bold">50% Off</text><rect x="5" y="36" width="28" height="10" rx="2" fill="#C9A96E"/></svg>
+              </div>
+              <div class="completed-tile-id">H2_C3_I4 · 9:16</div>
+            </div>
+
+            <div class="completed-tile">
+              <div class="completed-tile-thumb">
+                <svg viewBox="0 0 80 60"><rect width="80" height="60" fill="#1A1A2E"/><text x="40" y="28" font-size="6" fill="#C9A96E" font-family="sans-serif" font-weight="bold" text-anchor="middle">50% Off</text><rect x="12" y="36" width="56" height="10" rx="2" fill="#C9A96E"/><text x="40" y="43.5" font-size="4" fill="white" text-anchor="middle" font-family="sans-serif">Discover More</text></svg>
+              </div>
+              <div class="completed-tile-id">H2_C3_I3 · 9:16</div>
+            </div>
+
+            <div class="completed-tile">
+              <div class="completed-tile-thumb">
+                <svg viewBox="0 0 80 60"><rect width="80" height="60" fill="#1A1A2E"/><text x="5" y="24" font-size="5" fill="white" font-family="sans-serif">Bold</text><text x="5" y="32" font-size="5" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Summer Sale</text><rect x="5" y="38" width="28" height="10" rx="2" fill="#C9A96E"/></svg>
+              </div>
+              <div class="completed-tile-id">H1_C1_I2 · 1:1</div>
+            </div>
+
+            <div class="completed-tile-more">
+              <span>+30 more</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: live log -->
+      <div class="log-panel">
+        <div class="log-header">
+          <div class="log-title"><div class="log-live-dot"></div>Live log</div>
+          <span class="log-clear">Clear</span>
+        </div>
+        <div class="log-entries">
+
+          <div class="log-entry">
+            <span class="log-time">09:53:41</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C3_I1 · 16:9</span> (1.2s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:39</span>
+            <span class="log-icon">▶</span>
+            <span class="log-msg info">Rendering: <span class="log-id">RL_H3_C3_I4 · 16:9</span></span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:38</span>
+            <span class="log-icon">▶</span>
+            <span class="log-msg info">Rendering: <span class="log-id">RL_H3_C3_I3 · 16:9</span></span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:37</span>
+            <span class="log-icon">▶</span>
+            <span class="log-msg info">Rendering: <span class="log-id">RL_H3_C3_I2 · 16:9</span></span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:36</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C2_I4 · 16:9</span> (0.9s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:35</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C2_I3 · 16:9</span> (1.1s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:34</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C2_I2 · 16:9</span> (1.0s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:33</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C2_I1 · 16:9</span> (1.3s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:31</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C1_I4 · 16:9</span> (0.8s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:53:30</span>
+            <span class="log-icon">✓</span>
+            <span class="log-msg success">Done: <span class="log-id">RL_H3_C1_I3 · 16:9</span> (1.2s)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:50:12</span>
+            <span class="log-icon">i</span>
+            <span class="log-msg info">Worker pool scaled to 3 (was 2)</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:47:08</span>
+            <span class="log-icon">i</span>
+            <span class="log-msg info">Brand kit loaded: Ralph Lauren Summer 2026</span>
+          </div>
+          <div class="log-entry">
+            <span class="log-time">09:42:00</span>
+            <span class="log-icon">▶</span>
+            <span class="log-msg info">Job started · 180 renders queued</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --sidebar-text: #A8B3CF;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --gold: #D97706;
+    --gold-light: #FEF3C7;
+    --purple: #7C3AED;
+    --purple-light: #F5F3FF;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; font-size: 13px; }
+
+  /* SIDEBAR */
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--sidebar-bg); display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .logo-icon { width: 28px; height: 28px; background: var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 0.5px; text-transform: uppercase; margin-left: 36px; }
+  .client-pill { margin: 14px 18px; background: rgba(255,255,255,0.07); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+  .client-avatar { width: 22px; height: 22px; border-radius: 4px; background: #C9A96E; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: var(--sidebar-text); }
+  .sidebar-section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sidebar-text); padding: 12px 18px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; color: var(--sidebar-text); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(12,105,234,0.2); color: white; border-right: 2px solid var(--blue); }
+  .nav-item svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-badge { margin-left: auto; background: var(--blue); color: white; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* TOP BAR */
+  .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .breadcrumb-part { color: var(--text-muted); cursor: pointer; }
+  .breadcrumb-sep { color: var(--border); }
+  .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* PAGE LAYOUT */
+  .page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* FILTER BAR */
+  .filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .filter-group { display: flex; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .filter-btn { padding: 6px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer; background: none; border: none; border-right: 1px solid var(--border); transition: all 0.15s; }
+  .filter-btn:last-child { border-right: none; }
+  .filter-btn.active { background: var(--blue); color: white; }
+  .filter-btn:hover:not(.active) { background: var(--bg); color: var(--text-secondary); }
+  .filter-select { font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; background: var(--white); cursor: pointer; }
+  .filter-sep { flex: 1; }
+  .sort-select { font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; background: var(--white); cursor: pointer; }
+
+  /* TOP STATS */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; }
+  .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px; }
+  .stat-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+  .stat-delta { font-size: 11px; font-weight: 600; margin-top: 6px; }
+  .up { color: var(--success); }
+  .down { color: var(--danger); }
+  .neutral { color: var(--text-muted); }
+
+  /* TWO PANEL LAYOUT */
+  .two-panel { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+
+  /* TREND CHART */
+  .chart-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .chart-legend { display: flex; gap: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .chart-wrap { width: 100%; height: 160px; position: relative; }
+
+  /* WINNER CALLOUT */
+  .winner-callout { background: linear-gradient(135deg, #1A1F2E 0%, #242940 100%); border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .winner-callout-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gold); display: flex; align-items: center; gap: 5px; }
+  .winner-callout-name { font-size: 14px; font-weight: 700; color: white; line-height: 1.3; }
+  .winner-callout-id { font-size: 10px; color: var(--sidebar-text); font-family: monospace; }
+  .winner-callout-thumb { width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; background: #1A1A2E; }
+  .winner-callout-thumb svg { width: 100%; height: 100%; }
+  .winner-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .winner-stat { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 10px; }
+  .winner-stat-val { font-size: 20px; font-weight: 800; color: var(--gold); line-height: 1; }
+  .winner-stat-label { font-size: 10px; color: var(--sidebar-text); margin-top: 3px; }
+  .winner-actions { display: flex; gap: 8px; }
+  .winner-btn { flex: 1; padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-align: center; border: none; }
+  .winner-btn-primary { background: var(--gold); color: white; }
+  .winner-btn-ghost { background: rgba(255,255,255,0.1); color: white; }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .section-link { font-size: 11px; color: var(--blue); cursor: pointer; font-weight: 600; }
+
+  /* VARIANT PERF GRID */
+  .variant-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .variant-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
+  .variant-card:hover { box-shadow: var(--shadow-md); border-color: var(--blue-mid); transform: translateY(-1px); }
+  .variant-card.winner { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(217,119,6,0.12); }
+  .winner-ribbon { position: absolute; top: 0; right: 0; background: var(--gold); color: white; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 0 var(--radius-lg) 0 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .variant-thumb { width: 100%; aspect-ratio: 4/3; background: #1A1A2E; overflow: hidden; position: relative; }
+  .variant-thumb svg { width: 100%; height: 100%; }
+
+  /* CTR overlay bar on thumb */
+  .ctr-overlay { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.1); }
+  .ctr-fill { height: 100%; }
+
+  .variant-body { padding: 10px 12px; }
+  .variant-headline { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .variant-id { font-size: 10px; font-family: monospace; color: var(--text-muted); margin-bottom: 8px; }
+
+  .metrics-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .metric { }
+  .metric-val { font-size: 14px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+  .metric-val.gold { color: var(--gold); }
+  .metric-val.blue { color: var(--blue); }
+  .metric-label { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+  .perf-bar-track { height: 3px; background: var(--bg); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+  .perf-bar-fill { height: 100%; border-radius: 2px; }
+
+  .variant-footer { border-top: 1px solid var(--border); padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+  .v-action { font-size: 11px; font-weight: 600; color: var(--blue); cursor: pointer; background: none; border: none; padding: 0; }
+  .v-sep { color: var(--border); font-size: 12px; }
+  .platform-badge { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--text-muted); background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+
+  /* Feedback from Alli panel */
+  .alli-rec { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .alli-rec-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .alli-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .alli-rec-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .alli-rec-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .alli-rec-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .icon-green { background: #ECFDF5; }
+  .icon-gold { background: var(--gold-light); }
+  .icon-blue { background: var(--blue-light); }
+  .alli-rec-text { flex: 1; }
+  .alli-rec-title { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+  .alli-rec-body { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+  .alli-rec-cta { font-size: 11px; font-weight: 700; color: var(--blue); cursor: pointer; margin-top: 5px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"/></svg></div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative</div>
+  </div>
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+  <div class="sidebar-section-label">Workspace</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Dashboard</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Templates</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".7"/></svg>Batch Jobs <span class="nav-badge">3</span></a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1L9 5H13L9.5 7.5L11 12L7 9L3 12L4.5 7.5L1 5H5L7 1Z" opacity=".8"/></svg>Assets</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 13c0-3 2.7-5 6-5s6 2 6 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Brand Kit</a>
+  <div class="sidebar-section-label" style="margin-top:8px;">Create New</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="2" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.2"/></svg>Create Static Ad</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".8"/></svg>Batch Generator</a>
+  <div class="sidebar-section-label" style="margin-top:6px;">Edit Existing</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h2M8 5v4" stroke="currentColor" stroke-width="1.2"/></svg>Resize to New Sizes</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 12l3-3 2 2 4-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Edit &amp; Tweak</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="3" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 6l3 1.5L6 9V6z" fill="currentColor"/></svg>Video Cutdown</a>
+  <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 10V6h2.5v4H2zM5.5 10V3H8v7H5.5zM9 10V8h2.5v2H9z" opacity=".8"/></svg>Performance</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Export History</a>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-part">Reports</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Performance</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">Export Report</button>
+      <button class="btn btn-primary btn-sm">Seed from Winner</button>
+    </div>
+  </header>
+
+  <div class="page">
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <button class="filter-btn">7 days</button>
+        <button class="filter-btn active">30 days</button>
+        <button class="filter-btn">90 days</button>
+        <button class="filter-btn">All time</button>
+      </div>
+      <select class="filter-select">
+        <option>All campaigns</option>
+        <option selected>Summer Sale 2026</option>
+        <option>Back to School</option>
+      </select>
+      <select class="filter-select">
+        <option>All sizes</option>
+        <option>1080×1080</option>
+        <option>1080×1920</option>
+        <option>1200×628</option>
+      </select>
+      <select class="filter-select">
+        <option>All slots</option>
+        <option>Headline</option>
+        <option>CTA</option>
+        <option>Image</option>
+      </select>
+      <div class="filter-sep"></div>
+      <select class="sort-select">
+        <option>Sort: CTR highest</option>
+        <option>Sort: Impressions</option>
+        <option>Sort: ROAS</option>
+        <option>Sort: Variant ID</option>
+      </select>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Live variants</div>
+        <div class="stat-value" style="color:var(--blue);">847</div>
+        <div class="stat-delta up">↑ 18% vs. prev. 30d</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg CTR</div>
+        <div class="stat-value" style="color:var(--gold);">2.6%</div>
+        <div class="stat-delta up">↑ 0.4pp from baseline</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total impressions</div>
+        <div class="stat-value">1.2M</div>
+        <div class="stat-delta neutral">Across 4 platforms</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Top variant lift</div>
+        <div class="stat-value" style="color:var(--success);">+58%</div>
+        <div class="stat-delta neutral">vs. control creative</div>
+      </div>
+    </div>
+
+    <!-- Chart + winner callout -->
+    <div class="two-panel">
+
+      <!-- CTR trend chart -->
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">CTR over time — Summer Sale 2026</div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--gold);"></div>Winner (H2)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--blue);"></div>Batch avg</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--border);"></div>Baseline</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <svg width="100%" height="160" viewBox="0 0 600 160" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="0" y1="40" x2="600" y2="40" stroke="#E2E5EF" stroke-width="1"/>
+            <line x1="0" y1="80" x2="600" y2="80" stroke="#E2E5EF" stroke-width="1"/>
+            <line x1="0" y1="120" x2="600" y2="120" stroke="#E2E5EF" stroke-width="1"/>
+            <!-- Y labels -->
+            <text x="0" y="38" font-size="9" fill="#5C6478" font-family="sans-serif">4%</text>
+            <text x="0" y="78" font-size="9" fill="#5C6478" font-family="sans-serif">2%</text>
+            <text x="0" y="118" font-size="9" fill="#5C6478" font-family="sans-serif">1%</text>
+            <!-- Baseline flat -->
+            <polyline points="20,100 580,100" fill="none" stroke="#C5D9FB" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <!-- Batch avg line -->
+            <polyline points="20,110 80,105 140,98 200,95 260,90 320,88 380,84 440,82 500,80 560,78" fill="none" stroke="#0C69EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Area under batch avg -->
+            <polygon points="20,110 80,105 140,98 200,95 260,90 320,88 380,84 440,82 500,80 560,78 560,140 20,140" fill="rgba(12,105,234,0.05)"/>
+            <!-- Winner line -->
+            <polyline points="200,90 260,78 320,64 380,52 440,44 500,40 560,36" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Area under winner -->
+            <polygon points="200,90 260,78 320,64 380,52 440,44 500,40 560,36 560,140 200,140" fill="rgba(217,119,6,0.06)"/>
+            <!-- Winner dot at peak -->
+            <circle cx="560" cy="36" r="5" fill="#D97706"/>
+            <text x="538" y="30" font-size="9" fill="#D97706" font-family="sans-serif" font-weight="bold">3.8%</text>
+            <!-- Batch avg dot -->
+            <circle cx="560" cy="78" r="4" fill="#0C69EA"/>
+            <text x="538" y="72" font-size="9" fill="#0C69EA" font-family="sans-serif">2.6%</text>
+            <!-- Baseline label -->
+            <text x="540" y="96" font-size="9" fill="#A8B3CF" font-family="sans-serif">1.8%</text>
+            <!-- X axis labels -->
+            <text x="20" y="155" font-size="9" fill="#5C6478" font-family="sans-serif">Apr 6</text>
+            <text x="140" y="155" font-size="9" fill="#5C6478" font-family="sans-serif">Apr 13</text>
+            <text x="260" y="155" font-size="9" fill="#5C6478" font-family="sans-serif">Apr 20</text>
+            <text x="380" y="155" font-size="9" fill="#5C6478" font-family="sans-serif">Apr 27</text>
+            <text x="510" y="155" font-size="9" fill="#5C6478" font-family="sans-serif">May 4</text>
+            <!-- Launch marker -->
+            <line x1="200" y1="30" x2="200" y2="130" stroke="#C9A96E" stroke-width="1" stroke-dasharray="3,2"/>
+            <text x="203" y="46" font-size="8" fill="#C9A96E" font-family="sans-serif">Batch launched</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Winner callout panel -->
+      <div class="winner-callout">
+        <div class="winner-callout-label">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="#D97706"><path d="M6 1L7.7 4.4H11.5L8.6 6.5L9.8 10L6 7.8L2.2 10L3.4 6.5L.5 4.4H4.3L6 1Z"/></svg>
+          Top Performer · 30 days
+        </div>
+        <div class="winner-callout-thumb">
+          <svg viewBox="0 0 320 180">
+            <rect width="320" height="180" fill="#1A1A2E"/>
+            <rect x="170" y="14" width="136" height="136" rx="6" fill="#232340"/>
+            <circle cx="252" cy="70" r="40" fill="#C9A96E" opacity=".2"/>
+            <text x="18" y="60" font-size="16" fill="#C9A96E" font-family="sans-serif">Up to</text>
+            <text x="18" y="84" font-size="26" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+            <rect x="18" y="100" width="110" height="28" rx="5" fill="#C9A96E"/>
+            <text x="73" y="118" font-size="11" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+            <rect x="0" y="0" width="320" height="180" fill="none" stroke="#D97706" stroke-width="3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="winner-callout-name">"Up to 50% Off" — Summer Sale 2026</div>
+          <div class="winner-callout-id">RL_Summer_H2_C2_I3 · 1080×1080</div>
+        </div>
+        <div class="winner-stats">
+          <div class="winner-stat">
+            <div class="winner-stat-val">3.8%</div>
+            <div class="winner-stat-label">CTR</div>
+          </div>
+          <div class="winner-stat">
+            <div class="winner-stat-val">24K</div>
+            <div class="winner-stat-label">Impressions</div>
+          </div>
+          <div class="winner-stat">
+            <div class="winner-stat-val">+58%</div>
+            <div class="winner-stat-label">vs. baseline</div>
+          </div>
+          <div class="winner-stat">
+            <div class="winner-stat-val">4.1×</div>
+            <div class="winner-stat-label">ROAS</div>
+          </div>
+        </div>
+        <div class="winner-actions">
+          <button class="winner-btn winner-btn-primary">Seed Batch</button>
+          <button class="winner-btn winner-btn-ghost">Open in Editor</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Alli recommendations -->
+    <div class="alli-rec">
+      <div class="alli-rec-label">
+        <div class="alli-dot"></div>
+        Alli Insights — Auto-generated from performance data
+      </div>
+      <div class="alli-rec-item">
+        <div class="alli-rec-icon icon-green">↑</div>
+        <div class="alli-rec-text">
+          <div class="alli-rec-title">Urgency headlines outperform discovery headlines 2.1×</div>
+          <div class="alli-rec-body">"Up to 50% Off" and "Bold Summer Sale" both outperform "Refresh Your Wardrobe" and "Shop the Season" consistently across all image and CTA combinations.</div>
+          <span class="alli-rec-cta">Create urgency-first batch →</span>
+        </div>
+      </div>
+      <div class="alli-rec-item">
+        <div class="alli-rec-icon icon-gold">✦</div>
+        <div class="alli-rec-text">
+          <div class="alli-rec-title">Product Hero image drives 1.4× more clicks than Lifestyle image</div>
+          <div class="alli-rec-body">Across all headline variants, I3 (Product Hero) outperforms I1 (Lifestyle shoot). Consider locking Image to Product Hero and expanding headline and CTA variations.</div>
+          <span class="alli-rec-cta">Seed with Image locked to I3 →</span>
+        </div>
+      </div>
+      <div class="alli-rec-item">
+        <div class="alli-rec-icon icon-blue">→</div>
+        <div class="alli-rec-text">
+          <div class="alli-rec-title">1200×628 display size is underrepresented — only 12 variants vs. 48 for 1:1</div>
+          <div class="alli-rec-body">Display inventory is available and cost-efficient for this campaign. Expanding to landscape format could drive meaningful incremental reach.</div>
+          <span class="alli-rec-cta">Generate landscape variants →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant performance grid -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">All variants — Summer Sale 2026</span>
+        <span class="section-link">View full library →</span>
+      </div>
+      <div class="variant-grid">
+
+        <!-- V1: Winner -->
+        <div class="variant-card winner">
+          <div class="winner-ribbon">Top CTR</div>
+          <div class="variant-thumb">
+            <svg viewBox="0 0 200 150">
+              <rect width="200" height="150" fill="#1A1A2E"/>
+              <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+              <circle cx="165" cy="55" r="28" fill="#C9A96E" opacity=".22"/>
+              <text x="12" y="48" font-size="11" fill="#C9A96E" font-family="sans-serif">Up to</text>
+              <text x="12" y="64" font-size="16" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+              <rect x="12" y="78" width="72" height="20" rx="3" fill="#C9A96E"/>
+              <text x="48" y="92" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+              <rect x="0" y="0" width="200" height="150" fill="none" stroke="#D97706" stroke-width="2.5"/>
+            </svg>
+            <div class="ctr-overlay"><div class="ctr-fill" style="width:95%; background:var(--gold);"></div></div>
+          </div>
+          <div class="variant-body">
+            <div class="variant-headline">"Up to 50% Off"</div>
+            <div class="variant-id">RL_Summer_H2_C2_I3</div>
+            <div class="metrics-row">
+              <div class="metric"><div class="metric-val gold">3.8%</div><div class="metric-label">CTR</div></div>
+              <div class="metric"><div class="metric-val" style="font-size:12px;">24,180</div><div class="metric-label">Impressions</div></div>
+            </div>
+            <div class="perf-bar-track"><div class="perf-bar-fill" style="width:95%; background:var(--gold);"></div></div>
+          </div>
+          <div class="variant-footer">
+            <button class="v-action">Edit</button>
+            <span class="v-sep">·</span>
+            <button class="v-action">Seed</button>
+            <span class="platform-badge">META</span>
+          </div>
+        </div>
+
+        <!-- V2 -->
+        <div class="variant-card">
+          <div class="variant-thumb">
+            <svg viewBox="0 0 200 150">
+              <rect width="200" height="150" fill="#1A1A2E"/>
+              <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+              <circle cx="165" cy="55" r="28" fill="#C9A96E" opacity=".18"/>
+              <text x="12" y="52" font-size="13" font-weight="bold" fill="white" font-family="sans-serif">Bold</text>
+              <text x="12" y="68" font-size="13" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Summer Sale</text>
+              <rect x="12" y="80" width="72" height="20" rx="3" fill="#C9A96E"/>
+              <text x="48" y="94" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+            </svg>
+            <div class="ctr-overlay"><div class="ctr-fill" style="width:60%; background:var(--blue);"></div></div>
+          </div>
+          <div class="variant-body">
+            <div class="variant-headline">"Bold Summer Sale"</div>
+            <div class="variant-id">RL_Summer_H1_C2_I3</div>
+            <div class="metrics-row">
+              <div class="metric"><div class="metric-val blue">2.4%</div><div class="metric-label">CTR</div></div>
+              <div class="metric"><div class="metric-val" style="font-size:12px;">18,440</div><div class="metric-label">Impressions</div></div>
+            </div>
+            <div class="perf-bar-track"><div class="perf-bar-fill" style="width:60%; background:var(--blue);"></div></div>
+          </div>
+          <div class="variant-footer">
+            <button class="v-action">Edit</button>
+            <span class="v-sep">·</span>
+            <button class="v-action">Seed</button>
+            <span class="platform-badge">META</span>
+          </div>
+        </div>
+
+        <!-- V3 -->
+        <div class="variant-card">
+          <div class="variant-thumb">
+            <svg viewBox="0 0 200 150">
+              <rect width="200" height="150" fill="#1A1A2E"/>
+              <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+              <circle cx="165" cy="55" r="28" fill="#C9A96E" opacity=".15"/>
+              <text x="12" y="43" font-size="8" fill="#A8B3CF" font-family="sans-serif">NEW THIS SEASON</text>
+              <text x="12" y="57" font-size="11" font-weight="bold" fill="white" font-family="sans-serif">Refresh Your</text>
+              <text x="12" y="72" font-size="11" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Wardrobe</text>
+              <rect x="12" y="84" width="72" height="20" rx="3" fill="#C9A96E"/>
+              <text x="48" y="98" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+            </svg>
+            <div class="ctr-overlay"><div class="ctr-fill" style="width:47%; background:var(--blue);"></div></div>
+          </div>
+          <div class="variant-body">
+            <div class="variant-headline">"Refresh Your Wardrobe"</div>
+            <div class="variant-id">RL_Summer_H3_C2_I3</div>
+            <div class="metrics-row">
+              <div class="metric"><div class="metric-val blue">1.9%</div><div class="metric-label">CTR</div></div>
+              <div class="metric"><div class="metric-val" style="font-size:12px;">21,060</div><div class="metric-label">Impressions</div></div>
+            </div>
+            <div class="perf-bar-track"><div class="perf-bar-fill" style="width:47%; background:var(--blue);"></div></div>
+          </div>
+          <div class="variant-footer">
+            <button class="v-action">Edit</button>
+            <span class="v-sep">·</span>
+            <button class="v-action">Seed</button>
+            <span class="platform-badge">DV360</span>
+          </div>
+        </div>
+
+        <!-- V4: underperformer -->
+        <div class="variant-card">
+          <div class="variant-thumb">
+            <svg viewBox="0 0 200 150">
+              <rect width="200" height="150" fill="#1A1A2E"/>
+              <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+              <circle cx="165" cy="55" r="28" fill="#C9A96E" opacity=".12"/>
+              <text x="12" y="55" font-size="13" font-weight="bold" fill="white" font-family="sans-serif">Shop the</text>
+              <text x="12" y="71" font-size="13" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Season</text>
+              <rect x="12" y="84" width="72" height="20" rx="3" fill="#C9A96E" opacity=".7"/>
+              <text x="48" y="98" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+            </svg>
+            <div class="ctr-overlay"><div class="ctr-fill" style="width:28%; background:#9CA3AF;"></div></div>
+          </div>
+          <div class="variant-body">
+            <div class="variant-headline">"Shop the Season"</div>
+            <div class="variant-id">RL_Summer_H5_C2_I3</div>
+            <div class="metrics-row">
+              <div class="metric"><div class="metric-val" style="color:var(--text-muted);">1.1%</div><div class="metric-label">CTR</div></div>
+              <div class="metric"><div class="metric-val" style="font-size:12px; color:var(--text-muted);">9,220</div><div class="metric-label">Impressions</div></div>
+            </div>
+            <div class="perf-bar-track"><div class="perf-bar-fill" style="width:28%; background:#9CA3AF;"></div></div>
+          </div>
+          <div class="variant-footer">
+            <button class="v-action">Edit</button>
+            <span class="v-sep">·</span>
+            <button class="v-action" style="color:var(--danger);">Pause</button>
+            <span class="platform-badge">META</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

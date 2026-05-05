@@ -22,7 +22,7 @@ vi.mock('../client/useCurrentClient', () => ({
   }),
 }));
 
-interface FakeData {
+interface FakeData extends Record<string, unknown> {
   ready?: boolean;
   foo?: number;
 }
@@ -75,11 +75,21 @@ function makeManifest(overrides?: {
     ),
   };
 
+  // stepC exists so b is never the last step. The shell hides Continue Upstream
+  // on the last step (mirroring the legacy monolith's render gate). Tests that
+  // click Continue from b would otherwise fail to find the button.
+  const stepC: WizardStep<FakeData> = {
+    id: 'c',
+    name: 'Step C',
+    validate: () => ({ ok: true }),
+    render: () => <p data-testid="step-c-body">C body (terminal)</p>,
+  };
+
   return {
     id: 'edit-image',
     basePath: 'fake',
     title: 'Fake App',
-    steps: [stepA, stepB],
+    steps: [stepA, stepB, stepC],
     initialStepData: () => ({}),
   };
 }
@@ -142,18 +152,17 @@ describe('WizardShell', () => {
     expect(await screen.findByTestId('step-a-body')).toBeInTheDocument();
   });
 
-  it('blocks Next when validate returns ok:false and surfaces the reason', async () => {
+  it('disables Continue when validate returns ok:false (real-time gate)', async () => {
     renderShell(makeManifest());
     await screen.findByTestId('step-a-body');
 
-    const nextButton = screen.getByRole('button', { name: 'Next' });
+    const nextButton = screen.getByRole('button', { name: /Continue Upstream/i });
+    expect(nextButton).toBeDisabled();
+
+    // Even attempting to click does not advance.
     await act(async () => {
       nextButton.click();
     });
-
-    expect(screen.getByTestId('wizard-validation-error')).toHaveTextContent(
-      'must be ready'
-    );
     expect(screen.getByTestId('step-a-body')).toBeInTheDocument();
     expect(screen.queryByTestId('step-b-body')).not.toBeInTheDocument();
   });
@@ -173,7 +182,7 @@ describe('WizardShell', () => {
     await screen.findByTestId('step-a-body');
 
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
 
     await waitFor(() =>
@@ -191,7 +200,7 @@ describe('WizardShell', () => {
     await screen.findByTestId('step-b-body');
 
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
 
     await waitFor(() =>
@@ -212,7 +221,7 @@ describe('WizardShell', () => {
     await screen.findByTestId('step-a-body');
 
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
 
     await waitFor(() =>
@@ -247,7 +256,7 @@ describe('WizardShell', () => {
     );
 
     // localStorage should now contain the new id under the canonical key.
-    expect(window.localStorage.getItem('creative_acme_edit-image')).toBe(
+    expect(window.localStorage.getItem('wiz_acme_edit-image')).toBe(
       'creative-new'
     );
 
@@ -257,7 +266,7 @@ describe('WizardShell', () => {
     vi.mocked(creativeService.getCreative).mockResolvedValue({
       id: 'creative-new',
       clientSlug: 'acme',
-      useCaseId: 'edit-image',
+      appId: 'edit-image',
       status: 'draft',
       stepData: { foo: 1 },
       currentStep: 0,
@@ -273,13 +282,19 @@ describe('WizardShell', () => {
     // persisted `foo` field is in stepData. Easiest visible probe: navigate to b.
     await screen.findByTestId('step-a-body');
     await waitFor(() =>
-      expect(creativeService.getCreative).toHaveBeenCalledWith('creative-new')
+      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'edit-image', 'creative-new')
     );
 
-    // Make validate a pass and click next so we land on b which renders foo.
-    manifest.steps[0].validate = () => ({ ok: true });
+    // Click set-ready so step a's validate passes (data.ready === true), then
+    // Continue Upstream lands on step b which renders foo from the persisted
+    // stepData. Mutating manifest.steps[0].validate at runtime — as a previous
+    // version of this test did — does not work with the new shell's useMemo'd
+    // validation gate. State-driven validation is the prod-faithful path.
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByTestId('set-ready').click();
+    });
+    await act(async () => {
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
     await waitFor(() =>
       expect(screen.getByTestId('step-b-body')).toHaveTextContent('foo=1')
@@ -290,7 +305,7 @@ describe('WizardShell', () => {
     vi.mocked(creativeService.getCreative).mockResolvedValue({
       id: 'abc',
       clientSlug: 'acme',
-      useCaseId: 'edit-image',
+      appId: 'edit-image',
       status: 'draft',
       stepData: { foo: 7 },
       currentStep: 0,
@@ -302,13 +317,13 @@ describe('WizardShell', () => {
     renderShell(manifest, ['/wizard?creative=abc']);
 
     await waitFor(() =>
-      expect(creativeService.getCreative).toHaveBeenCalledWith('abc')
+      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'edit-image', 'abc')
     );
 
     // Confirm hydration by advancing to b which renders the foo value.
     await screen.findByTestId('step-a-body');
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
     await waitFor(() =>
       expect(screen.getByTestId('step-b-body')).toHaveTextContent('foo=7')
@@ -340,7 +355,7 @@ describe('WizardShell', () => {
     expect(seenPaths.at(-1)).toBe('/wizard');
 
     await act(async () => {
-      screen.getByRole('button', { name: 'Next' }).click();
+      screen.getByRole('button', { name: /Continue Upstream/i }).click();
     });
 
     await waitFor(() =>

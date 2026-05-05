@@ -27,6 +27,7 @@ const manifest: AppManifest<TemplateBuilderStepData> = {
   id: 'template-builder',
   basePath: 'template-builder',
   title: 'Dynamic Template Builder',
+  description: 'Create or edit HTML templates for dynamic product ads — connect to product feeds and preview.',
   steps: [
     contextStep,
     intentStep,
