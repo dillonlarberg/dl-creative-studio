@@ -51,24 +51,43 @@ describe('template-builder manifest', () => {
 });
 
 describe('contextStep.validate', () => {
-  it('rejects empty data', () => {
-    expect(contextStep.validate({})).toEqual({
-      ok: false,
-      reason: 'Project title required',
-    });
+  it('rejects empty data with all 3 requirements unmet', () => {
+    const result = contextStep.validate({});
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('Project title required');
+    expect(result.requirements).toEqual([
+      { label: 'Project Title', met: false },
+      { label: 'Channel', met: false },
+      { label: 'Size Selected', met: false },
+    ]);
   });
 
-  it('rejects when channel missing', () => {
-    expect(contextStep.validate({ jobTitle: 'Q4 Promo' })).toEqual({
-      ok: false,
-      reason: 'Channel required',
-    });
+  it('rejects when channel missing — Project Title met, others unmet', () => {
+    const result = contextStep.validate({ jobTitle: 'Q4 Promo' });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('Channel required');
+    expect(result.requirements).toEqual([
+      { label: 'Project Title', met: true },
+      { label: 'Channel', met: false },
+      { label: 'Size Selected', met: false },
+    ]);
   });
 
-  it('rejects when no sizes selected', () => {
-    expect(
-      contextStep.validate({ jobTitle: 'Q4 Promo', channel: 'Social' })
-    ).toEqual({ ok: false, reason: 'At least one size required' });
+  it('rejects when no sizes selected — only Size Selected unmet', () => {
+    const result = contextStep.validate({
+      jobTitle: 'Q4 Promo',
+      channel: 'Social',
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('At least one size required');
+    expect(result.requirements).toEqual([
+      { label: 'Project Title', met: true },
+      { label: 'Channel', met: true },
+      { label: 'Size Selected', met: false },
+    ]);
   });
 
   it('accepts a fully-populated context', () => {
@@ -81,14 +100,20 @@ describe('contextStep.validate', () => {
     ).toEqual({ ok: true });
   });
 
-  it('rejects whitespace-only title', () => {
-    expect(
-      contextStep.validate({
-        jobTitle: '   ',
-        channel: 'Social',
-        ratios: ['1:1'],
-      })
-    ).toEqual({ ok: false, reason: 'Project title required' });
+  it('rejects whitespace-only title — Project Title unmet', () => {
+    const result = contextStep.validate({
+      jobTitle: '   ',
+      channel: 'Social',
+      ratios: ['1:1'],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('Project title required');
+    expect(result.requirements).toEqual([
+      { label: 'Project Title', met: false },
+      { label: 'Channel', met: true },
+      { label: 'Size Selected', met: true },
+    ]);
   });
 });
 
