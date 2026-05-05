@@ -25,7 +25,7 @@ The core loop:
 
 The most important structural finding from the wireframing session: **there are two fundamentally different entry points**, and treating them the same breaks the UX.
 
-### Path A — Create New (Template-First)
+### Create New (Template-First)
 > "I have a campaign concept. I need to create ads from scratch."
 
 1. Pick a template (or build one)
@@ -37,7 +37,7 @@ The most important structural finding from the wireframing session: **there are 
 
 **Defining characteristic:** slot content is unknown upfront. The user is composing the creative.
 
-### Path B — Edit Existing (Asset-First)
+### Edit Existing (Asset-First)
 > "I already have a rendered variant. I need it in more sizes — or want to tweak it."
 
 1. Select an existing rendered variant (e.g. `RL_Summer_H2_C2_I3`)
@@ -49,6 +49,8 @@ The most important structural finding from the wireframing session: **there are 
 
 ### Why this matters for the build
 These two paths should share zero UI between template selection and render. They diverge at the very first screen. The sidebar, topbar badge, and dashboard mini-apps section all reflect which path the user is on.
+
+**Terminology is fixed:** "Create new" and "Edit existing" are used consistently across the UI, codebase (`EntryPath` type: `create-new` | `optimize-existing`), and all documentation. No "Path A / Path B" anywhere.
 
 ---
 
@@ -132,6 +134,8 @@ The batch engine runs a Cartesian product of all slot values across all sizes:
 ```
 
 The render progress view shows all 180 as a tile grid. Slot Compare mode in the batch editor lets you pivot: lock CTA and Image to a fixed value, compare all 5 Headlines side-by-side.
+
+**On render failures:** if a subset of tiles fail (e.g. 12 of 180), only the failed tiles re-run. Users are never charged double compute for a partial failure in a large batch.
 
 ### 4.5 Performance Feedback Loop
 
@@ -310,36 +314,44 @@ No app-specific logic lives in WizardShell. Apps are fully self-contained.
 
 ## 7. Proposed Build Sequence
 
-**Phase 1 — Foundation (current)**
+**Phase 0 — Template Bootstrap (pre-work, before first sprint)**
+- Creative team produces a small, high-quality set of base templates for the first 2–3 pilot clients (e.g. Ralph Lauren, SharkNinja)
+- These templates seed the "Create New" path so the product is usable from day one
+- Templates are owned and maintained by the creative team going forward; any PMG user can use them, only the creative team can publish new ones
+- This eliminates the "no road for the car" risk before Phase 2 begins
+
+**Phase 1 — Foundation + First End-to-End Proof (current)**
 - Finish modular app registry + WizardShell ✅
 - Migrate all services to tenant-isolated Firestore schema
-- Ship Template Builder as first fully-modular app
+- Ship Template Builder as first fully-modular app (Create New path)
+- Ship Resize to New Sizes as first Edit Existing app — it has no Canvas Editor or batch engine dependency, validates the WizardShell pattern, and gives us a working end-to-end flow in both paths before Phase 2
 
 **Phase 2 — Batch Engine**
 - Batch Generator app (Create New path)
 - Slot definition UI (Canvas Editor simplified)
-- Render progress + BullMQ-style worker queue
+- Render progress + worker queue (Cloud Tasks or Cloud Run + BullMQ — decision required before Phase 2 starts)
 - Variant ID convention enforced in data model
+- Failed-tile re-run: only failed renders re-queue, not the full batch
 
 **Phase 3 — Performance Loop**
 - Performance Feedback view
 - Alli API integration for CTR/ROAS ingest
 - Seed Batch flow from winner variants
+- Alli Insights CTAs pre-fill Batch Generator with constrained slot values
 
-**Phase 4 — Edit Existing Path**
-- Resize Existing app (Asset-First path)
+**Phase 4 — Edit Existing (remainder)**
 - Edit & Tweak app
-- Scene graph lock logic
+- Scene graph lock + delta rendering logic
 
 **Phase 5 — Video**
-- Video Cutdown app (uses existing `videoService.ts` + Cloud Functions)
+- Video Cutdown app (Cloud Functions + FFmpeg partially implemented in `videoService.ts` — build resumes here)
 
 ---
 
 ## 8. Open Questions for the Meeting
 
-1. **Render infrastructure:** Where do renders actually run? Cloud Functions have a 9-min timeout — batch jobs of 180 renders need a job queue (Cloud Tasks, BullMQ on Cloud Run, or similar). Decision needed before Phase 2.
-2. **Template format:** Are templates HTML (current `injectIntoHtml.ts` approach) or a JSON scene graph (Fabric.js canvas export)? This affects the Canvas Editor build significantly.
-3. **Alli performance data:** What's the latency on CTR/ROAS flowing back from platforms into Alli? Real-time or T+1? Affects how the Performance Feedback view is built.
-4. **Auth migration:** Firebase Auth (current) vs. Clerk (planned per prior notes). Does this block Phase 1 or can it land in parallel?
-5. **Who owns the Alli API proxy?** The current `getMeProxy` / `getClientsProxy` in Cloud Functions — is this the right long-term pattern or should the frontend call Alli Central directly with the user's token?
+1. **Render infrastructure:** Where do renders actually run? Cloud Functions have a 9-min timeout — batch jobs of 180 renders need a job queue (Cloud Tasks, BullMQ on Cloud Run, or similar). Decision required before Phase 2 starts.
+2. **Template format:** Are templates HTML (current `injectIntoHtml.ts` approach) or a JSON scene graph (Fabric.js canvas export)? This affects the Canvas Editor build and multi-size re-layout significantly. Needs to be locked before Phase 2.
+3. **Auth migration:** Firebase Auth (current) vs. Clerk (planned). Does this block Phase 1 or can it land in parallel?
+4. **Who owns the Alli API proxy?** The current `getMeProxy` / `getClientsProxy` in Cloud Functions — is this the right long-term pattern or should the frontend call Alli Central directly with the user's token?
+5. **Alli performance data latency:** Deferred — to be confirmed with the Alli data team before Performance Feedback view is specced out in Phase 3.
