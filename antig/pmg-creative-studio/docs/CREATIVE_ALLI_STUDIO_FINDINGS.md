@@ -329,9 +329,24 @@ No app-specific logic lives in WizardShell. Apps are fully self-contained.
 **Phase 2 — Batch Engine**
 - Batch Generator app (Create New path)
 - Slot definition UI (Canvas Editor simplified)
-- Render progress + worker queue (Cloud Tasks or Cloud Run + BullMQ — decision required before Phase 2 starts)
+- Render progress + worker queue (Cloud Tasks + Cloud Run renderer workers — architecture decision required before Phase 2 starts)
 - Variant ID convention enforced in data model
 - Failed-tile re-run: only failed renders re-queue, not the full batch
+
+> **Scene graph format — read this before writing the batch function**
+>
+> The batch engine must use a **JSON scene graph** as its canonical template format, not HTML injection.
+>
+> `injectIntoHtml.ts` works for single-size fixed-template preview (Template Builder) but cannot support:
+> - **Multi-size re-layout** — a 1:1 ad and a 9:16 ad are not just crops; layer positions, text wrapping, and proportions restructure per size. With HTML you need a separate template file per size. With a scene graph you define one layout with per-size override rules.
+> - **Delta rendering** — if two variants differ only in headline text, a scene graph lets the renderer reuse the cached image layer composite and only re-render the text layer. HTML injection re-renders the full template for every variant every time, with no shared work across a batch.
+>
+> **What to build at the start of Phase 2, before the batch generator itself:**
+> 1. Define a JSON scene graph schema — flat list of layers (type, position, size, slot binding, per-size overrides).
+> 2. Write a one-time converter: existing HTML template → JSON scene graph. Existing templates migrate automatically with no manual rebuild.
+> 3. The render worker consumes the JSON scene graph, not HTML. Slot values are injected into the scene at render time, not into the DOM.
+>
+> `injectIntoHtml.ts` stays untouched for Template Builder preview. It is not extended or reused in the batch engine.
 
 **Phase 3 — Performance Loop**
 - Performance Feedback view
@@ -351,7 +366,7 @@ No app-specific logic lives in WizardShell. Apps are fully self-contained.
 ## 8. Open Questions for the Meeting
 
 1. **Render infrastructure:** Where do renders actually run? Cloud Functions have a 9-min timeout — batch jobs of 180 renders need a job queue (Cloud Tasks, BullMQ on Cloud Run, or similar). Decision required before Phase 2 starts.
-2. **Template format:** Are templates HTML (current `injectIntoHtml.ts` approach) or a JSON scene graph (Fabric.js canvas export)? This affects the Canvas Editor build and multi-size re-layout significantly. Needs to be locked before Phase 2.
+2. **Template format: DECIDED — JSON scene graph from the start.** The Batch Generator will use a JSON scene graph as its canonical format, not HTML injection. Phase 2 will include a one-time converter that takes the existing HTML templates and produces a simple JSON layer list. This pays a small upfront cost to avoid a full rebuild if multi-size re-layout or delta rendering is needed later. `injectIntoHtml.ts` stays in place for the Template Builder preview (it already works there) but is not extended into the batch engine. See below for full rationale.
 3. **Auth migration:** Firebase Auth (current) vs. Clerk (planned). Does this block Phase 1 or can it land in parallel?
 4. **Who owns the Alli API proxy?** The current `getMeProxy` / `getClientsProxy` in Cloud Functions — is this the right long-term pattern or should the frontend call Alli Central directly with the user's token?
 5. **Alli performance data latency:** Deferred — to be confirmed with the Alli data team before Performance Feedback view is specced out in Phase 3.
