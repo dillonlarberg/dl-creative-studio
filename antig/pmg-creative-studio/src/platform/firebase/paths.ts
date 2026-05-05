@@ -26,7 +26,8 @@ export type AppId =
   | 'new-video'
   | 'video-cutdown'
   | 'template-builder'
-  | 'feed-processing';
+  | 'feed-processing'
+  | 'batch-variants';
 
 export type ClientSlug = string;
 export type CreativeId = string;

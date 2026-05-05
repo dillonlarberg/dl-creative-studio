@@ -40,9 +40,57 @@ interface WizardShellProps<S extends StepData = StepData> {
  *     4280-4310) so per-app modules render visually identical to the
  *     legacy monolith route.
  */
+/**
+ * Preview-status stub view. Step 0.75 of the AdLabs v1 plan: lets the dashboard
+ * register and route to apps that aren't fully lifted yet (e.g. Batch Variants
+ * in v1) without forcing them to satisfy the live wizard contract. No Continue
+ * button, no checklist, no persistence — just a "Coming soon" panel.
+ */
+function WizardShellPreviewStub({ title }: { title: string }) {
+  return (
+    <div className="space-y-8" data-testid="wizard-shell-preview">
+      <div>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600"
+          data-testid="wizard-preview-back"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Back to workflows
+        </Link>
+        <h1 className="mt-3 text-2xl font-semibold text-gray-900">{title}</h1>
+      </div>
+
+      <div
+        className="rounded-xl border border-gray-200 bg-white p-12 shadow-card text-center"
+        data-testid="wizard-preview-coming-soon"
+      >
+        <p className="text-xs font-black uppercase tracking-[0.3em] text-blue-600">
+          Coming soon
+        </p>
+        <h2 className="mt-4 text-lg font-semibold text-gray-900">
+          {title} is on the way
+        </h2>
+        <p className="mt-2 text-sm text-blue-gray-500">
+          This app is registered and routable — the full experience is being built.
+          Check back shortly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function WizardShell<S extends StepData = StepData>({
   manifest,
 }: WizardShellProps<S>) {
+  // Preview-status apps render a stub view and bypass the wizard runtime
+  // entirely. Hooks below this line ARE allowed to skip because the early
+  // return is keyed on a stable manifest field — React's hook rules require
+  // identical hook order across renders, not across instances.
+  if (manifest.status === 'preview') {
+    return <WizardShellPreviewStub title={manifest.title} />;
+  }
+
   // The shell can be mounted in either of two route shapes:
   //   - Parent splat: <Route path="/:clientSlug/template-builder/*" />
   //     React Router exposes the trailing segment via params['*'].

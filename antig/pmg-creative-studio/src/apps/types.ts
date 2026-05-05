@@ -79,4 +79,18 @@ export interface AppManifest<S extends StepData = StepData> {
   steps: WizardStep<S>[];
   onMount?: (ctx: AppContext) => void | Promise<void>;
   initialStepData: () => S;
+  /**
+   * Lifecycle status. 'live' apps render the full wizard chrome (default).
+   * 'preview' apps render a "Coming soon" stub view via WizardShell — no
+   * Continue button, no checklist, no step persistence. Used by Step 1 of
+   * the AdLabs v1 plan to register Batch Variants as a clickable card on
+   * the dashboard before the lift work ships.
+   */
+  status?: 'live' | 'preview';
+  /**
+   * When true, the dashboard tile renders disabled until the client's
+   * brand-standards (Asset House) gate is satisfied. Replaces the legacy
+   * `UseCase.requiresBrandStandards` field for registry-driven apps.
+   */
+  requiresBrandStandards?: boolean;
 }
