@@ -1,6 +1,7 @@
 import type { AppManifest } from './types';
 import templateBuilderManifest from './template-builder/manifest';
 import batchVariantsManifest from './batch-variants/manifest';
+import videoCutdownManifest from './video-cutdown/manifest';
 
 // Per-app manifests are registered here as they land. Task 6 of PR 3 adds
 // template-builder (redirect from edit-image). PRs 4-9 add the rest.
@@ -65,15 +66,13 @@ const FEATURE_VIDEO_CUTDOWN_LIFT =
 const MANIFESTS: AppManifest[] = [
   templateBuilderManifest as AppManifest,
   batchVariantsManifest as AppManifest,
-  // FEATURE_VIDEO_CUTDOWN_LIFT — Step 2 will register the lifted manifest
-  // here. Until that lands, the flag toggles whether the card is visible
-  // on the dashboard. The actual lifted manifest does not exist yet.
 ];
 
 if (FEATURE_VIDEO_CUTDOWN_LIFT) {
-  // Lazy require pattern preserved for Step 2: when the manifest module
-  // exists, replace this branch with a static import + push.
-  // For now the flag is wired but the manifest file is not present.
+  // Step 2 stub: video-cutdown is a preview-status placeholder until the
+  // full lift from UseCaseWizardPage ships. Registry stays clean of
+  // half-built apps when the flag is off (default).
+  MANIFESTS.push(videoCutdownManifest as AppManifest);
 }
 
 const REGISTRY = buildRegistry(MANIFESTS);

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ExclamationTriangleIcon,
@@ -9,6 +10,8 @@ import { useCurrentUser } from '../auth/useCurrentUser';
 import { isInternalUser } from '../auth/isInternalUser';
 import { getRegistry } from '../apps/_registry';
 import type { AppManifest } from '../apps/types';
+import { batchService, type BatchRecord } from '../services/batches';
+import type { AppId } from '../platform/firebase/paths';
 
 /**
  * AdLabs Dashboard v1 — Step 1 of plan.
@@ -47,22 +50,63 @@ const COMING_SOON_SHELF: ComingSoonEntry[] = [
   },
 ];
 
-const MOCK_BATCHES = [
-  {
-    id: 'b-001',
-    appId: 'template-builder',
-    label: 'RL Spring 2026 — sweater carousel',
-    status: 'running' as const,
-    progress: 0.62,
-  },
-  {
-    id: 'b-002',
-    appId: 'video-cutdown',
-    label: 'Polo Sport hero — 30s → 6/15s cutdowns',
-    status: 'queued' as const,
-    progress: 0,
-  },
-];
+// Step 4: Active Batch Jobs reads from path-scoped Firestore. The app aggregates
+// across every registered live app's batches collection. Active = status in
+// {pending, processing}.
+const ACTIVE_STATUSES: BatchRecord['status'][] = ['pending', 'processing'];
+
+function useActiveBatches(
+  clientSlug: string | null,
+  appIds: AppId[]
+): { batches: BatchRecord[]; loading: boolean; error: Error | null } {
+  const [batches, setBatches] = useState<BatchRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const appIdsKey = appIds.join(',');
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!clientSlug || appIds.length === 0) {
+      setBatches([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    Promise.all(
+      appIds.map((id) =>
+        batchService
+          .listActiveBatchesForClient(clientSlug, id)
+          .catch(() => [] as BatchRecord[])
+      )
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const flat = results.flat().filter((b) => ACTIVE_STATUSES.includes(b.status));
+        flat.sort((a, b) => {
+          // createdAt is a Firestore Timestamp; fallback to 0 if missing.
+          const at = a.createdAt?.toMillis?.() ?? 0;
+          const bt = b.createdAt?.toMillis?.() ?? 0;
+          return bt - at;
+        });
+        setBatches(flat);
+        setLoading(false);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setBatches([]);
+        setLoading(false);
+        setError(err instanceof Error ? err : new Error(String(err)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientSlug, appIdsKey]);
+
+  return { batches, loading, error };
+}
 
 function greeting(now: Date = new Date()): string {
   const h = now.getHours();
@@ -90,6 +134,16 @@ export default function DashboardPage() {
 
   const registry: readonly AppManifest[] = getRegistry();
   const userName = user?.displayName ?? user?.email?.split('@')[0] ?? 'there';
+
+  // Step 4: only query live apps (preview manifests have no batches).
+  const liveAppIds = registry
+    .filter((m) => (m.status ?? 'live') === 'live')
+    .map((m) => m.id);
+  const {
+    batches: activeBatches,
+    loading: batchesLoading,
+    error: batchesError,
+  } = useActiveBatches(client?.slug ?? null, liveAppIds);
 
   return (
     <div className="space-y-8" data-testid="adlabs-dashboard">
@@ -211,44 +265,69 @@ export default function DashboardPage() {
         </ul>
       </section>
 
-      {/* Active Batch Jobs — mocked + internal-only render gate */}
+      {/* Active Batch Jobs — real Firestore-backed (Step 4), internal-only gate */}
       {internal && (
         <section
           aria-labelledby="active-batches-heading"
           className="space-y-4"
           data-testid="active-batch-jobs"
         >
-          <div className="flex items-center justify-between">
-            <h2
-              id="active-batches-heading"
-              className="text-xs font-black uppercase tracking-[0.3em] text-blue-gray-500"
+          <h2
+            id="active-batches-heading"
+            className="text-xs font-black uppercase tracking-[0.3em] text-blue-gray-500"
+          >
+            Active batch jobs
+          </h2>
+
+          {batchesLoading && (
+            <p
+              data-testid="active-batches-loading"
+              className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-blue-gray-500"
             >
-              Active batch jobs
-            </h2>
-            <span
-              data-testid="demo-data-indicator"
-              className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-700"
+              Loading active batches…
+            </p>
+          )}
+
+          {!batchesLoading && batchesError && (
+            <p
+              data-testid="active-batches-error"
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
             >
-              Demo data
-            </span>
-          </div>
-          <ul className="space-y-3">
-            {MOCK_BATCHES.map((b) => (
-              <li
-                key={b.id}
-                data-testid={`mock-batch-${b.id}`}
-                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4"
-              >
-                <ClockIcon className="h-5 w-5 text-blue-gray-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">{b.label}</p>
-                  <p className="text-xs text-blue-gray-500">
-                    {b.appId} · {b.status}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
+              Couldn&apos;t load batches. Refresh to retry.
+            </p>
+          )}
+
+          {!batchesLoading && !batchesError && activeBatches.length === 0 && (
+            <p
+              data-testid="active-batches-empty"
+              className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-blue-gray-500"
+            >
+              No active batches.
+            </p>
+          )}
+
+          {!batchesLoading && !batchesError && activeBatches.length > 0 && (
+            <ul className="space-y-3" data-testid="active-batches-list">
+              {activeBatches.map((b) => (
+                <li
+                  key={b.id}
+                  data-testid={`active-batch-${b.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-4"
+                >
+                  <ClockIcon className="h-5 w-5 text-blue-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {b.feedName ?? b.templateId}
+                    </p>
+                    <p className="text-xs text-blue-gray-500">
+                      {b.appId} · {b.status} · {b.completedVariations}/{b.totalVariations}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>

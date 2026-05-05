@@ -471,7 +471,7 @@ export async function handleExecuteBatch(opts: {
   feedMappings: Record<string, string>;
   ratio?: string;
 }): Promise<string> {
-  const batchId = await batchService.createBatch({
+  const batchId = await batchService.createBatch('template-builder', {
     clientSlug: opts.clientSlug,
     templateId: 'active-session',
     feedId: (opts.selectedFeed as { id?: string } | null)?.id || 'manual',
@@ -482,20 +482,31 @@ export async function handleExecuteBatch(opts: {
     ratio: opts.ratio || '1:1',
   });
 
-  await batchService.updateBatchStatus(batchId, 'processing');
+  await batchService.updateBatchStatus(
+    opts.clientSlug,
+    'template-builder',
+    batchId,
+    'processing'
+  );
 
   for (let i = 0; i < Math.min(3, opts.feedSampleData.length); i++) {
     const headlineKey = opts.feedMappings.headline;
     const product = headlineKey
       ? (opts.feedSampleData[i]?.[headlineKey] as string) || 'Product Variation'
       : 'Product Variation';
-    await batchService.addResult(batchId, {
+    await batchService.addResult(opts.clientSlug, 'template-builder', batchId, {
       url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
       feedRowIndex: i,
       metadata: { product },
     });
   }
 
-  await batchService.updateBatchStatus(batchId, 'completed', opts.feedSampleData.length || 45);
+  await batchService.updateBatchStatus(
+    opts.clientSlug,
+    'template-builder',
+    batchId,
+    'completed',
+    opts.feedSampleData.length || 45
+  );
   return batchId;
 }

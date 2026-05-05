@@ -114,7 +114,7 @@ test.describe('Step 1 — DashboardPage', () => {
     await expect(warning.or(bootstrapError).first()).toBeVisible();
   });
 
-  test('Tracer 5: Active Batch Jobs section visible for PMG-internal user', async ({
+  test('Tracer 5: Active Batch Jobs section renders for PMG-internal user (empty state in E2E without seeded Firestore)', async ({
     page,
   }) => {
     await page.goto('/');
@@ -127,8 +127,11 @@ test.describe('Step 1 — DashboardPage', () => {
     await page.goto('/adlabs/ralph_lauren/');
 
     await expect(page.getByTestId('active-batch-jobs')).toBeVisible();
-    await expect(page.getByTestId('demo-data-indicator')).toBeVisible();
-    await expect(page.getByTestId('mock-batch-b-001')).toBeVisible();
+    // In E2E without auth-bypassed Firestore, the read either resolves empty
+    // or rejects — both surface a section state, never a crash.
+    const empty = page.getByTestId('active-batches-empty');
+    const error = page.getByTestId('active-batches-error');
+    await expect(empty.or(error).first()).toBeVisible();
   });
 
   test('Tracer 6: /adlabs root with no slug + cleared localStorage → redirect to /select-client', async ({

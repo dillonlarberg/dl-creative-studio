@@ -16,6 +16,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
+import type { AppId } from '../../platform/firebase/paths';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
 
@@ -639,7 +640,11 @@ export default function UseCaseWizardPage() {
 
         setIsProcessing(true);
         try {
-            const batchId = await batchService.createBatch({
+            // Step 2.5: legacy monolith uses useCaseId as the appId. Cast is
+            // safe because useCaseId values are sourced from USE_CASES constants
+            // which mirror the AppId union.
+            const appId = useCaseId as AppId;
+            const batchId = await batchService.createBatch(appId, {
                 clientSlug: client.slug,
                 templateId: 'active-session',
                 feedId: selectedFeed?.id || 'manual',
@@ -650,19 +655,17 @@ export default function UseCaseWizardPage() {
                 ratio: stepData.ratio || '1:1'
             });
 
-            // Simulate the processing phase
-            await batchService.updateBatchStatus(batchId, 'processing');
+            await batchService.updateBatchStatus(client.slug, appId, batchId, 'processing');
 
-            // Mocking results adding for troubleshooting demo
             for (let i = 0; i < Math.min(3, feedSampleData.length); i++) {
-                await batchService.addResult(batchId, {
+                await batchService.addResult(client.slug, appId, batchId, {
                     url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
                     feedRowIndex: i,
                     metadata: { product: feedSampleData[i]?.[feedMappings.headline] || 'Product Variation' }
                 });
             }
 
-            await batchService.updateBatchStatus(batchId, 'completed', feedSampleData.length || 45);
+            await batchService.updateBatchStatus(client.slug, appId, batchId, 'completed', feedSampleData.length || 45);
             alert(`Batch Deployment Orchestrated Successfully!\n\nUsage tracked under Batch ID: ${batchId}`);
         } catch (err) {
             console.error('Batch failed:', err);
