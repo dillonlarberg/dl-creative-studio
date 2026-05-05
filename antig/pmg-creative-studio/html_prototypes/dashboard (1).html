@@ -84,15 +84,17 @@
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 24px 0 18px;
     z-index: 10;
   }
   .platform-wordmark {
-    font-size: 22px; font-weight: 800;
+    font-size: 26px; font-weight: 800;
     color: var(--primary);
-    letter-spacing: -0.6px;
+    letter-spacing: -0.8px;
     line-height: 1;
-    margin-right: 32px;
+    width: 64px;
+    margin-right: 24px;
+    flex-shrink: 0;
   }
   .platform-client {
     display: flex; align-items: center; gap: 12px;
@@ -138,111 +140,58 @@
     margin-left: 4px;
   }
 
-  /* ─────────── SIDEBAR (matches src/components/AppLayout.tsx) ─────────── */
+  /* ─────────── SIDEBAR (Alli platform icon rail) ─────────── */
   .sidebar {
     position: fixed;
-    top: 0; left: 0; bottom: 0;
-    width: 256px;
-    background: var(--surface);
-    border-right: 1px solid var(--border-strong);
+    top: 56px; left: 0; bottom: 0;
+    width: 56px;
+    background: #F4F6FA;
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    z-index: 20;
+    align-items: center;
+    padding: 14px 0 12px;
+    z-index: 5;
   }
-
-  .sidebar-header {
-    position: relative;
-    border-bottom: 1px solid var(--border-strong);
-    padding: 16px 24px;
-    overflow: hidden;
-  }
-  .sidebar-title { font-size: 20px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
-  .sidebar-client-row {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 8px;
-    margin-top: 6px;
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em;
-    min-width: 0;
-  }
-  .sidebar-client-name {
-    color: #6B7B95;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    flex: 1;
-  }
-  .sidebar-client-change {
-    color: var(--primary);
-    background: none; border: none; cursor: pointer;
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em;
-    padding: 0;
-  }
-  .sidebar-client-change:hover { color: var(--primary-hover); }
-
-  .dev-ribbon {
-    position: absolute;
-    top: 8px; left: -32px;
-    transform: rotate(-45deg);
-    background: #DC2626;
-    color: white;
-    font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.3em;
-    padding: 2px 40px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    pointer-events: none;
-  }
-
-  .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
-  .nav-link {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 14px; font-weight: 500;
-    color: var(--text-card-title);
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .nav-link:hover { background: #F3F4F6; color: var(--text-primary); }
-  .nav-link.active { background: var(--primary-tint); color: var(--primary); }
-  .nav-link svg { width: 20px; height: 20px; flex-shrink: 0; color: #6B7B95; }
-  .nav-link:hover svg { color: var(--text-body); }
-  .nav-link.active svg { color: var(--primary); }
-
-  .sidebar-footer {
-    border-top: 1px solid var(--border-strong);
-    padding: 16px;
-  }
-  .sidebar-user {
-    display: flex; align-items: center; gap: 12px;
-  }
-  .sidebar-avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: var(--primary);
-    color: white;
-    font-size: 12px; font-weight: 500;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .sidebar-user-info { flex: 1; min-width: 0; }
-  .sidebar-user-name { font-size: 14px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-user-client {
-    font-size: 12px; font-weight: 500; color: var(--primary);
-    background: none; border: none; cursor: pointer; padding: 0; text-align: left;
+  .rail-nav {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
     width: 100%;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .sidebar-user-client:hover { color: var(--primary-hover); }
-  .sidebar-logout {
-    background: none; border: none; cursor: pointer;
-    color: #6B7B95;
+  .rail-link {
+    width: 40px; height: 40px;
+    border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    padding: 4px;
+    color: #6B7280;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
   }
-  .sidebar-logout:hover { color: var(--text-body); }
-  .sidebar-logout svg { width: 20px; height: 20px; }
+  .rail-link:hover { background: rgba(12, 105, 234, 0.06); color: var(--text-body); }
+  .rail-link.active { background: var(--primary-tint); color: var(--primary); }
+  .rail-link.active::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 8px; bottom: 8px;
+    width: 3px;
+    background: var(--primary);
+    border-radius: 0 2px 2px 0;
+  }
+  .rail-link svg { width: 20px; height: 20px; }
+  .rail-spacer { flex: 1; }
+  .rail-tooltip { /* visually hidden — accessible name only */
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 
   /* ─────────── MAIN ─────────── */
   .main {
-    margin-left: 256px;
+    margin-left: 56px;
     margin-top: 56px;
     height: calc(100vh - 56px);
     display: flex;
@@ -558,50 +507,94 @@
   </div>
 </header>
 
-<!-- SIDEBAR -->
-<aside class="sidebar" aria-label="Primary">
-  <div class="sidebar-header">
-    <span class="dev-ribbon">Dev</span>
-    <div class="sidebar-title">Alli Studio</div>
-    <div class="sidebar-client-row">
-      <span class="sidebar-client-name">Ralph Lauren</span>
-      <button class="sidebar-client-change" type="button">Change</button>
-    </div>
-  </div>
+<!-- ALLI PLATFORM SIDEBAR (icon rail) -->
+<aside class="sidebar" aria-label="Primary navigation">
+  <nav class="rail-nav">
 
-  <nav class="sidebar-nav">
-    <a class="nav-link active" href="#" aria-current="page">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
-        <path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/>
+    <a class="rail-link" href="#" aria-label="Dashboards" title="Dashboards">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3 2"/>
+        <path d="M7.5 12a4.5 4.5 0 1 1 6.4 4.1"/>
       </svg>
-      Alli Studio
+      <span class="rail-tooltip">Dashboards</span>
     </a>
-    <a class="nav-link" href="#">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 7v14"/>
-        <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+
+    <a class="rail-link" href="#" aria-label="Data" title="Data">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="20" x2="6" y2="13"/>
+        <line x1="12" y1="20" x2="12" y2="9"/>
+        <line x1="18" y1="20" x2="18" y2="15"/>
+        <line x1="3" y1="20" x2="21" y2="20"/>
       </svg>
-      Client Asset House
+      <span class="rail-tooltip">Data</span>
     </a>
+
+    <a class="rail-link" href="#" aria-label="Strategy &amp; Planning" title="Strategy & Planning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="12" height="17" rx="2"/>
+        <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/>
+        <path d="M9 11l2 2 4-4"/>
+      </svg>
+      <span class="rail-tooltip">Strategy &amp; Planning</span>
+    </a>
+
+    <a class="rail-link" href="#" aria-label="Actions" title="Actions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
+      </svg>
+      <span class="rail-tooltip">Actions</span>
+    </a>
+
+    <a class="rail-link" href="#" aria-label="Audiences" title="Audiences">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="8" r="3.5"/>
+        <path d="M3 20a6 6 0 0 1 12 0"/>
+        <circle cx="17" cy="9" r="2.5"/>
+        <path d="M15 20a4.5 4.5 0 0 1 6.5-4"/>
+      </svg>
+      <span class="rail-tooltip">Audiences</span>
+    </a>
+
+    <a class="rail-link" href="#" aria-label="Creative" title="Creative">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2"/>
+        <circle cx="8.5" cy="9.5" r="1.5"/>
+        <path d="M21 16l-5-5-9 9"/>
+      </svg>
+      <span class="rail-tooltip">Creative</span>
+    </a>
+
+    <a class="rail-link active" href="#" aria-label="AdLabs" aria-current="page" title="AdLabs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3h6"/>
+        <path d="M10 3v6.5L4.5 18A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3l-5.5-8.5V3"/>
+        <path d="M7.5 14h9"/>
+        <circle cx="10" cy="17" r="0.6" fill="currentColor"/>
+        <circle cx="14" cy="16.5" r="0.6" fill="currentColor"/>
+      </svg>
+      <span class="rail-tooltip">AdLabs</span>
+    </a>
+
+    <a class="rail-link" href="#" aria-label="Products" title="Products">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 8h14l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 8z"/>
+        <path d="M9 8V6a3 3 0 0 1 6 0v2"/>
+      </svg>
+      <span class="rail-tooltip">Products</span>
+    </a>
+
   </nav>
 
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <div class="sidebar-avatar">DE</div>
-      <div class="sidebar-user-info">
-        <div class="sidebar-user-name">Diego Escobar</div>
-        <button class="sidebar-user-client" type="button">Ralph Lauren</button>
-      </div>
-      <button class="sidebar-logout" type="button" aria-label="Log out">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-      </button>
-    </div>
-  </div>
+  <div class="rail-spacer"></div>
+
+  <a class="rail-link" href="#" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    <span class="rail-tooltip">Settings</span>
+  </a>
 </aside>
 
 <!-- MAIN -->
