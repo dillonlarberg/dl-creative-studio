@@ -109,7 +109,7 @@ export default function CreatePage() {
             <div>
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-gray-400">Images</h2>
                 <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {USE_CASES.filter(uc => ['image-resize', 'edit-image', 'new-image'].includes(uc.id)).map((uc) => (
+                    {USE_CASES.filter(uc => ['resize-image', 'edit-image', 'new-image'].includes(uc.id)).map((uc) => (
                         <UseCaseCard key={uc.id} useCase={uc} disabled={uc.requiresBrandStandards && !isReady} />
                     ))}
                 </div>

@@ -24,6 +24,7 @@ function ExportStepBody({
     try {
       const batchId = await handleExecuteBatch({
         clientSlug: client.slug,
+        appId: 'template-builder',
         selectedFeed: stepData.selectedFeed ?? null,
         feedSampleData: stepData.feedSampleData ?? [],
         feedMappings: stepData.feedMappings ?? {},
