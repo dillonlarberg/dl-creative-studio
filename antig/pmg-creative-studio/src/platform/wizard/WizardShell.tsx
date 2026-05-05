@@ -43,7 +43,17 @@ interface WizardShellProps<S extends StepData = StepData> {
 export function WizardShell<S extends StepData = StepData>({
   manifest,
 }: WizardShellProps<S>) {
-  const { stepId: urlStepId } = useParams<{ stepId?: string }>();
+  // The shell can be mounted in either of two route shapes:
+  //   - Parent splat: <Route path="/:clientSlug/template-builder/*" />
+  //     React Router exposes the trailing segment via params['*'].
+  //   - Nested :stepId: <Route path="/wizard/:stepId" /> (used in tests).
+  // Read both and take whichever is populated. The splat is what App.tsx uses
+  // so a single-line route mount works for any number of step ids without
+  // having to pre-declare them.
+  const params = useParams<{ stepId?: string; '*'?: string }>();
+  const splatPath = params['*']?.split('/')[0] ?? '';
+  const urlStepId = params.stepId ?? (splatPath || undefined);
+
   const [searchParams] = useSearchParams();
   const resumeId = searchParams.get('creative');
   const navigateRouter = useNavigate();
