@@ -232,6 +232,31 @@ export function WizardShell<S extends StepData = StepData>({
 
   return (
     <div className="space-y-8" data-testid="wizard-shell">
+      {import.meta.env.DEV && (
+        <div
+          data-testid="wizard-debug-pill"
+          className="flex flex-wrap items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-mono text-red-900"
+        >
+          <span className="font-black uppercase tracking-widest">dev</span>
+          <span>step={currentStep.id}</span>
+          <span>
+            wireframe=
+            <strong>
+              {(stepData as Record<string, unknown>).selectedWireframe
+                ? String((stepData as Record<string, unknown>).selectedWireframe)
+                : '(none)'}
+            </strong>
+          </span>
+          <span>
+            reqs=
+            {Array.isArray((stepData as Record<string, unknown>).requirements)
+              ? ((stepData as Record<string, unknown>).requirements as unknown[]).length
+              : 0}
+          </span>
+          <span>creativeId={creativeId ?? '(none)'}</span>
+          <span>slug={clientSlug}</span>
+        </div>
+      )}
       {/* Back link + title + description */}
       <div>
         <Link

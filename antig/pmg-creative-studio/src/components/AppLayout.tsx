@@ -153,7 +153,19 @@ export default function AppLayout() {
             {/* Sidebar */}
             <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white">
                 {/* Logo & Client Selector */}
-                <div className="flex flex-col justify-center border-b border-gray-200 px-6 py-4">
+                <div className="relative flex flex-col justify-center overflow-hidden border-b border-gray-200 px-6 py-4">
+                    {/* TODO(pre-main-cutover): remove this DEV ribbon before merging to main.
+                        Tracked in PR #6 (feat/wizard-chrome-parity). It's gated on
+                        import.meta.env.DEV so it won't ship in production builds, but the
+                        team agreed to strip the source before the cutover deploy. */}
+                    {import.meta.env.DEV && (
+                        <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -left-8 top-2 -rotate-45 bg-red-600 px-10 py-0.5 text-[10px] font-black uppercase tracking-[0.3em] text-white shadow-md"
+                        >
+                            Dev
+                        </span>
+                    )}
                     <span className="text-xl font-bold text-gray-900">Alli Studio</span>
                     <div className="mt-1.5 flex items-center justify-between gap-2 min-w-0 font-bold uppercase tracking-widest text-[10px]">
                         <span className="truncate text-blue-gray-400">
