@@ -422,10 +422,21 @@ export const contextStep: WizardStep<TemplateBuilderStepData> = {
     const hasTitle = !!data.jobTitle?.trim();
     const hasChannel = !!data.channel;
     const hasSizes = (data.ratios?.length ?? 0) > 0;
-    if (!hasTitle) return { ok: false, reason: 'Project title required' };
-    if (!hasChannel) return { ok: false, reason: 'Channel required' };
-    if (!hasSizes) return { ok: false, reason: 'At least one size required' };
-    return { ok: true };
+    const requirements = [
+      { label: 'Project Title', met: hasTitle },
+      { label: 'Channel', met: hasChannel },
+      { label: 'Size Selected', met: hasSizes },
+    ];
+    if (hasTitle && hasChannel && hasSizes) return { ok: true };
+    return {
+      ok: false,
+      requirements,
+      reason: !hasTitle
+        ? 'Project title required'
+        : !hasChannel
+        ? 'Channel required'
+        : 'At least one size required',
+    };
   },
 
   next: ({ stepData, mergeStepData }) => {
