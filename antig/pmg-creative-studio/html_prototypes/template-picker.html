@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alli Studio — Choose a Template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #EBEDF7;
+      color: #1A2035;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ─── SIDEBAR ──────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: #1A1F2E;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 100;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 0;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .sidebar-brand .sparkle {
+      color: #0C69EA;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .sidebar-brand .brand-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.2px;
+    }
+
+    .sidebar-client-block {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    /* "Active Client" — 13 chars, keep uppercase */
+    .sidebar-client-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-client-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-client-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .sidebar-change-link {
+      font-size: 11px;
+      color: #0C69EA;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .sidebar-change-link:hover {
+      text-decoration: underline;
+    }
+
+    .alli-synced-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .alli-synced-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      flex-shrink: 0;
+      box-shadow: 0 0 6px rgba(16,185,129,0.7);
+    }
+
+    /* on dark sidebar — #10B981 passes on #1A1F2E */
+    .alli-synced-text {
+      font-size: 11px;
+      color: #10B981;
+      font-weight: 500;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 0 0 4px;
+    }
+
+    .sidebar-nav {
+      padding: 4px 0;
+      flex: 1;
+    }
+
+    /* "Create" / "Assets" — 6–7 chars, keep uppercase */
+    .nav-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.25);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 10px 16px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 12px 0 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.85);
+    }
+
+    /* Active uses background tint instead of thick accent border on rounded element.
+       Nav items have no border-radius, so the 3px left border is acceptable here,
+       but we also add a background tint for extra visual weight. */
+    .nav-item.active {
+      background: rgba(12,105,234,0.15);
+      border-left-color: #0C69EA;
+      color: #5B9EF7;
+      font-weight: 600;
+    }
+
+    .nav-item .nav-icon {
+      font-size: 14px;
+      width: 16px;
+      text-align: center;
+      flex-shrink: 0;
+      opacity: 0.8;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(12,105,234,0.25);
+      color: #5B9EF7;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #0C69EA;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
+    }
+
+    .footer-user {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .footer-user .user-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .footer-user .user-role {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255,255,255,0.3);
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .logout-btn:hover {
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.07);
+    }
+
+    /* ─── MAIN WRAPPER ─────────────────────────── */
+    .main-wrapper {
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* ─── BREADCRUMB BAR ───────────────────────── */
+    .breadcrumb-bar {
+      height: 42px;
+      background: #FFFFFF;
+      border-bottom: 1px solid #E2E5EF;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 0;
+      flex-shrink: 0;
+    }
+
+    .breadcrumb-step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      /* #5C6478 passes 5.2:1 on white */
+      color: #5C6478;
+    }
+
+    .breadcrumb-step .step-num {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      background: #E2E8F0;
+      /* #5C6478 passes on #E2E8F0 */
+      color: #5C6478;
+    }
+
+    .breadcrumb-step.done .step-num {
+      background: #D1FAE5;
+      color: #065F46;
+    }
+
+    .breadcrumb-step.done .step-label {
+      color: #6B7280;
+    }
+
+    .breadcrumb-step.active .step-num {
+      background: #0C69EA;
+      color: #FFFFFF;
+    }
+
+    .breadcrumb-step.active .step-label {
+      color: #0C69EA;
+      font-weight: 600;
+    }
+
+    .breadcrumb-sep {
+      margin: 0 10px;
+      color: #D1D5DB;
+      font-size: 12px;
+    }
+
+    .breadcrumb-spacer {
+      flex: 1;
+    }
+
+    .alli-connected-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: 5px;
+      padding: 4px 8px;
+    }
+
+    .alli-connected-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 4px rgba(16,185,129,0.6);
+    }
+
+    .alli-connected-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #065F46;
+    }
+
+    /* ─── CONTENT AREA ─────────────────────────── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+    }
+
+    .page-top-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .page-heading {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1A2035;
+      letter-spacing: -0.4px;
+    }
+
+    .page-stats {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #6B7280;
+    }
+
+    .page-stats strong {
+      color: #1A2035;
+      font-weight: 600;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: #6B7280;
+      font-weight: 400;
+      margin-bottom: 20px;
+    }
+
+    /* ─── SEARCH + FILTERS ─────────────────────── */
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-wrap {
+      position: relative;
+      width: 260px;
+      flex-shrink: 0;
+    }
+
+    .search-input-wrap .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      /* #5C6478 passes 5.2:1 on white */
+      color: #5C6478;
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      height: 34px;
+      padding: 0 12px 0 32px;
+      border: 1px solid #E2E5EF;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      color: #1A2035;
+      background: #FFFFFF;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .search-input::placeholder {
+      /* #5C6478 passes 5.2:1 on white */
+      color: #5C6478;
+    }
+
+    .search-input:focus {
+      border-color: #0C69EA;
+      box-shadow: 0 0 0 3px rgba(12, 105, 234, 0.1);
+    }
+
+    .filter-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-size: 11px;
+      font-weight: 600;
+      /* #5C6478 passes 5.2:1 on #EBEDF7 bg */
+      color: #5C6478;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    .pill {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #E2E5EF;
+      background: #FFFFFF;
+      color: #6B7280;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .pill:hover {
+      border-color: #0C69EA;
+      color: #0C69EA;
+      background: #F5F9FF;
+    }
+
+    .pill.active {
+      background: #0C69EA;
+      border-color: #0C69EA;
+      color: #FFFFFF;
+    }
+
+    .pill-size {
+      /* size pills are slightly more compact */
+      height: 28px;
+      font-size: 11px;
+    }
+
+    .pill-size.active {
+      background: #1A2035;
+      border-color: #1A2035;
+      color: #FFFFFF;
+    }
+
+    .pill-size:hover:not(.active) {
+      border-color: #1A2035;
+      color: #1A2035;
+      background: #F1F3F9;
+    }
+
+    /* ─── CLIENT TABS ──────────────────────────── */
+    .client-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      border-bottom: 1px solid #E2E5EF;
+      margin-bottom: 18px;
+    }
+
+    .client-tab {
+      height: 36px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6B7280;
+      cursor: pointer;
+      border: none;
+      background: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .client-tab:hover {
+      color: #1A2035;
+    }
+
+    .client-tab.active {
+      color: #0C69EA;
+      border-bottom-color: #0C69EA;
+      font-weight: 600;
+    }
+
+    .client-tab-count {
+      font-size: 11px;
+      font-weight: 600;
+      background: #F1F3F9;
+      color: #6B7280;
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    .client-tab.active .client-tab-count {
+      background: #EEF4FF;
+      color: #0C69EA;
+    }
+
+    /* ─── RECENTLY USED STRIP ──────────────────── */
+    .recent-section {
+      margin-bottom: 22px;
+    }
+
+    /* "Recently Used" — 13 chars, keep uppercase */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      /* #5C6478 passes 5.2:1 on #EBEDF7 bg */
+      color: #5C6478;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .recent-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .recent-strip::-webkit-scrollbar {
+      height: 4px;
+    }
+    .recent-strip::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .recent-strip::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 10px;
+    }
+
+    .recent-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E5EF;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+      position: relative;
+      flex-shrink: 0;
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .recent-card:hover {
+      box-shadow: 0 6px 18px rgba(12, 105, 234, 0.11);
+      border-color: #0C69EA;
+      transform: translateY(-1px);
+    }
+
+    .recent-preview {
+      height: 80px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 7px 7px 0 0;
+      flex-shrink: 0;
+    }
+
+    .recent-body {
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .recent-name {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1A2035;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-meta {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .recent-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: #EEF4FF;
+      color: #0C69EA;
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+
+    .recent-time {
+      font-size: 11px;
+      /* #5C6478 passes 5.2:1 on white */
+      color: #5C6478;
+    }
+
+    /* ─── TEMPLATE GRID ────────────────────────── */
+    /* "All Templates" — 13 chars, keep uppercase */
+    .grid-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      /* #5C6478 passes 5.2:1 on #EBEDF7 bg */
+      color: #5C6478;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    /* ─── TEMPLATE CARD ────────────────────────── */
+    .template-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E5EF;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .template-card:hover {
+      box-shadow: 0 8px 24px rgba(12, 105, 234, 0.12);
+      border-color: #0C69EA;
+      transform: translateY(-2px);
+    }
+
+    .card-preview {
+      height: 148px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 10px 10px 0 0;
+      flex-shrink: 0;
+    }
+
+    .card-body {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .card-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1A2035;
+      letter-spacing: -0.1px;
+      line-height: 1.3;
+    }
+
+    .card-badges {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #F1F5F9;
+      color: #64748B;
+    }
+
+    .badge-size {
+      background: #F1F5F9;
+      color: #64748B;
+    }
+
+    .badge-rl {
+      background: #1A1A2E;
+      color: #C9A96E;
+    }
+
+    .badge-sn {
+      background: #1A1A1A;
+      color: #E53E3E;
+    }
+
+    .badge-ap {
+      background: #F5F5F7;
+      color: #147CE5;
+      border: 1px solid #E2E8F0;
+    }
+
+    .badge-multi {
+      background: #EEF4FF;
+      color: #0C69EA;
+    }
+
+    .badge-generic {
+      background: #F8FAFF;
+      color: #4A5568;
+      border: 1px solid #E2E8F0;
+    }
+
+    .use-btn {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: #0C69EA;
+      color: #FFFFFF;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.18s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: 0.1px;
+      border-radius: 0 0 10px 10px;
+    }
+
+    .template-card:hover .use-btn {
+      opacity: 1;
+    }
+
+    /* ─── PREVIEW BASE STYLES ──────────────────── */
+
+    /* Generic / Blank */
+    .preview-blank {
+      background: #F8FAFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px dashed #D1D5DB;
+    }
+
+    .blank-inner {
+      width: 60px;
+      height: 60px;
+      border: 2px dashed #CBD5E1;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .blank-plus {
+      font-size: 26px;
+      color: #94A3B8;
+      line-height: 1;
+    }
+
+    .preview-minimal {
+      background: #FAFAFA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-fullbleed {
+      background: #1A2035;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Ralph Lauren */
+    .preview-rl-summer {
+      background: linear-gradient(135deg, #1A1A2E 0%, #0D0D1A 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-rl-heritage {
+      background: #1A1A2E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-rl-fall {
+      background: linear-gradient(140deg, #2C1A0E 0%, #1A1A2E 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-rl-polo {
+      background: linear-gradient(135deg, #0A2540 0%, #1A1A2E 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-rl-luxury {
+      background: linear-gradient(160deg, #1A1A2E 0%, #2D1B4E 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* SharkNinja */
+    .preview-sn-product {
+      background: #1A1A1A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-sn-flash {
+      background: linear-gradient(135deg, #1A1A1A 0%, #2D0000 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-sn-tech {
+      background: #0D0D0D;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-sn-bundle {
+      background: linear-gradient(135deg, #1A1A1A 0%, #1A0000 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Apple Services */
+    .preview-ap-promo {
+      background: linear-gradient(135deg, #F5F5F7 0%, #E8EAF0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-ap-sub {
+      background: linear-gradient(140deg, #EEF6FF 0%, #DBEAFE 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-ap-feature {
+      background: linear-gradient(135deg, #F5F5F7 0%, #F0F0F5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-ap-brand {
+      background: linear-gradient(160deg, #FFFFFF 0%, #F5F5F7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─── FOOTER NOTE ──────────────────────────── */
+    .footer-note {
+      margin-top: 8px;
+      padding-bottom: 12px;
+      text-align: center;
+      font-size: 11px;
+      /* #5C6478 passes 5.2:1 on #EBEDF7 bg */
+      color: #5C6478;
+      letter-spacing: 0.2px;
+    }
+
+    .footer-note span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .footer-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #10B981;
+      display: inline-block;
+      box-shadow: 0 0 4px rgba(16,185,129,0.6);
+    }
+
+    /* Scrollbar styling */
+    .content::-webkit-scrollbar {
+      width: 5px;
+    }
+    .content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .content::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── SIDEBAR ─────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <span class="sparkle">✦</span>
+        <span class="brand-name">Alli Studio</span>
+      </div>
+
+      <div class="sidebar-client-block">
+        <div class="sidebar-client-label">Active Client</div>
+        <div class="sidebar-client-row">
+          <span class="sidebar-client-name">Ralph Lauren</span>
+          <a href="#" class="sidebar-change-link">Change</a>
+        </div>
+        <div class="alli-synced-badge">
+          <div class="alli-synced-dot"></div>
+          <span class="alli-synced-text">Alli synced · Brand kit live</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Create New</div>
+      <a class="nav-item active" href="#">
+        <span class="nav-icon">✦</span>
+        Create Static Ad
+        <span class="nav-badge">Templates</span>
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="1" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="8" y="1" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="1" y="8" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="8" y="8" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.3"/>
+          </svg>
+        </span>
+        Batch Generator
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Edit Existing</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M4 7h2M8 5v4" stroke="currentColor" stroke-width="1.2"/>
+          </svg>
+        </span>
+        Resize to New Sizes
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2 12l3-3 2 2 4-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        Edit &amp; Tweak
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M6 6l3 1.5L6 9V6z" fill="currentColor"/>
+          </svg>
+        </span>
+        Video Cutdown
+      </a>
+      <div class="nav-section-label" style="margin-top:8px;">Assets</div>
+      <a class="nav-item" href="#">
+        <span class="nav-icon">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M4 3V2C4 1.44772 4.44772 1 5 1H9C9.55228 1 10 1.44772 10 2V3" stroke="currentColor" stroke-width="1.3"/>
+          </svg>
+        </span>
+        Asset Library
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">AN</div>
+      <div class="footer-user">
+        <div class="user-name">Annie Nguyen</div>
+        <div class="user-role">Creative Manager</div>
+      </div>
+      <button class="logout-btn" title="Sign out">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 2H12C12.5523 2 13 2.44772 13 3V11C13 11.5523 12.5523 12 12 12H9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M6 9.5L8.5 7L6 4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8.5 7H1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN WRAPPER ─────────────────────────────── -->
+  <div class="main-wrapper">
+
+    <!-- Breadcrumb Bar -->
+    <header class="breadcrumb-bar">
+      <div class="breadcrumb-step done">
+        <div class="step-num">✓</div>
+        <span class="step-label">Authenticate</span>
+      </div>
+      <span class="breadcrumb-sep">→</span>
+      <div class="breadcrumb-step done">
+        <div class="step-num">✓</div>
+        <span class="step-label">Select Client</span>
+      </div>
+      <span class="breadcrumb-sep">→</span>
+      <div class="breadcrumb-step active">
+        <div class="step-num">3</div>
+        <span class="step-label">Creative Studio</span>
+      </div>
+      <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:0.2px;border:1px solid rgba(12,105,234,0.2);margin-left:8px;">Create new</span>
+      <div class="breadcrumb-spacer"></div>
+      <div class="alli-connected-badge">
+        <div class="alli-connected-dot"></div>
+        <span class="alli-connected-label">Alli Connected</span>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+
+      <div class="page-top-row">
+        <div>
+          <h1 class="page-heading">Choose a Template</h1>
+        </div>
+        <div class="page-stats">
+          <strong>16 templates</strong> available &nbsp;·&nbsp; 847 assets synced from Alli
+        </div>
+      </div>
+      <p class="page-subtitle">Start from a pre-built template or a blank canvas. Brand kit data is live from Alli API.</p>
+
+      <!-- Toolbar: Category Filter -->
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <div class="search-input-wrap">
+            <span class="search-icon">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                <circle cx="6" cy="6" r="4.5" stroke="#5C6478" stroke-width="1.4"/>
+                <path d="M9.5 9.5L12.5 12.5" stroke="#5C6478" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <input class="search-input" type="text" placeholder="Search templates..." />
+          </div>
+          <span class="filter-label">Format:</span>
+          <div class="filter-pills" id="category-pills">
+            <button class="pill active" data-group="category">All</button>
+            <button class="pill" data-group="category">Images</button>
+            <button class="pill" data-group="category">Video</button>
+            <button class="pill" data-group="category">Dynamic</button>
+            <button class="pill" data-group="category">Saved</button>
+          </div>
+        </div>
+
+        <!-- Size Filter Row -->
+        <div class="toolbar-row">
+          <span class="filter-label">Size:</span>
+          <div class="filter-pills" id="size-pills">
+            <button class="pill pill-size" data-group="size">All Sizes</button>
+            <button class="pill pill-size active" data-group="size">Square 1:1 &nbsp;<span style="opacity:0.55;font-weight:400">1080×1080</span></button>
+            <button class="pill pill-size" data-group="size">Story 9:16 &nbsp;<span style="opacity:0.55;font-weight:400">1080×1920</span></button>
+            <button class="pill pill-size" data-group="size">Landscape 16:9 &nbsp;<span style="opacity:0.55;font-weight:400">1200×628</span></button>
+            <button class="pill pill-size" data-group="size">Portrait 4:5 &nbsp;<span style="opacity:0.55;font-weight:400">1080×1350</span></button>
+            <button class="pill pill-size" data-group="size">Pinterest &nbsp;<span style="opacity:0.55;font-weight:400">1000×1500</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Client Tabs -->
+      <div class="client-tabs" id="client-tabs">
+        <button class="client-tab" data-client="all">All Clients <span class="client-tab-count">16</span></button>
+        <button class="client-tab active" data-client="rl">Ralph Lauren <span class="client-tab-count">5</span></button>
+        <button class="client-tab" data-client="sn">SharkNinja <span class="client-tab-count">4</span></button>
+        <button class="client-tab" data-client="ap">Apple Services <span class="client-tab-count">4</span></button>
+        <button class="client-tab" data-client="generic">Generic / Blank <span class="client-tab-count">3</span></button>
+      </div>
+
+      <!-- Recently Used -->
+      <div class="recent-section">
+        <div class="section-label">Recently Used</div>
+        <div class="recent-strip">
+
+          <!-- Recent 1: RL Summer Sale -->
+          <div class="recent-card">
+            <div class="recent-preview preview-rl-summer">
+              <svg width="160" height="80" viewBox="0 0 160 80" fill="none">
+                <rect width="160" height="80" fill="#1A1A2E"/>
+                <rect x="12" y="12" width="136" height="56" rx="3" fill="rgba(201,169,110,0.08)"/>
+                <rect x="12" y="12" width="136" height="2" fill="#C9A96E" opacity="0.6"/>
+                <rect x="12" y="66" width="136" height="2" fill="#C9A96E" opacity="0.6"/>
+                <text x="80" y="38" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="800" fill="#C9A96E" letter-spacing="2">SUMMER</text>
+                <text x="80" y="53" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="500" fill="rgba(201,169,110,0.6)" letter-spacing="3">SALE 2026</text>
+              </svg>
+            </div>
+            <div class="recent-body">
+              <div class="recent-name">Summer Sale Banner</div>
+              <div class="recent-meta">
+                <span class="recent-badge">1:1</span>
+                <span class="recent-time">2h ago</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent 2: SN Product Feature -->
+          <div class="recent-card">
+            <div class="recent-preview preview-sn-product">
+              <svg width="160" height="80" viewBox="0 0 160 80" fill="none">
+                <rect width="160" height="80" fill="#1A1A1A"/>
+                <ellipse cx="80" cy="48" rx="30" ry="24" fill="#2A2A2A"/>
+                <ellipse cx="80" cy="44" rx="22" ry="18" fill="#333"/>
+                <rect x="58" y="26" width="44" height="3" rx="1.5" fill="#E53E3E" opacity="0.7"/>
+                <text x="80" y="70" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="rgba(255,255,255,0.5)" letter-spacing="2">SHARKNINJA</text>
+              </svg>
+            </div>
+            <div class="recent-body">
+              <div class="recent-name">Product Feature</div>
+              <div class="recent-meta">
+                <span class="recent-badge">9:16</span>
+                <span class="recent-time">Yesterday</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent 3: AP App Promo -->
+          <div class="recent-card">
+            <div class="recent-preview preview-ap-promo">
+              <svg width="160" height="80" viewBox="0 0 160 80" fill="none">
+                <rect width="160" height="80" fill="#F5F5F7"/>
+                <rect x="50" y="16" width="60" height="48" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+                <rect x="60" y="24" width="40" height="28" rx="6" fill="#147CE5" opacity="0.12"/>
+                <circle cx="80" cy="38" r="10" fill="#147CE5" opacity="0.18"/>
+                <text x="80" y="42" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#147CE5">App</text>
+                <text x="80" y="57" text-anchor="middle" font-family="Inter,sans-serif" font-size="6" font-weight="500" fill="#6B7280" letter-spacing="1">Download Now</text>
+              </svg>
+            </div>
+            <div class="recent-body">
+              <div class="recent-name">App Promo</div>
+              <div class="recent-meta">
+                <span class="recent-badge">1:1</span>
+                <span class="recent-time">3 days ago</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- All Templates Grid -->
+      <div class="grid-section-label">All Templates</div>
+      <div class="template-grid">
+
+        <!-- ─── RALPH LAUREN 1: Summer Sale Banner ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-rl-summer">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#1A1A2E"/>
+              <rect x="0" y="0" width="280" height="4" fill="#C9A96E" opacity="0.5"/>
+              <rect x="0" y="144" width="280" height="4" fill="#C9A96E" opacity="0.5"/>
+              <rect x="20" y="22" width="240" height="104" rx="2" fill="rgba(201,169,110,0.05)"/>
+              <text x="140" y="62" text-anchor="middle" font-family="Inter,sans-serif" font-size="28" font-weight="800" fill="#C9A96E" letter-spacing="4">SUMMER</text>
+              <text x="140" y="82" text-anchor="middle" font-family="Inter,sans-serif" font-size="12" font-weight="400" fill="rgba(201,169,110,0.6)" letter-spacing="6">COLLECTION</text>
+              <rect x="100" y="94" width="80" height="18" rx="2" fill="#C9A96E"/>
+              <text x="140" y="106" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#1A1A2E" letter-spacing="2">SHOP NOW</text>
+              <rect x="20" y="26" width="60" height="1" fill="#C9A96E" opacity="0.3"/>
+              <rect x="200" y="26" width="60" height="1" fill="#C9A96E" opacity="0.3"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Summer Sale Banner</div>
+            <div class="card-badges">
+              <span class="badge badge-size">1:1</span>
+              <span class="badge badge-rl">Ralph Lauren</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── RALPH LAUREN 2: Heritage Collection ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-rl-heritage">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#1A1A2E"/>
+              <!-- central crest-like frame -->
+              <rect x="80" y="18" width="120" height="112" rx="2" fill="rgba(201,169,110,0.07)" stroke="#C9A96E" stroke-width="0.75" stroke-opacity="0.35"/>
+              <!-- polo pony silhouette suggestion -->
+              <ellipse cx="140" cy="60" rx="28" ry="18" fill="rgba(201,169,110,0.12)"/>
+              <rect x="118" y="52" width="44" height="8" rx="2" fill="rgba(201,169,110,0.2)"/>
+              <!-- text -->
+              <text x="140" y="92" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#C9A96E" letter-spacing="3">RALPH LAUREN</text>
+              <text x="140" y="106" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="400" fill="rgba(201,169,110,0.5)" letter-spacing="2">HERITAGE</text>
+              <rect x="110" y="112" width="60" height="0.75" fill="#C9A96E" opacity="0.3"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Heritage Collection</div>
+            <div class="card-badges">
+              <span class="badge badge-size">4:5</span>
+              <span class="badge badge-rl">Ralph Lauren</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── RALPH LAUREN 3: Fall Campaign ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-rl-fall">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#fallGrad)"/>
+              <defs>
+                <linearGradient id="fallGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#2C1A0E"/>
+                  <stop offset="100%" stop-color="#1A1A2E"/>
+                </linearGradient>
+              </defs>
+              <!-- horizontal rule -->
+              <rect x="40" y="50" width="200" height="1" fill="#C9A96E" opacity="0.4"/>
+              <rect x="40" y="96" width="200" height="1" fill="#C9A96E" opacity="0.4"/>
+              <text x="140" y="42" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="600" fill="rgba(201,169,110,0.55)" letter-spacing="4">RALPH LAUREN</text>
+              <text x="140" y="76" text-anchor="middle" font-family="Inter,sans-serif" font-size="22" font-weight="800" fill="#C9A96E" letter-spacing="1">Fall Campaign</text>
+              <text x="140" y="90" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="400" fill="rgba(201,169,110,0.45)" letter-spacing="2">AUTUMN / WINTER 2026</text>
+              <rect x="108" y="108" width="64" height="16" rx="1.5" fill="rgba(201,169,110,0.15)" stroke="#C9A96E" stroke-width="0.75" stroke-opacity="0.5"/>
+              <text x="140" y="119" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="600" fill="#C9A96E" letter-spacing="2">EXPLORE</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Fall Campaign</div>
+            <div class="card-badges">
+              <span class="badge badge-size">16:9</span>
+              <span class="badge badge-rl">Ralph Lauren</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── RALPH LAUREN 4: Polo Sport ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-rl-polo">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#poloGrad)"/>
+              <defs>
+                <linearGradient id="poloGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0A2540"/>
+                  <stop offset="100%" stop-color="#1A1A2E"/>
+                </linearGradient>
+              </defs>
+              <!-- sport grid lines -->
+              <line x1="0" y1="74" x2="280" y2="74" stroke="rgba(201,169,110,0.1)" stroke-width="1"/>
+              <line x1="140" y1="0" x2="140" y2="148" stroke="rgba(201,169,110,0.1)" stroke-width="1"/>
+              <!-- bold sport number -->
+              <text x="140" y="90" text-anchor="middle" font-family="Inter,sans-serif" font-size="60" font-weight="800" fill="rgba(201,169,110,0.1)" letter-spacing="-2">3</text>
+              <text x="140" y="62" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="800" fill="#C9A96E" letter-spacing="5">POLO SPORT</text>
+              <text x="140" y="76" text-anchor="middle" font-family="Inter,sans-serif" font-size="6.5" font-weight="400" fill="rgba(201,169,110,0.5)" letter-spacing="2">RALPH LAUREN</text>
+              <rect x="108" y="106" width="64" height="14" rx="7" fill="#C9A96E"/>
+              <text x="140" y="116.5" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="#0A2540" letter-spacing="1">SHOP SPORT</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Polo Sport</div>
+            <div class="card-badges">
+              <span class="badge badge-size">1:1</span>
+              <span class="badge badge-rl">Ralph Lauren</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── RALPH LAUREN 5: Luxury Edit ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-rl-luxury">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#luxGrad)"/>
+              <defs>
+                <linearGradient id="luxGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#1A1A2E"/>
+                  <stop offset="100%" stop-color="#2D1B4E"/>
+                </linearGradient>
+              </defs>
+              <!-- corner flourishes -->
+              <path d="M20,20 L20,36 M20,20 L36,20" stroke="#C9A96E" stroke-width="1" stroke-opacity="0.5"/>
+              <path d="M260,20 L260,36 M260,20 L244,20" stroke="#C9A96E" stroke-width="1" stroke-opacity="0.5"/>
+              <path d="M20,128 L20,112 M20,128 L36,128" stroke="#C9A96E" stroke-width="1" stroke-opacity="0.5"/>
+              <path d="M260,128 L260,112 M260,128 L244,128" stroke="#C9A96E" stroke-width="1" stroke-opacity="0.5"/>
+              <!-- centered diamond -->
+              <path d="M140 40 L158 74 L140 108 L122 74 Z" fill="rgba(201,169,110,0.08)" stroke="#C9A96E" stroke-width="0.75" stroke-opacity="0.4"/>
+              <text x="140" y="70" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="rgba(201,169,110,0.7)" letter-spacing="3">THE</text>
+              <text x="140" y="80" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#C9A96E" letter-spacing="2">LUXURY</text>
+              <text x="140" y="90" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="400" fill="rgba(201,169,110,0.5)" letter-spacing="2">EDIT</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Luxury Edit</div>
+            <div class="card-badges">
+              <span class="badge badge-size">9:16</span>
+              <span class="badge badge-rl">Ralph Lauren</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── SHARKNINJA 1: Product Feature ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-sn-product">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#1A1A1A"/>
+              <!-- product silhouette (blender/appliance) -->
+              <rect x="100" y="30" width="80" height="70" rx="8" fill="#2A2A2A"/>
+              <rect x="108" y="38" width="64" height="48" rx="4" fill="#333"/>
+              <ellipse cx="140" cy="110" rx="48" ry="6" fill="#222"/>
+              <!-- brand accent line -->
+              <rect x="0" y="0" width="6" height="148" fill="#E53E3E"/>
+              <text x="22" y="36" font-family="Inter,sans-serif" font-size="8" font-weight="800" fill="#E53E3E" letter-spacing="2">SHARK</text>
+              <text x="22" y="47" font-family="Inter,sans-serif" font-size="8" font-weight="800" fill="rgba(255,255,255,0.6)" letter-spacing="2">NINJA</text>
+              <text x="22" y="72" font-family="Inter,sans-serif" font-size="6.5" font-weight="400" fill="rgba(255,255,255,0.35)" letter-spacing="0.5">Powered</text>
+              <text x="22" y="82" font-family="Inter,sans-serif" font-size="6.5" font-weight="400" fill="rgba(255,255,255,0.35)" letter-spacing="0.5">by Alli</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Product Feature</div>
+            <div class="card-badges">
+              <span class="badge badge-size">9:16</span>
+              <span class="badge badge-sn">SharkNinja</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── SHARKNINJA 2: Flash Sale ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-sn-flash">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#flashGrad)"/>
+              <defs>
+                <linearGradient id="flashGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#1A1A1A"/>
+                  <stop offset="100%" stop-color="#2D0000"/>
+                </linearGradient>
+              </defs>
+              <!-- lightning bolt -->
+              <path d="M148 18 L124 76 L140 76 L132 130 L156 64 L140 64 L148 18Z" fill="#E53E3E" opacity="0.9"/>
+              <!-- flash text -->
+              <text x="140" y="144" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="rgba(229,62,62,0.6)" letter-spacing="4">FLASH SALE</text>
+              <rect x="0" y="0" width="280" height="3" fill="#E53E3E" opacity="0.5"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Flash Sale</div>
+            <div class="card-badges">
+              <span class="badge badge-size">1:1</span>
+              <span class="badge badge-sn">SharkNinja</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── SHARKNINJA 3: Tech Specs ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-sn-tech">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#0D0D0D"/>
+              <!-- spec lines -->
+              <rect x="20" y="24" width="240" height="1" fill="#E53E3E" opacity="0.5"/>
+              <rect x="20" y="124" width="240" height="1" fill="#E53E3E" opacity="0.2"/>
+              <text x="20" y="20" font-family="Inter,sans-serif" font-size="7" font-weight="700" fill="#E53E3E" letter-spacing="2">TECH SPECS</text>
+              <!-- spec rows -->
+              <rect x="20" y="34" width="90" height="7" rx="1.5" fill="#222"/>
+              <rect x="120" y="34" width="140" height="7" rx="1.5" fill="#333"/>
+              <rect x="20" y="48" width="90" height="7" rx="1.5" fill="#222"/>
+              <rect x="120" y="48" width="100" height="7" rx="1.5" fill="#333"/>
+              <rect x="20" y="62" width="90" height="7" rx="1.5" fill="#222"/>
+              <rect x="120" y="62" width="120" height="7" rx="1.5" fill="#333"/>
+              <rect x="20" y="76" width="90" height="7" rx="1.5" fill="#222"/>
+              <rect x="120" y="76" width="80" height="7" rx="1.5" fill="#333"/>
+              <rect x="20" y="90" width="90" height="7" rx="1.5" fill="#222"/>
+              <rect x="120" y="90" width="110" height="7" rx="1.5" fill="#333"/>
+              <!-- product icon dot -->
+              <circle cx="240" cy="112" r="14" fill="#E53E3E" opacity="0.12" stroke="#E53E3E" stroke-width="0.75"/>
+              <text x="240" y="116" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" font-weight="800" fill="#E53E3E">SN</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Tech Specs</div>
+            <div class="card-badges">
+              <span class="badge badge-size">16:9</span>
+              <span class="badge badge-sn">SharkNinja</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── SHARKNINJA 4: Bundle Deal ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-sn-bundle">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#bundleGrad)"/>
+              <defs>
+                <linearGradient id="bundleGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#1A1A1A"/>
+                  <stop offset="100%" stop-color="#1A0000"/>
+                </linearGradient>
+              </defs>
+              <!-- 2 product boxes -->
+              <rect x="44" y="28" width="80" height="80" rx="4" fill="#222" stroke="#E53E3E" stroke-width="0.75" stroke-opacity="0.5"/>
+              <rect x="156" y="28" width="80" height="80" rx="4" fill="#222" stroke="#E53E3E" stroke-width="0.75" stroke-opacity="0.5"/>
+              <!-- plus sign -->
+              <text x="140" y="76" text-anchor="middle" font-family="Inter,sans-serif" font-size="22" font-weight="300" fill="rgba(229,62,62,0.5)">+</text>
+              <!-- price strip -->
+              <rect x="20" y="118" width="240" height="22" rx="3" fill="#E53E3E" opacity="0.9"/>
+              <text x="140" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="white" letter-spacing="1">BUNDLE &amp; SAVE</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Bundle Deal</div>
+            <div class="card-badges">
+              <span class="badge badge-size">1:1</span>
+              <span class="badge badge-sn">SharkNinja</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── APPLE SERVICES 1: App Promo ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-ap-promo">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#F5F5F7"/>
+              <!-- phone mockup -->
+              <rect x="96" y="14" width="88" height="120" rx="14" fill="white" stroke="#E2E8F0" stroke-width="1.5"/>
+              <rect x="102" y="22" width="76" height="100" rx="8" fill="#F0F2F8"/>
+              <!-- app icon grid -->
+              <rect x="110" y="30" width="22" height="22" rx="5" fill="#147CE5"/>
+              <rect x="138" y="30" width="22" height="22" rx="5" fill="#34C759" opacity="0.8"/>
+              <rect x="110" y="58" width="22" height="22" rx="5" fill="#FF9500" opacity="0.8"/>
+              <rect x="138" y="58" width="22" height="22" rx="5" fill="#FF3B30" opacity="0.8"/>
+              <!-- home indicator -->
+              <rect x="126" y="112" width="28" height="3" rx="1.5" fill="#D1D5DB"/>
+              <text x="140" y="145" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="600" fill="#147CE5" letter-spacing="1">App Store</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">App Promo</div>
+            <div class="card-badges">
+              <span class="badge badge-size">1:1</span>
+              <span class="badge badge-ap">Apple Services</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── APPLE SERVICES 2: Subscription Offer ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-ap-sub">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="url(#subGrad)"/>
+              <defs>
+                <linearGradient id="subGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#EEF6FF"/>
+                  <stop offset="100%" stop-color="#DBEAFE"/>
+                </linearGradient>
+              </defs>
+              <!-- subscription card -->
+              <rect x="44" y="24" width="192" height="100" rx="12" fill="white" stroke="#BFDBFE" stroke-width="1"/>
+              <!-- service icon -->
+              <circle cx="140" cy="60" r="20" fill="#147CE5" opacity="0.1"/>
+              <path d="M133 60 L138 65 L147 55" stroke="#147CE5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <text x="140" y="88" text-anchor="middle" font-family="Inter,sans-serif" font-size="8" font-weight="700" fill="#147CE5">Apple One</text>
+              <text x="140" y="100" text-anchor="middle" font-family="Inter,sans-serif" font-size="6.5" font-weight="400" fill="#6B7280">Everything you love. One plan.</text>
+              <rect x="84" y="108" width="112" height="8" rx="4" fill="#147CE5" opacity="0.12"/>
+              <text x="140" y="114" text-anchor="middle" font-family="Inter,sans-serif" font-size="6" font-weight="600" fill="#147CE5">Try free for 1 month</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Subscription Offer</div>
+            <div class="card-badges">
+              <span class="badge badge-size">4:5</span>
+              <span class="badge badge-ap">Apple Services</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── APPLE SERVICES 3: Feature Highlight ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-ap-feature">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#F5F5F7"/>
+              <!-- split layout -->
+              <rect x="0" y="0" width="140" height="148" fill="#FFFFFF"/>
+              <rect x="140" y="0" width="140" height="148" fill="#F0F0F5"/>
+              <!-- feature icon block left -->
+              <rect x="20" y="44" width="100" height="60" rx="10" fill="#147CE5" opacity="0.08"/>
+              <circle cx="70" cy="74" r="18" fill="#147CE5" opacity="0.15"/>
+              <text x="70" y="78" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" font-weight="700" fill="#147CE5">✦</text>
+              <!-- headline right -->
+              <text x="158" y="52" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#1D1D1F">Feature</text>
+              <text x="158" y="64" font-family="Inter,sans-serif" font-size="9" font-weight="700" fill="#1D1D1F">Highlight</text>
+              <rect x="158" y="72" width="80" height="2" rx="1" fill="#147CE5" opacity="0.5"/>
+              <rect x="158" y="82" width="60" height="5" rx="1.5" fill="#D1D5DB"/>
+              <rect x="158" y="92" width="70" height="5" rx="1.5" fill="#D1D5DB"/>
+              <rect x="158" y="102" width="50" height="5" rx="1.5" fill="#D1D5DB"/>
+              <rect x="158" y="118" width="52" height="14" rx="7" fill="#147CE5"/>
+              <text x="184" y="128" text-anchor="middle" font-family="Inter,sans-serif" font-size="6.5" font-weight="600" fill="white">Learn More</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Feature Highlight</div>
+            <div class="card-badges">
+              <span class="badge badge-size">16:9</span>
+              <span class="badge badge-ap">Apple Services</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── APPLE SERVICES 4: Brand Story ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-ap-brand">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="white"/>
+              <!-- minimal Apple-style layout: top image area, bottom text -->
+              <rect x="0" y="0" width="280" height="90" fill="#F5F5F7"/>
+              <!-- abstract gradient circle -->
+              <circle cx="140" cy="45" r="40" fill="url(#brandCircle)" opacity="0.35"/>
+              <defs>
+                <radialGradient id="brandCircle" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#147CE5"/>
+                  <stop offset="100%" stop-color="#6BC5F8"/>
+                </radialGradient>
+              </defs>
+              <!-- apple-style logo placeholder -->
+              <path d="M140 28 C140 28 130 36 130 44 C130 52 135 56 140 56 C145 56 150 52 150 44 C150 36 140 28 140 28Z" fill="#147CE5" opacity="0.4"/>
+              <!-- bottom text area -->
+              <text x="140" y="108" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#1D1D1F">Apple Services</text>
+              <rect x="80" y="115" width="120" height="1" fill="#E2E8F0"/>
+              <text x="140" y="128" text-anchor="middle" font-family="Inter,sans-serif" font-size="7" font-weight="400" fill="#6B7280">Start something new.</text>
+              <rect x="112" y="136" width="56" height="8" rx="4" fill="#147CE5" opacity="0.12"/>
+              <text x="140" y="143" text-anchor="middle" font-family="Inter,sans-serif" font-size="6" font-weight="600" fill="#147CE5">Discover More</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Brand Story</div>
+            <div class="card-badges">
+              <span class="badge badge-size">9:16</span>
+              <span class="badge badge-ap">Apple Services</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── GENERIC 1: Blank Canvas ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-blank">
+            <div class="blank-inner">
+              <span class="blank-plus">+</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Blank Canvas</div>
+            <div class="card-badges">
+              <span class="badge badge-generic">Generic</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── GENERIC 2: Minimal Text ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-minimal">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#FAFAFA"/>
+              <!-- minimal text layout -->
+              <rect x="40" y="48" width="200" height="2" rx="1" fill="#E2E5EF"/>
+              <rect x="60" y="60" width="160" height="12" rx="2" fill="#1A2035" opacity="0.08"/>
+              <rect x="40" y="80" width="200" height="6" rx="1.5" fill="#E2E5EF"/>
+              <rect x="40" y="92" width="170" height="6" rx="1.5" fill="#E2E5EF"/>
+              <rect x="40" y="104" width="130" height="6" rx="1.5" fill="#E2E5EF"/>
+              <rect x="40" y="120" width="80" height="14" rx="3" fill="#1A2035" opacity="0.07"/>
+              <!-- minimal heading -->
+              <text x="140" y="72" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#1A2035" opacity="0.3">Headline here</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Minimal Text</div>
+            <div class="card-badges">
+              <span class="badge badge-generic">Generic</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+        <!-- ─── GENERIC 3: Full Bleed Image ─── -->
+        <div class="template-card">
+          <div class="card-preview preview-fullbleed">
+            <svg width="100%" height="148" viewBox="0 0 280 148" fill="none" preserveAspectRatio="xMidYMid slice">
+              <rect width="280" height="148" fill="#1A2035"/>
+              <!-- placeholder image rects -->
+              <rect x="0" y="0" width="280" height="148" fill="url(#fbGrad)"/>
+              <defs>
+                <linearGradient id="fbGrad" x1="0" y1="0" x2="280" y2="148" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#2A3450"/>
+                  <stop offset="100%" stop-color="#1A2035"/>
+                </linearGradient>
+              </defs>
+              <!-- image placeholder icon -->
+              <rect x="104" y="40" width="72" height="52" rx="4" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+              <path d="M116 80 L128 64 L136 72 L148 56 L164 80Z" fill="rgba(255,255,255,0.1)"/>
+              <circle cx="124" cy="56" r="5" fill="rgba(255,255,255,0.15)"/>
+              <!-- text overlay area -->
+              <rect x="0" y="104" width="280" height="44" fill="rgba(0,0,0,0.45)"/>
+              <rect x="20" y="112" width="120" height="8" rx="2" fill="rgba(255,255,255,0.2)"/>
+              <rect x="20" y="126" width="80" height="6" rx="2" fill="rgba(255,255,255,0.12)"/>
+            </svg>
+          </div>
+          <div class="card-body">
+            <div class="card-name">Full Bleed Image</div>
+            <div class="card-badges">
+              <span class="badge badge-generic">Generic</span>
+              <span class="badge badge-multi">Multi-size</span>
+            </div>
+          </div>
+          <button class="use-btn">Use Template →</button>
+        </div>
+
+      </div><!-- /.template-grid -->
+
+      <!-- Footer Note -->
+      <div class="footer-note">
+        <span>
+          <span class="footer-dot"></span>
+          Alli Connected &nbsp;·&nbsp; Ralph Lauren brand kit active &nbsp;·&nbsp; 847 assets available &nbsp;·&nbsp; Real-time sync
+        </span>
+      </div>
+
+    </main><!-- /.content -->
+  </div><!-- /.main-wrapper -->
+
+  <script>
+    // Category filter pill switching
+    document.querySelectorAll('[data-group="category"]').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('[data-group="category"]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+
+    // Size filter pill switching (single-select within group)
+    document.querySelectorAll('[data-group="size"]').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('[data-group="size"]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+
+    // Client tab switching
+    document.querySelectorAll('.client-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.client-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --sidebar-text: #A8B3CF;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --gold: #D97706;
+    --gold-light: #FEF3C7;
+    --purple: #7C3AED;
+    --purple-light: #F5F3FF;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--sidebar-bg);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .logo-icon { width: 28px; height: 28px; background: var(--blue); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 0.5px; text-transform: uppercase; margin-left: 36px; }
+  .client-pill { margin: 14px 18px; background: rgba(255,255,255,0.07); border-radius: 6px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .client-avatar { width: 22px; height: 22px; border-radius: 4px; background: #C9A96E; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: var(--sidebar-text); }
+  .sidebar-section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--sidebar-text); padding: 12px 18px 6px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 18px; color: var(--sidebar-text); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(12,105,234,0.2); color: white; border-right: 2px solid var(--blue); }
+  .nav-item svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+  .nav-badge { margin-left: auto; background: var(--blue); color: white; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; }
+  .sidebar-footer { margin-top: auto; padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 8px; }
+  .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; flex-shrink: 0; }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 11px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 10px; color: var(--sidebar-text); }
+
+  /* ── MAIN ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* ── TOP BAR ── */
+  .topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .topbar-greeting { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .topbar-date { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text-primary); }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: var(--blue-hover); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* ── PAGE CONTENT ── */
+  .page { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* ── STAT CARDS ── */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+  .stat-value { font-size: 28px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.5px; line-height: 1; }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.green { color: var(--success); }
+  .stat-delta { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .delta-up { color: var(--success); }
+  .delta-down { color: var(--danger); }
+  .delta-neutral { color: var(--text-muted); }
+
+  /* ── SECTION HEADERS ── */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .section-link { font-size: 11px; color: var(--blue); cursor: pointer; font-weight: 600; }
+
+  /* ── TWO COL LAYOUT ── */
+  .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+
+  /* ── ACTIVE JOBS ── */
+  .jobs-list { display: flex; flex-direction: column; gap: 10px; }
+  .job-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all 0.15s; }
+  .job-card:hover { box-shadow: var(--shadow-md); border-color: var(--blue-mid); }
+  .job-card-header { display: flex; align-items: center; gap: 10px; }
+  .job-client-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .job-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+  .job-status-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .status-rendering { background: #EFF6FF; color: #1E40AF; }
+  .status-queued { background: #F4F5F8; color: var(--text-muted); }
+  .status-done { background: #ECFDF5; color: #065F46; }
+  .job-meta { display: flex; gap: 16px; }
+  .job-meta-item { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .job-meta-item strong { color: var(--text-secondary); }
+  .job-progress-row { display: flex; align-items: center; gap: 10px; }
+  .progress-track { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; background: var(--blue); transition: width 0.3s; }
+  .progress-fill.done { background: var(--success); }
+  .progress-pct { font-size: 11px; font-weight: 700; color: var(--text-secondary); width: 32px; text-align: right; }
+  .job-card-footer { display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .job-action { font-size: 11px; font-weight: 600; color: var(--blue); cursor: pointer; }
+  .job-action.muted { color: var(--text-muted); }
+  .job-sep { color: var(--border); }
+  .job-time { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+  /* ── MINI-APPS ── */
+  .apps-two-paths { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+
+  .app-path { padding: 16px 18px 18px; }
+  .app-path-create { background: var(--white); }
+  .app-path-edit { background: #F8F9FC; border-top: 1px solid var(--border); }
+
+  .app-path-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .app-path-pill {
+    font-size: 10px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0;
+  }
+  .pill-create { background: var(--blue); color: white; }
+  .pill-edit { background: var(--text-primary); color: white; }
+  .app-path-desc { font-size: 11px; color: var(--text-muted); }
+
+  .app-path-cards { display: grid; gap: 10px; }
+  .app-path-create .app-path-cards { grid-template-columns: repeat(2, 1fr); }
+  .app-path-edit .app-path-cards { grid-template-columns: repeat(3, 1fr); }
+
+  .mini-app-card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 14px 11px;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; flex-direction: column; gap: 10px;
+    position: relative; overflow: hidden;
+  }
+  .app-path-edit .mini-app-card { background: var(--white); }
+  .mini-app-card:hover { box-shadow: var(--shadow-md); border-color: var(--blue-mid); transform: translateY(-1px); }
+
+  .mini-app-card::after {
+    content: ''; position: absolute; bottom: -16px; right: -16px;
+    width: 64px; height: 64px; border-radius: 50%; opacity: 0.06; pointer-events: none;
+  }
+  .mac-blue::after { background: var(--blue); }
+  .mac-gold::after { background: var(--gold); }
+  .mac-green::after { background: var(--success); }
+  .mac-purple::after { background: var(--purple); }
+  .mac-teal::after { background: #0D9488; }
+
+  .mini-app-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .mac-blue .mini-app-icon { background: var(--blue-light); }
+  .mac-gold .mini-app-icon { background: var(--gold-light); }
+  .mac-green .mini-app-icon { background: #ECFDF5; }
+  .mac-purple .mini-app-icon { background: var(--purple-light); }
+  .mac-teal .mini-app-icon { background: #F0FDFA; }
+  .mini-app-icon svg { width: 16px; height: 16px; }
+
+  .mini-app-body { flex: 1; }
+  .mini-app-name { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+  .mini-app-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+  .mini-app-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border); }
+  .mini-app-steps { font-size: 10px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+  .mini-app-steps span { display: inline-flex; gap: 2px; }
+  .step-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+  .step-dot.filled { background: var(--blue); }
+  .mini-app-start { font-size: 11px; font-weight: 700; color: var(--blue); cursor: pointer; }
+
+  /* ── RECENT ASSETS ── */
+  .assets-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .asset-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; }
+  .asset-card:hover { box-shadow: var(--shadow-md); border-color: var(--blue-mid); transform: translateY(-1px); }
+  .asset-thumb { width: 100%; aspect-ratio: 1; background: #1A1A2E; position: relative; overflow: hidden; }
+  .asset-thumb svg { width: 100%; height: 100%; }
+  .asset-info { padding: 8px; }
+  .asset-name { font-size: 10px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .asset-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── ALLI SYNC BANNER ── */
+  .alli-banner {
+    background: var(--sidebar-bg);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .alli-icon { width: 36px; height: 36px; background: var(--blue); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .alli-icon svg { width: 18px; height: 18px; fill: white; }
+  .alli-text { flex: 1; }
+  .alli-title { font-size: 13px; font-weight: 700; color: white; margin-bottom: 2px; }
+  .alli-sub { font-size: 11px; color: var(--sidebar-text); }
+  .alli-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--success); background: rgba(16,185,129,0.12); padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  /* ── PERF HIGHLIGHT ── */
+  .perf-highlight { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; }
+  .perf-hl-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 12px; }
+  .perf-hl-card { display: flex; align-items: center; gap: 14px; }
+  .perf-hl-thumb { width: 64px; height: 48px; border-radius: 5px; background: #1A1A2E; overflow: hidden; flex-shrink: 0; }
+  .perf-hl-thumb svg { width: 100%; height: 100%; }
+  .perf-hl-info { flex: 1; }
+  .perf-hl-name { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+  .perf-hl-id { font-size: 10px; color: var(--text-muted); font-family: monospace; margin-bottom: 6px; }
+  .perf-hl-stats { display: flex; gap: 16px; }
+  .perf-hl-stat { }
+  .perf-hl-stat-val { font-size: 16px; font-weight: 800; color: var(--gold); }
+  .perf-hl-stat-label { font-size: 10px; color: var(--text-muted); }
+  .perf-see-all { font-size: 11px; font-weight: 600; color: var(--blue); cursor: pointer; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"/></svg></div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative</div>
+  </div>
+
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+
+  <div class="sidebar-section-label">Workspace</div>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Dashboard</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h6M4 5h4" stroke="currentColor" stroke-width="1"/></svg>Templates</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".7"/></svg>Batch Jobs <span class="nav-badge">3</span></a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1L9 5H13L9.5 7.5L11 12L7 9L3 12L4.5 7.5L1 5H5L7 1Z" opacity=".8"/></svg>Assets</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 13c0-3 2.7-5 6-5s6 2 6 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Brand Kit</a>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">Create New</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="2" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.2"/></svg>Create Static Ad</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".8"/></svg>Batch Generator</a>
+  <div class="sidebar-section-label" style="margin-top:6px;">Edit Existing</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h2M8 5v4" stroke="currentColor" stroke-width="1.2"/></svg>Resize to New Sizes</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 12l3-3 2 2 4-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Edit &amp; Tweak</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="3" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 6l3 1.5L6 9V6z" fill="currentColor"/></svg>Video Cutdown</a>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 10V6h2.5v4H2zM5.5 10V3H8v7H5.5zM9 10V8h2.5v2H9z" opacity=".8"/></svg>Performance</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Export History</a>
+
+  <div class="sidebar-footer">
+    <div class="user-avatar">AN</div>
+    <div class="user-info">
+      <div class="user-name">Annie Nguyen</div>
+      <div class="user-role">Creative Strategist</div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <span class="topbar-greeting">Good morning, Annie</span>
+    <span class="topbar-date">· Monday, May 5</span>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">Browse Templates</button>
+      <button class="btn btn-primary btn-sm">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="white"><path d="M6 1v10M1 6h10" stroke="white" fill="none" stroke-width="2"/></svg>
+        New Batch Job
+      </button>
+    </div>
+  </header>
+
+  <div class="page">
+
+    <!-- Alli sync banner -->
+    <div class="alli-banner">
+      <div class="alli-icon"><svg viewBox="0 0 18 18"><path d="M9 1L16 5V13L9 17L2 13V5L9 1Z"/></svg></div>
+      <div class="alli-text">
+        <div class="alli-title">Connected to Alli</div>
+        <div class="alli-sub">Brand kits, campaign data, and performance metrics are live for Ralph Lauren</div>
+      </div>
+      <div class="alli-badge"><div class="pulse"></div>Synced · 2 min ago</div>
+    </div>
+
+    <!-- Stat row -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label">Variants generated</div>
+        <div class="stat-value blue">2,340</div>
+        <div class="stat-delta delta-up">↑ 18% from last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active batch jobs</div>
+        <div class="stat-value">3</div>
+        <div class="stat-delta delta-neutral">2 rendering · 1 queued</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Live variants</div>
+        <div class="stat-value green">847</div>
+        <div class="stat-delta delta-neutral">Across 4 campaigns</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg CTR lift</div>
+        <div class="stat-value gold">+31%</div>
+        <div class="stat-delta delta-up">vs. manual creative baseline</div>
+      </div>
+    </div>
+
+    <!-- Mini-apps — two paths -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">Apps</span>
+        <span style="font-size:11px; color:var(--text-muted);">Two paths: start from a template or from an existing asset</span>
+      </div>
+
+      <div class="apps-two-paths">
+
+        <!-- ── PATH A: TEMPLATE-FIRST ── -->
+        <div class="app-path app-path-create">
+          <div class="app-path-header">
+            <span class="app-path-pill pill-create">Create new</span>
+            <span class="app-path-desc">Start from a template — pick slots, pick sizes, generate assets from scratch</span>
+          </div>
+          <div class="app-path-cards">
+
+            <div class="mini-app-card mac-blue">
+              <div class="mini-app-icon">
+                <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="#0C69EA" stroke-width="1.5"/><path d="M8 5v6M5 8h6" stroke="#0C69EA" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div class="mini-app-body">
+                <div class="mini-app-name">Create Static Ad</div>
+                <div class="mini-app-desc">Pick a template, fill headline/CTA/image slots, pick platform sizes, export.</div>
+              </div>
+              <div class="mini-app-footer">
+                <div class="mini-app-steps">5 steps&nbsp;<span><span class="step-dot filled"></span><span class="step-dot filled"></span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></div>
+                <span class="mini-app-start">Start →</span>
+              </div>
+            </div>
+
+            <div class="mini-app-card mac-gold">
+              <div class="mini-app-icon">
+                <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="5" height="5" rx="1" fill="#D97706" opacity=".7"/><rect x="9.5" y="1.5" width="5" height="5" rx="1" fill="#D97706" opacity=".7"/><rect x="1.5" y="9.5" width="5" height="5" rx="1" fill="#D97706" opacity=".7"/><rect x="9.5" y="9.5" width="5" height="5" rx="1" fill="#D97706" opacity=".7"/></svg>
+              </div>
+              <div class="mini-app-body">
+                <div class="mini-app-name">Batch Generator</div>
+                <div class="mini-app-desc">Define slot variations, run the full combination matrix, generate 60+ variants at once.</div>
+              </div>
+              <div class="mini-app-footer">
+                <div class="mini-app-steps">4 steps&nbsp;<span><span class="step-dot filled"></span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></div>
+                <span class="mini-app-start">Start →</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── PATH B: ASSET-FIRST ── -->
+        <div class="app-path app-path-edit">
+          <div class="app-path-header">
+            <span class="app-path-pill pill-edit">Edit existing</span>
+            <span class="app-path-desc">Start from an asset already in Alli Studio — no template picker, no slot filling</span>
+          </div>
+          <div class="app-path-cards">
+
+            <div class="mini-app-card mac-teal">
+              <div class="mini-app-icon">
+                <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="13" height="13" rx="1.5" stroke="#0D9488" stroke-width="1.5"/><path d="M5 8h6M8 5v6" stroke="#0D9488" stroke-width="1.2" stroke-linecap="round"/><rect x="9" y="9" width="5" height="5" rx="1" fill="#0D9488" opacity=".3" stroke="#0D9488" stroke-width="1"/></svg>
+              </div>
+              <div class="mini-app-body">
+                <div class="mini-app-name">Resize to New Sizes</div>
+                <div class="mini-app-desc">Pick a variant that's already rendered, generate it in the sizes you're missing.</div>
+              </div>
+              <div class="mini-app-footer">
+                <div class="mini-app-steps">3 steps&nbsp;<span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></div>
+                <span class="mini-app-start">Start →</span>
+              </div>
+            </div>
+
+            <div class="mini-app-card mac-purple">
+              <div class="mini-app-icon">
+                <svg viewBox="0 0 16 16" fill="none"><path d="M3 12l2.5-2.5 6-6a1.4 1.4 0 012 2l-6 6L3 14V12z" stroke="#7C3AED" stroke-width="1.3" stroke-linejoin="round"/><path d="M10 4.5l1.5 1.5" stroke="#7C3AED" stroke-width="1.3"/></svg>
+              </div>
+              <div class="mini-app-body">
+                <div class="mini-app-name">Edit &amp; Tweak</div>
+                <div class="mini-app-desc">Open an existing variant, swap one slot value, re-render without touching the batch.</div>
+              </div>
+              <div class="mini-app-footer">
+                <div class="mini-app-steps">2 steps&nbsp;<span><span class="step-dot"></span><span class="step-dot"></span></span></div>
+                <span class="mini-app-start">Start →</span>
+              </div>
+            </div>
+
+            <div class="mini-app-card mac-green">
+              <div class="mini-app-icon">
+                <svg viewBox="0 0 16 16" fill="none"><rect x="1.5" y="4" width="13" height="8" rx="1.5" stroke="#10B981" stroke-width="1.5"/><path d="M6 7l4 2-4 2V7z" fill="#10B981"/></svg>
+              </div>
+              <div class="mini-app-body">
+                <div class="mini-app-name">Video Cutdown</div>
+                <div class="mini-app-desc">Upload a long-form video, set in/out points per platform size, export platform-ready cuts.</div>
+              </div>
+              <div class="mini-app-footer">
+                <div class="mini-app-steps">3 steps&nbsp;<span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></div>
+                <span class="mini-app-start">Start →</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Two col: active jobs + quick start -->
+    <div class="two-col">
+
+      <!-- Active jobs -->
+      <div>
+        <div class="section-header">
+          <span class="section-title">Active Batch Jobs</span>
+          <span class="section-link">View all →</span>
+        </div>
+        <div class="jobs-list">
+
+          <!-- Job 1: rendering -->
+          <div class="job-card">
+            <div class="job-card-header">
+              <div class="job-client-dot" style="background:#C9A96E;"></div>
+              <span class="job-name">Summer Sale 2026 — Display + Social</span>
+              <span class="job-status-badge status-rendering">Rendering</span>
+            </div>
+            <div class="job-meta">
+              <div class="job-meta-item"><strong>60</strong>&nbsp;variants</div>
+              <div class="job-meta-item"><strong>3</strong>&nbsp;sizes</div>
+              <div class="job-meta-item"><strong>180</strong>&nbsp;renders total</div>
+              <div class="job-meta-item">Ralph Lauren</div>
+            </div>
+            <div class="job-progress-row">
+              <div class="progress-track"><div class="progress-fill" style="width:58%"></div></div>
+              <span class="progress-pct">58%</span>
+            </div>
+            <div class="job-card-footer">
+              <span class="job-action">View job</span>
+              <span class="job-sep">·</span>
+              <span class="job-action">Compare slots</span>
+              <span class="job-sep">·</span>
+              <span class="job-action muted">Pause</span>
+              <span class="job-time">ETA 4 min</span>
+            </div>
+          </div>
+
+          <!-- Job 2: rendering -->
+          <div class="job-card">
+            <div class="job-card-header">
+              <div class="job-client-dot" style="background:#E53E3E;"></div>
+              <span class="job-name">Ninja Foodi — Q3 Push</span>
+              <span class="job-status-badge status-rendering">Rendering</span>
+            </div>
+            <div class="job-meta">
+              <div class="job-meta-item"><strong>24</strong>&nbsp;variants</div>
+              <div class="job-meta-item"><strong>2</strong>&nbsp;sizes</div>
+              <div class="job-meta-item"><strong>48</strong>&nbsp;renders total</div>
+              <div class="job-meta-item">SharkNinja</div>
+            </div>
+            <div class="job-progress-row">
+              <div class="progress-track"><div class="progress-fill" style="width:82%"></div></div>
+              <span class="progress-pct">82%</span>
+            </div>
+            <div class="job-card-footer">
+              <span class="job-action">View job</span>
+              <span class="job-sep">·</span>
+              <span class="job-action">Compare slots</span>
+              <span class="job-sep">·</span>
+              <span class="job-action muted">Pause</span>
+              <span class="job-time">ETA 1 min</span>
+            </div>
+          </div>
+
+          <!-- Job 3: queued -->
+          <div class="job-card">
+            <div class="job-card-header">
+              <div class="job-client-dot" style="background:#147CE5;"></div>
+              <span class="job-name">Apple Services — Back to School</span>
+              <span class="job-status-badge status-queued">Queued</span>
+            </div>
+            <div class="job-meta">
+              <div class="job-meta-item"><strong>40</strong>&nbsp;variants</div>
+              <div class="job-meta-item"><strong>4</strong>&nbsp;sizes</div>
+              <div class="job-meta-item"><strong>160</strong>&nbsp;renders total</div>
+              <div class="job-meta-item">Apple Services</div>
+            </div>
+            <div class="job-progress-row">
+              <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+              <span class="progress-pct" style="color:var(--text-muted);">—</span>
+            </div>
+            <div class="job-card-footer">
+              <span class="job-action">View job</span>
+              <span class="job-sep">·</span>
+              <span class="job-action">Edit slots</span>
+              <span class="job-time">Starts after Ninja job</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right col -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Top performer highlight -->
+        <div class="perf-highlight">
+          <div class="perf-hl-label">This week's top performer</div>
+          <div class="perf-hl-card">
+            <div class="perf-hl-thumb">
+              <svg viewBox="0 0 64 48">
+                <rect width="64" height="48" fill="#1A1A2E"/>
+                <rect x="36" y="4" width="24" height="32" rx="2" fill="#2A2A4A"/>
+                <circle cx="52" cy="18" r="8" fill="#C9A96E" opacity=".3"/>
+                <text x="4" y="18" font-size="5" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Up to</text>
+                <text x="4" y="25" font-size="7" fill="white" font-family="sans-serif" font-weight="bold">50% Off</text>
+                <rect x="4" y="30" width="22" height="7" rx="2" fill="#C9A96E"/>
+                <text x="15" y="35.5" font-size="4" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+                <rect x="0" y="0" width="64" height="48" fill="none" stroke="#D97706" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="perf-hl-info">
+              <div class="perf-hl-name">"Up to 50% Off" · Summer Sale</div>
+              <div class="perf-hl-id">RL_Summer_H2_C2_I3</div>
+              <div class="perf-hl-stats">
+                <div class="perf-hl-stat">
+                  <div class="perf-hl-stat-val">3.8%</div>
+                  <div class="perf-hl-stat-label">CTR</div>
+                </div>
+                <div class="perf-hl-stat">
+                  <div class="perf-hl-stat-val" style="color:var(--text-primary); font-size:14px;">24K</div>
+                  <div class="perf-hl-stat-label">Impressions</div>
+                </div>
+              </div>
+            </div>
+            <span class="perf-see-all">See all →</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Recent assets -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">Recently Generated</span>
+        <span class="section-link">View asset library →</span>
+      </div>
+      <div class="assets-grid">
+
+        <!-- Asset 1 -->
+        <div class="asset-card">
+          <div class="asset-thumb">
+            <svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#1A1A2E"/><circle cx="80" cy="50" r="28" fill="#C9A96E" opacity=".2"/><text x="14" y="55" font-size="11" fill="#C9A96E" font-family="sans-serif" font-weight="bold">50% Off</text><rect x="14" y="68" width="40" height="14" rx="3" fill="#C9A96E"/><text x="34" y="78" font-size="7" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text><rect x="0" y="0" width="120" height="120" fill="none" stroke="#D97706" stroke-width="2.5"/></svg>
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">RL_Summer_H2_C2_I3</div>
+            <div class="asset-meta">1080×1080 · 2h ago</div>
+          </div>
+        </div>
+
+        <!-- Asset 2 -->
+        <div class="asset-card">
+          <div class="asset-thumb">
+            <svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#1A1A2E"/><circle cx="80" cy="50" r="28" fill="#C9A96E" opacity=".15"/><text x="14" y="48" font-size="9" fill="white" font-family="sans-serif" font-weight="bold">Bold</text><text x="14" y="61" font-size="9" fill="#C9A96E" font-family="sans-serif" font-weight="bold">Summer Sale</text><rect x="14" y="74" width="40" height="14" rx="3" fill="#C9A96E"/><text x="34" y="84" font-size="7" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text></svg>
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">RL_Summer_H1_C2_I3</div>
+            <div class="asset-meta">1080×1080 · 2h ago</div>
+          </div>
+        </div>
+
+        <!-- Asset 3 -->
+        <div class="asset-card">
+          <div class="asset-thumb">
+            <svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#1A1A1A"/><rect x="20" y="20" width="80" height="80" rx="4" fill="#222"/><text x="60" y="54" font-size="8" fill="#E53E3E" font-family="sans-serif" font-weight="bold" text-anchor="middle">NINJA</text><text x="60" y="68" font-size="7" fill="white" font-family="sans-serif" text-anchor="middle">AIR FRYER</text><rect x="30" y="80" width="60" height="12" rx="2" fill="#E53E3E"/><text x="60" y="89" font-size="6" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text></svg>
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">SN_Foodi_H3_C1_I2</div>
+            <div class="asset-meta">1080×1080 · 3h ago</div>
+          </div>
+        </div>
+
+        <!-- Asset 4 (story) -->
+        <div class="asset-card">
+          <div class="asset-thumb">
+            <svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#1A1A2E"/><text x="60" y="46" font-size="8" fill="white" font-family="sans-serif" text-anchor="middle">Refresh</text><text x="60" y="58" font-size="8" fill="#C9A96E" font-family="sans-serif" font-weight="bold" text-anchor="middle">Your Wardrobe</text><rect x="30" y="72" width="60" height="14" rx="3" fill="#C9A96E"/><text x="60" y="82" font-size="7" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text><text x="8" y="14" font-size="7" fill="var(--text-muted)" font-family="sans-serif">9:16</text></svg>
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">RL_Summer_H3_C1_I1</div>
+            <div class="asset-meta">1080×1920 · 3h ago</div>
+          </div>
+        </div>
+
+        <!-- Asset 5 -->
+        <div class="asset-card">
+          <div class="asset-thumb">
+            <svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#F5F5F7"/><text x="60" y="48" font-size="9" fill="#147CE5" font-family="sans-serif" font-weight="bold" text-anchor="middle">Apple TV+</text><text x="60" y="62" font-size="7" fill="#1A1A1A" font-family="sans-serif" text-anchor="middle">Back to School</text><rect x="30" y="76" width="60" height="14" rx="3" fill="#147CE5"/><text x="60" y="86" font-size="7" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Get Started</text></svg>
+          </div>
+          <div class="asset-info">
+            <div class="asset-name">AS_BTS_H1_C2_I4</div>
+            <div class="asset-meta">1200×628 · 5h ago</div>
+          </div>
+        </div>
+
+        <!-- Asset 6 — "view more" -->
+        <div class="asset-card" style="display:flex; align-items:center; justify-content:center; background:var(--white); cursor:pointer; aspect-ratio:auto; min-height:130px;">
+          <div style="text-align:center;">
+            <div style="font-size:22px; color:var(--border); margin-bottom:6px;">+</div>
+            <div style="font-size:11px; font-weight:600; color:var(--blue);">View all 847</div>
+            <div style="font-size:10px; color:var(--text-muted);">assets</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
