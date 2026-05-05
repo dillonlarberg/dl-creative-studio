@@ -68,12 +68,36 @@ export async function fetchFeedSample(opts: {
       try {
         const meta = await alliService.getModelMetadata(opts.clientSlug, modelName);
         metadata = meta;
-        dimensions = ((meta.dimensions || []) as Array<{ name: string }>).map(
-          (d) => d.name
-        );
-        measures = ((meta.measures || []) as Array<{ name: string }>).map(
-          (m) => m.name
-        );
+        // Some models return dimensions/measures as objects with .name; some
+        // are nested under .schema or .dataSchema; some return plain string
+        // arrays. Try every known shape before giving up.
+        const extract = (raw: unknown): string[] => {
+          if (!Array.isArray(raw)) return [];
+          return (raw as Array<unknown>)
+            .map((d) => {
+              if (typeof d === 'string') return d;
+              if (d && typeof d === 'object') {
+                const obj = d as Record<string, unknown>;
+                return (obj.name ?? obj.id ?? obj.sql ?? '') as string;
+              }
+              return '';
+            })
+            .filter((s): s is string => typeof s === 'string' && s.length > 0);
+        };
+        const m = meta as Record<string, unknown>;
+        const schema = (m.schema ?? m.dataSchema ?? {}) as Record<string, unknown>;
+        dimensions =
+          extract(m.dimensions) ||
+          extract(schema.dimensions) ||
+          extract(m.columns) ||
+          extract(schema.columns) ||
+          [];
+        measures = extract(m.measures) || extract(schema.measures) || [];
+        console.log('[FeedSample] Metadata discovery for', modelName, '→', {
+          dimensions: dimensions.length,
+          measures: measures.length,
+          rawKeys: Object.keys(m),
+        });
       } catch (metaErr) {
         console.warn('[FeedSample] Metadata discovery skipped:', metaErr);
       }
@@ -81,10 +105,13 @@ export async function fetchFeedSample(opts: {
       metadata = feedObj;
     }
 
-    const attempts: Array<{ dims: string[]; meas: string[] }> = [
-      { dims: dimensions, meas: measures },
-      { dims: dimensions, meas: [] },
-    ];
+    const attempts: Array<{ dims: string[]; meas: string[] }> = [];
+    if (dimensions.length > 0 || measures.length > 0) {
+      attempts.push({ dims: dimensions, meas: measures });
+    }
+    if (dimensions.length > 0) {
+      attempts.push({ dims: dimensions, meas: [] });
+    }
 
     if (modelName === 'creative_insights_data_export') {
       attempts.unshift({
@@ -93,11 +120,20 @@ export async function fetchFeedSample(opts: {
       });
       attempts.push({ dims: ['ad_id', 'url'], meas: [] });
       attempts.push({ dims: ['ad_id'], meas: [] });
-    } else {
-      if (dimensions.length > 0) {
-        attempts.push({ dims: [dimensions[0]], meas: [] });
-      }
-      attempts.push({ dims: [], meas: [] });
+    } else if (dimensions.length > 0) {
+      attempts.push({ dims: [dimensions[0]], meas: [] });
+    }
+
+    // CRITICAL: the upstream Alli API schema (SemanticQueryRequest) requires
+    // at least one of `measures` or `dimensions` (anyOf) — see
+    // /api-docs/openapi.json. If schema discovery yielded nothing AND we have
+    // no model-specific hardcoded fallback, every attempt would be empty and
+    // the API would reject every request with a cryptic 400. Fail fast with
+    // a clear error instead.
+    if (attempts.length === 0) {
+      throw new Error(
+        `Schema discovery failed for "${modelName}". The Alli model returned no dimensions or measures, and no hardcoded fallback is available for this model. The data-explorer query API (POST /models/${modelName}/execute-query) requires at least one of "measures" or "dimensions" in the request body.`
+      );
     }
 
     let data: Array<Record<string, unknown>> = [];
@@ -107,12 +143,26 @@ export async function fetchFeedSample(opts: {
       | undefined;
 
     for (const attempt of attempts) {
+      // Skip attempts that would violate the upstream schema's anyOf
+      // (measures-or-dimensions required). They'd 400 with the cryptic
+      // "request.body should match some schema in anyOf" message.
+      if (attempt.dims.length === 0 && attempt.meas.length === 0) continue;
+
+      // Build the body conditionally — only include keys we have. Empty
+      // arrays still satisfy `required` so we'd pass schema, but Cube's
+      // semantics treat presence-with-empty-value differently than absence,
+      // and the prod monolith always omits empty keys here.
+      const body: Record<string, unknown> = { limit: 25 };
+      if (attempt.dims.length > 0) body.dimensions = attempt.dims;
+      if (attempt.meas.length > 0) body.measures = attempt.meas;
+
       try {
-        const result = await alliService.executeQuery(opts.clientSlug, modelName, {
-          dimensions: attempt.dims.length > 0 ? attempt.dims : undefined,
-          measures: attempt.meas.length > 0 ? attempt.meas : undefined,
-          limit: 25,
-        });
+        console.log('[FeedSample] Attempting query for', modelName, body);
+        const result = await alliService.executeQuery(
+          opts.clientSlug,
+          modelName,
+          body as { dimensions?: string[]; measures?: string[]; limit?: number }
+        );
         data =
           result.results ||
           result.rows ||

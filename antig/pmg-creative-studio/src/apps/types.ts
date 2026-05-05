@@ -11,9 +11,26 @@ import type { AppId, ClientSlug, CreativeId } from '../platform/firebase/paths';
 
 export type StepData = Record<string, unknown>;
 
+/**
+ * A named requirement surfaced in the wizard's footer checklist
+ * (e.g. "Project Title", "Channel", "Size Selected"). When a step's
+ * validate() returns one or more requirements with `met: false`,
+ * the chrome renders the green/gray checklist and disables Continue.
+ */
+export interface ValidationRequirement {
+  label: string;
+  met: boolean;
+}
+
 export type ValidationResult =
   | { ok: true }
-  | { ok: false; reason: string };
+  | {
+      ok: false;
+      /** Optional free-text reason — used as a fallback when no requirements are supplied. */
+      reason?: string;
+      /** Structured per-field requirements rendered as the footer checklist. */
+      requirements?: ValidationRequirement[];
+    };
 
 export interface AppContext {
   client: { slug: ClientSlug };
@@ -42,6 +59,8 @@ export interface AppManifest<S extends StepData = StepData> {
   id: AppId;
   basePath: string;
   title: string;
+  /** One-sentence description shown under the title in the wizard header. */
+  description?: string;
   steps: WizardStep<S>[];
   onMount?: (ctx: AppContext) => void | Promise<void>;
   initialStepData: () => S;

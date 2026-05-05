@@ -465,3 +465,261 @@ The following decisions were locked in during the architecture grilling session 
 | 4 | **Modularization scope** | Big bang, executed iteratively across multiple PRs. Feature branches off `dev`, PRs merge into `dev`. `dev` → `main` when fully baked. Firebase Hosting versions every deploy for instant rollback. | Solo developer + free rollback eliminates the merge-risk argument for a phased monolith-coexists approach. Doing all 8 apps in one branch produces one coherent story and avoids carrying a "legacy wizard" code path. |
 | 5 | **Routing** | Per-app top-level routes. Each manifest declares `basePath` and `routes[]`; the shell mounts them. No central routes table beyond the registry. | Almost every app is multi-screen. A single `/create/:useCaseId` dispatcher would force every app to reinvent nested-route conventions. Per-app namespaces let each app grow (`library`, `templates`, `history`) without coordinating. |
 | 6 | **Audit logging** | Skipped for prototype. Revisit when a customer or auditor requires it. | Cloud Audit Logs (free, infrastructure-level) remain available as a one-checkbox upgrade if needed; application-layer audit trails are not worth building speculatively. |
+
+## 7. Frontend Map (current state — 2026-05-05)
+
+### Framework & Build Tooling
+
+| Tool | Version |
+|------|---------|
+| React | 19.2 |
+| TypeScript | ~5.9 |
+| Vite | 7.3 |
+| Tailwind CSS | v4 (via `@tailwindcss/vite`) |
+| Vitest | (configured in `vitest.config.ts` + `vitest.rules.config.ts`) |
+| react-router-dom | v7 |
+
+Entry point: `index.html` → `src/main.tsx` → `src/App.tsx`.
+
+### `src/` Directory Layout
+
+```
+src/
+├── main.tsx                   # Vite entry — mounts <App />
+├── App.tsx                    # BrowserRouter, auth gate, top-level <Routes>
+├── firebase.ts                # Firebase SDK init (auth, db, storage, functions)
+│
+├── apps/
+│   └── template-builder/      # First modular app (post-monolith rebuild)
+│       ├── AppRoot.tsx        # Mounts WizardShell<TemplateBuilderStepData>
+│       ├── manifest.ts        # Step definitions + app metadata
+│       ├── steps.ts           # Step ID constants
+│       ├── types.ts           # TemplateBuilderStepData shape
+│       └── steps/
+│           ├── IntentStep.tsx
+│           ├── SourceStep.tsx
+│           ├── ContextStep.tsx
+│           ├── GenerateStep.tsx
+│           ├── RefineStep.tsx
+│           ├── MappingStep.tsx
+│           └── ExportStep.tsx
+│
+├── platform/
+│   ├── wizard/
+│   │   ├── WizardShell.tsx          # Generic wizard runtime (see §7.5)
+│   │   └── usePersistedStepData.ts  # Step-data persistence hook
+│   ├── client/
+│   │   ├── ClientProvider.tsx       # React context: currentClient + allowedClients
+│   │   └── useCurrentClient.ts      # Consumer hook
+│   └── firebase/                    # Firebase-specific helpers
+│
+├── components/                # Shared UI primitives
+│   ├── AppLayout.tsx          # Authenticated shell: sidebar nav, header, <Outlet />
+│   ├── Breadcrumbs.tsx
+│   ├── AIModelSelector.tsx
+│   ├── ApprovalFlow.tsx
+│   ├── FileUpload.tsx
+│   ├── WaveAnimation.tsx
+│   └── edit-image/
+│       └── steps/
+│           └── SelectAnalyzeStep.tsx
+│
+├── pages/                     # Route-level page components
+│   ├── CreatePage.tsx          # "/" — use-case grid / launcher
+│   ├── LoginPage.tsx
+│   ├── ClientSelectPage.tsx
+│   ├── ClientAssetHousePage.tsx
+│   └── use-cases/
+│       └── UseCaseWizardPage.tsx   # Legacy monolith wizard (being lifted out)
+│
+├── services/                  # All I/O, no UI
+│   ├── auth.ts
+│   ├── alli.ts                # Alli Platform REST proxy calls
+│   ├── templates.ts           # Firestore CRUD
+│   ├── creative.ts            # Firestore CRUD
+│   ├── batches.ts             # Firestore CRUD
+│   ├── clientAssetHouse.ts    # Firestore CRUD
+│   └── videoService.ts        # Firebase Functions callable
+│
+├── types/                     # Shared TypeScript types
+└── utils/
+    └── cn.ts                  # Tailwind class-merge helper
+```
+
+### State Management
+
+No external state library (no Zustand, Redux, MobX). State is handled at three levels:
+
+| Level | Mechanism | Location |
+|-------|-----------|----------|
+| Auth session | `useState` + `authService.subscribe()` | `src/App.tsx` |
+| Current client | React Context | `src/platform/client/ClientProvider.tsx` |
+| Wizard step data | `usePersistedStepData` hook | `src/platform/wizard/usePersistedStepData.ts` |
+| Component-local UI | `useState` | Per-component |
+
+### Route Table
+
+All routes live in `src/App.tsx`. Unauthenticated users are redirected to `/login`; authenticated users who hit `/login` are redirected to `/`.
+
+| Path | Component | Notes |
+|------|-----------|-------|
+| `/login` | `LoginPage` | Public |
+| `/` | `CreatePage` | Authenticated; use-case launcher grid |
+| `/create` | — | Redirect → `/` |
+| `/:clientSlug/template-builder/*` | `TemplateBuilderAppRoot` | Wrapped in `<ClientProvider>`; sub-routes owned by the app manifest |
+| `/create/:useCaseId` | `UseCaseWizardPage` | Legacy monolith; being replaced per-app |
+| `/select-client` | `ClientSelectPage` | Authenticated |
+| `/client-asset-house` | `ClientAssetHousePage` | Authenticated |
+| `*` | — | Redirect → `/` |
+
+The authenticated routes are rendered inside `<AppLayout>` (sidebar + header) via React Router's `<Outlet>`.
+
+### WizardShell — Generic Wizard Runtime
+
+`src/platform/wizard/WizardShell.tsx` is the shared runtime all modular apps plug into. It owns:
+
+- **URL ↔ step sync** via `:stepId` param (`useParams`, `useNavigate`).
+- **Step lifecycle**: `onMount` (once), `validate` / `onLeave` / `onEnter` on navigation, fall-through advance-by-index when `step.next()` is undefined.
+- **Visual chrome**: back link, title + description header, progress stepper, content card, validation checklist footer, Previous / Continue buttons — lifted from `UseCaseWizardPage.tsx` for 1:1 visual parity.
+- **Persistence**: delegates to `usePersistedStepData`.
+
+Each app provides a typed `AppManifest<S extends StepData>` (defined in `src/apps/types.ts`) to the shell.
+
+### Feature Modules
+
+| Module | Key Files | Status |
+|--------|-----------|--------|
+| **Template Builder** | `src/apps/template-builder/` | Active — 7 steps in `WizardShell` |
+| **Edit Image** | `src/components/edit-image/` | Partial — `SelectAnalyzeStep` extracted |
+| **Legacy Wizard** | `src/pages/use-cases/UseCaseWizardPage.tsx` | Being decomposed into per-app modules |
+| **Client Asset House** | `src/pages/ClientAssetHousePage.tsx`, `src/services/clientAssetHouse.ts` | Stable |
+| **App Registry** | `src/apps/_registry.ts` | Drives the `CreatePage` launcher grid |
+
+### UI & Styling
+
+- **Tailwind CSS v4** — utility classes throughout; no CSS Modules or CSS-in-JS.
+- `cn()` helper (`src/utils/cn.ts`) — class-merge utility (wraps `clsx`/`tailwind-merge`).
+- **Heroicons** (`@heroicons/react/24/outline`) — icon set.
+- **Headless UI** (`@headlessui/react`) — `Dialog`, `Transition`, `TransitionChild` for accessible modal primitives.
+- Global styles in `src/index.css` and `src/App.css`.
+
+### How the Frontend Talks to the Backend
+
+#### Firebase SDK (direct, real-time-capable)
+
+Initialised in `src/firebase.ts` (project `automated-creative-e10d7`). Exported singletons:
+
+| Export | SDK Module | Used by |
+|--------|-----------|---------|
+| `auth` | `firebase/auth` | `src/services/auth.ts` |
+| `db` | `firebase/firestore` | `templates`, `creative`, `batches`, `clientAssetHouse` services |
+| `storage` | `firebase/storage` | `FileUpload` component, creative service |
+| `functions` | `firebase/functions` | `videoService.ts` (httpsCallable) |
+
+#### Alli Platform REST (proxied HTTP)
+
+`src/services/alli.ts` calls `fetch('/api/<endpoint>')`. In development, Vite proxies `/api/*` → `https://us-central1-automated-creative-e10d7.cloudfunctions.net/*` (configured in `vite.config.ts`). In production, the same Cloud Functions URL is the target.
+
+Every request attaches a Firebase ID token via `authService.getAccessToken()` as a Bearer header.
+
+Current endpoints:
+
+| Proxy path | Purpose |
+|-----------|---------|
+| `/api/getMeProxy` | Fetch current user metadata from Alli Central |
+| `/api/getClientsProxy` | List allowed clients for the authenticated user |
+| `/api/getCreativeAssetsProxy?clientSlug=` | Fetch creative assets for a client |
+| `/api/getDataSourcesProxy?clientSlug=` | Fetch data sources for a client |
+
+`src/services/videoService.ts` calls Firebase callable Functions directly (not via the `/api` proxy).
+
+*This section was produced by static analysis of `src/` on 2026-05-05 by the `frontend-mapper` agent.*
+
+## 8. Backend Map (current state — 2026-05-05)
+
+### Runtime & Framework
+
+**Firebase Cloud Functions** (Gen 1, `firebase-functions` v5), **Node.js 22**, TypeScript. Compiled to `functions/lib/` and deployed via `firebase deploy --only functions`. Full local emulator suite configured in `firebase.json` (Auth :9099, Firestore :8080, Storage :9199, Functions :5001, UI :4000).
+
+### Code Location
+
+```
+functions/src/
+  index.ts                      ← entry point — initialises firebase-admin, re-exports all modules, exposes helloWorld healthcheck
+  alliProxy.ts                  ← 6 HTTP proxy functions to the Alli platform APIs
+  ai.ts                         ← 1 callable function: Gemini video-analysis
+  video.ts                      ← 2 callable functions: FFmpeg cutdown processing + storage cleanup
+  _shared/
+    allowlist.ts                ← hardcoded PMG email allowlist (7 users, ReadonlySet)
+    assertAlliStudioUser.ts     ← callable auth guard — verifies email_verified + allowlist membership
+    assertResourceClient.ts     ← resource-scope guard (pairs with above for URL/path arguments)
+    __tests__/
+      allowlist-drift.test.ts   ← build-time drift test: asserts allowlist.ts, firestore.rules, and storage.rules stay in sync
+```
+
+### HTTP Functions (`functions.https.onRequest`) — all CORS-wrapped, rewritten under `/api/*` in `firebase.json`
+
+| Function | Route | What it does |
+|---|---|---|
+| `getMeProxy` | `/api/getMeProxy` | Proxies `GET https://api.central.alliplatform.com/me` — passes caller's Bearer token straight through; logs decoded JWT claims |
+| `getClientsProxy` | `/api/getClientsProxy` | Proxies `GET .../clients` — forwards optional `clientid` header when provided |
+| `getCreativeAssetsProxy` | `/api/getCreativeAssetsProxy` | Smart multi-strategy query of `creative_insights_data_export` on Alli Data Explorer: tries 8 dimension/measure combos in JSON format → CSV fallback → model-discovery fallback; deduplicates results by URL before returning |
+| `getDataSourcesProxy` | `/api/getDataSourcesProxy` | Lists all UDA models available for a given `clientSlug` |
+| `getModelMetadataProxy` | `/api/getModelMetadataProxy` | Fetches schema metadata for a specific UDA model (`clientSlug` + `modelName` query params) |
+| `smartExecuteQueryProxy` | `/api/smartExecuteQueryProxy` | Generic robust execute-query: JSON attempt → CSV fallback with proper quoted-field parser; normalises result to `{ results[] }` |
+
+### Callable Functions (`functions.https.onCall`)
+
+| Function | Timeout / Memory | Auth guard | What it does |
+|---|---|---|---|
+| `analyzeVideoForCutdowns` | 540 s / 1 GB | none (token forwarded) | Downloads full video as `arraybuffer`, encodes base64, sends as inline data to **Gemini** (`gemini-3-flash-preview` default). Returns `{ recommendations[] }` — 3 cutdown options per target length with `segments[{start,end}]`. 3-retry loop on HTTP 429 / 503 with 5 s / 10 s back-off. Secret: `GEMINI_API_KEY` via Firebase Secrets. |
+| `processVideoCutdowns` | 540 s / 4 GB | none | Downloads video once to `/tmp`, runs **FFmpeg** (`ffmpeg-static` bundled binary + `fluent-ffmpeg`) — trims, normalises (fps=30, scale/crop to platform dims, yuv420p, stereo 44 100 Hz), concats segments with micro cross-fade. Cuts are processed **sequentially** to prevent OOM. Each output is uploaded to Storage `results/{cutId}_{length}s.mp4`; signed download URL returned. Temp files cleaned up in `finally`. |
+| `deleteStorageFiles` | 540 s / 1 GB | none | Maintenance helper — deletes all files under `results/` and `uploads/` in the default Storage bucket. |
+
+### Data Layer
+
+**Firestore** (`firestore.rules`)
+- Permitted path: `clients/{clientSlug}/**` — allowlisted users may read and write anything under a client slug.
+- Default-deny: all other paths (including legacy `creatives/` and `clientAssetHouse/` collections) are blocked.
+- The Cloud Functions themselves do not write Firestore directly; the frontend uses the Firebase SDK client-side.
+
+**Firebase Storage** (`storage.rules`)
+- Permitted path: `clients/{clientSlug}/**` — same allowlist predicate.
+- Processing paths written by functions: `results/{cutId}_{length}s.mp4` (cutdown outputs), `uploads/` (source videos — swept by `deleteStorageFiles`).
+- Default-deny everywhere else.
+
+### External Integrations
+
+| System | Endpoint / SDK | Used by |
+|---|---|---|
+| **Alli Central API** | `https://api.central.alliplatform.com` — `/me`, `/clients` | `getMeProxy`, `getClientsProxy` |
+| **Alli Data Explorer** | `https://dataexplorer.alliplatform.com/api/v2/clients/{slug}/models/…` | `getCreativeAssetsProxy`, `getDataSourcesProxy`, `getModelMetadataProxy`, `smartExecuteQueryProxy` |
+| **Google Gemini** | `@google/generative-ai` v0.24.1 | `analyzeVideoForCutdowns` |
+| **FFmpeg** | `ffmpeg-static` v5.3.0 (bundled binary) + `fluent-ffmpeg` v2.1.3 | `processVideoCutdowns` |
+| **axios** v1.13.6 | HTTP client for all outbound calls | all functions |
+
+### Auth Approach
+
+- **HTTP proxies**: no server-side token validation — the caller's `Authorization: Bearer <token>` header is forwarded verbatim to the Alli APIs, which perform the actual validation.
+- **Callable functions**: `assertAlliStudioUser()` (`functions/src/_shared/assertAlliStudioUser.ts`) verifies `auth.token.email_verified === true` AND `email ∈ ALLI_STUDIO_USERS`. Always throws `permission-denied` (never `unauthenticated`) to prevent email-enumeration probing.
+- **Firestore / Storage rules**: `isAlliStudioUser()` predicate mirrors the same allowlist in `firestore.rules` and `storage.rules`. Drift between the three is caught by `functions/src/_shared/__tests__/allowlist-drift.test.ts`.
+- **Current allowlist** (7 users): `annie.nguyen`, `chris`, `chris.alvares`, `coralie.james`, `diego.escobar`, `dillon`, `maxwell.thomason` — all `@pmg.com`. Adding a user requires the same email in all three files.
+
+### Long-Running / Async Patterns
+
+Both heavy callables are capped at **9 minutes (540 s)**:
+
+- `analyzeVideoForCutdowns` — synchronous from the client's perspective; the callable blocks until Gemini responds. Video is loaded fully into memory as base64 (no Gemini File API). Suitable for files up to a few hundred MB within the 1 GB memory envelope.
+- `processVideoCutdowns` — downloads video to `/tmp` once, then iterates cuts **sequentially** (intentional — prevents CPU/memory contention on the 4 GB instance). Each cut is uploaded before the next begins. Progress logged per cut via `functions.logger`.
+
+No Cloud Tasks, Pub/Sub triggers, or Firestore-triggered functions are in use.
+
+### Secrets & Config
+
+| Secret | Storage mechanism | Consumed by |
+|---|---|---|
+| `GEMINI_API_KEY` | Firebase Secret Manager (`firebase functions:secrets:set GEMINI_API_KEY`) | `analyzeVideoForCutdowns` via `runWith({ secrets: ["GEMINI_API_KEY"] })` → `process.env.GEMINI_API_KEY` |
+
+No other server-side API keys exist. Alli authentication is entirely delegated to the caller's token.
+
+*This section was produced by static analysis of `functions/` on 2026-05-05 by the `backend-mapper` agent.*
