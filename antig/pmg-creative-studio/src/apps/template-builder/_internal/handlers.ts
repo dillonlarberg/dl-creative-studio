@@ -10,6 +10,7 @@ import { alliService } from '../../../services/alli';
 import type { ClientAssetHouse } from '../../../services/clientAssetHouse';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
 import type { RequirementField, SelectedFeed } from '../types';
+import type { AppId, ClientSlug } from '../../../platform/firebase/paths';
 import { BASELINE_ASSETS } from './baseline';
 
 /**
@@ -465,14 +466,14 @@ export async function generateCandidates(opts: {
  * results, then completes. Returns the batch id.
  */
 export async function handleExecuteBatch(opts: {
-  clientSlug: string;
+  clientSlug: ClientSlug;
+  appId: AppId;
   selectedFeed: SelectedFeed | null;
   feedSampleData: Array<Record<string, unknown>>;
   feedMappings: Record<string, string>;
   ratio?: string;
 }): Promise<string> {
-  const batchId = await batchService.createBatch({
-    clientSlug: opts.clientSlug,
+  const batchId = await batchService.createBatch(opts.clientSlug, opts.appId, {
     templateId: 'active-session',
     feedId: (opts.selectedFeed as { id?: string } | null)?.id || 'manual',
     feedName: opts.selectedFeed?.name || 'Uploaded Feed',
@@ -482,20 +483,20 @@ export async function handleExecuteBatch(opts: {
     ratio: opts.ratio || '1:1',
   });
 
-  await batchService.updateBatchStatus(batchId, 'processing');
+  await batchService.updateBatchStatus(opts.clientSlug, opts.appId, batchId, 'processing');
 
   for (let i = 0; i < Math.min(3, opts.feedSampleData.length); i++) {
     const headlineKey = opts.feedMappings.headline;
     const product = headlineKey
       ? (opts.feedSampleData[i]?.[headlineKey] as string) || 'Product Variation'
       : 'Product Variation';
-    await batchService.addResult(batchId, {
+    await batchService.addResult(opts.clientSlug, opts.appId, batchId, {
       url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
       feedRowIndex: i,
       metadata: { product },
     });
   }
 
-  await batchService.updateBatchStatus(batchId, 'completed', opts.feedSampleData.length || 45);
+  await batchService.updateBatchStatus(opts.clientSlug, opts.appId, batchId, 'completed', opts.feedSampleData.length || 45);
   return batchId;
 }

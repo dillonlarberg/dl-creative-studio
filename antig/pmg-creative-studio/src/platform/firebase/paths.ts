@@ -25,8 +25,18 @@ export type AppId =
   | 'edit-video'
   | 'new-video'
   | 'video-cutdown'
+  | 'static-creative'
   | 'template-builder'
   | 'feed-processing';
+
+const VALID_APP_IDS: readonly AppId[] = [
+  'resize-image', 'edit-image', 'new-image', 'edit-video', 'new-video',
+  'video-cutdown', 'static-creative', 'template-builder', 'feed-processing',
+];
+
+export function isAppId(value: unknown): value is AppId {
+  return typeof value === 'string' && (VALID_APP_IDS as readonly string[]).includes(value);
+}
 
 export type ClientSlug = string;
 export type CreativeId = string;
@@ -41,9 +51,18 @@ export const paths = {
   asset: (slug: ClientSlug, id: AssetId) => `${root(slug)}/assets/${id}`,
 
   app: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}`,
+
   creatives: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/creatives`,
   creative: (slug: ClientSlug, appId: AppId, id: CreativeId) =>
     `${root(slug)}/apps/${appId}/creatives/${id}`,
+
+  templates: (slug: ClientSlug) => `${root(slug)}/apps/template-builder/templates`,
+  template: (slug: ClientSlug, id: string) => `${root(slug)}/apps/template-builder/templates/${id}`,
+
+  batches: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/batches`,
+  batch: (slug: ClientSlug, appId: AppId, id: string) => `${root(slug)}/apps/${appId}/batches/${id}`,
+  batchResults: (slug: ClientSlug, appId: AppId, batchId: string) =>
+    `${root(slug)}/apps/${appId}/batches/${batchId}/results`,
 
   storage: {
     client: (slug: ClientSlug) => root(slug),

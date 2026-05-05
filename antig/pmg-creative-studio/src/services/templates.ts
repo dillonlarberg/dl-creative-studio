@@ -1,5 +1,7 @@
 import { db } from '../firebase';
-import { collection, addDoc, doc, query, where, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { paths } from '../platform/firebase/paths';
+import type { ClientSlug } from '../platform/firebase/paths';
 
 export interface TemplateRecord {
     id: string;
@@ -20,28 +22,24 @@ export interface TemplateRecord {
 }
 
 export const templateService = {
-    async saveTemplate(clientSlug: string, name: string, config: TemplateRecord['config'], scaffoldId: string): Promise<string> {
-        const docRef = await addDoc(collection(db, 'templates'), {
+    async saveTemplate(clientSlug: ClientSlug, name: string, config: TemplateRecord['config'], scaffoldId: string): Promise<string> {
+        const docRef = await addDoc(collection(db, paths.templates(clientSlug)), {
             clientSlug,
             name,
             config,
             scaffoldId,
             createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
         });
         return docRef.id;
     },
 
-    async getTemplates(clientSlug: string): Promise<TemplateRecord[]> {
-        const q = query(
-            collection(db, 'templates'),
-            where('clientSlug', '==', clientSlug)
-        );
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TemplateRecord));
+    async getTemplates(clientSlug: ClientSlug): Promise<TemplateRecord[]> {
+        const querySnapshot = await getDocs(collection(db, paths.templates(clientSlug)));
+        return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as TemplateRecord));
     },
 
-    async deleteTemplate(id: string): Promise<void> {
-        await deleteDoc(doc(db, 'templates', id));
-    }
+    async deleteTemplate(clientSlug: ClientSlug, templateId: string): Promise<void> {
+        await deleteDoc(doc(db, paths.template(clientSlug, templateId)));
+    },
 };

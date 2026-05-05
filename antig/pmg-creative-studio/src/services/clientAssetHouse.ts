@@ -1,6 +1,8 @@
 import { db, storage } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { paths } from '../platform/firebase/paths';
+import type { ClientSlug } from '../platform/firebase/paths';
 
 export interface AssetHouseItem {
     id: string;
@@ -46,8 +48,8 @@ export const clientAssetHouseService = {
         );
     },
 
-    async getAssetHouse(clientSlug: string): Promise<ClientAssetHouse | null> {
-        const docRef = doc(db, 'clientAssetHouse', clientSlug);
+    async getAssetHouse(clientSlug: ClientSlug): Promise<ClientAssetHouse | null> {
+        const docRef = doc(db, paths.client(clientSlug));
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -61,8 +63,8 @@ export const clientAssetHouseService = {
         return null;
     },
 
-    async saveAssetHouse(clientSlug: string, data: Partial<ClientAssetHouse>): Promise<void> {
-        const docRef = doc(db, 'clientAssetHouse', clientSlug);
+    async saveAssetHouse(clientSlug: ClientSlug, data: Partial<ClientAssetHouse>): Promise<void> {
+        const docRef = doc(db, paths.client(clientSlug));
         const existing = await this.getAssetHouse(clientSlug);
 
         const payload = {
@@ -80,7 +82,7 @@ export const clientAssetHouseService = {
 
     async uploadAsset(clientSlug: string, file: File | Blob, path: string, customName?: string): Promise<string> {
         const name = customName || (file as File).name || 'asset';
-        const fileRef = ref(storage, `clients/${clientSlug}/assets/${path}/${name}`);
+        const fileRef = ref(storage, `${paths.storage.client(clientSlug)}/assets/${path}/${name}`);
         const snapshot = await uploadBytes(fileRef, file);
         return await getDownloadURL(snapshot.ref);
     },
