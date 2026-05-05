@@ -317,70 +317,85 @@
   }
   .section-link:hover { color: var(--primary-hover); }
 
-  /* ─────────── TWO-PATH APPS ─────────── */
-  .apps-shell {
-    background: var(--surface);
-    border: 1px solid var(--border);
+  /* ─────────── APPS GRID (2 live, more soon) ─────────── */
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .app-card {
+    position: relative;
+    background: linear-gradient(180deg, #F8FBFF 0%, #FFFFFF 100%);
+    border: 1px solid #C5D9FB;
     border-radius: var(--radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-xs);
-  }
-  .app-path { padding: 20px 22px 22px; }
-  .app-path + .app-path { border-top: 1px solid var(--border); background: var(--surface-alt); }
-
-  .app-path-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .app-path-pill {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
-    padding: 4px 10px; border-radius: var(--radius-pill);
-  }
-  .pill-create { background: var(--primary-tint); color: var(--primary); }
-  .pill-edit { background: var(--surface-alt); color: var(--text-card-title); border: 1px solid var(--border); }
-  .app-path-desc { font-size: 13px; color: var(--text-body); }
-
-  .app-path-cards { display: grid; gap: 12px; }
-  .app-path:nth-child(1) .app-path-cards { grid-template-columns: repeat(2, 1fr); }
-  .app-path:nth-child(2) .app-path-cards { grid-template-columns: repeat(3, 1fr); }
-
-  .mini-app {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
+    padding: 22px 24px 20px;
     cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-    display: flex; flex-direction: column; gap: 12px;
+    display: flex; flex-direction: column; gap: 14px;
     text-align: left;
+    text-decoration: none;
+    box-shadow: var(--shadow-xs);
+    color: inherit;
   }
-  .mini-app:hover {
+  .app-card:hover {
     border-color: var(--primary);
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
-  .mini-app-icon {
-    width: 36px; height: 36px;
-    border-radius: var(--radius);
+  .app-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
+    background: var(--primary-tint);
+    color: var(--primary);
   }
-  .mini-app-icon svg { width: 18px; height: 18px; }
-  .mac-blue   .mini-app-icon { background: var(--primary-tint); color: var(--primary); }
-  .mac-warn   .mini-app-icon { background: var(--warning-soft); color: var(--warning); }
-  .mac-success .mini-app-icon { background: var(--success-soft); color: var(--success); }
-  .mac-purple .mini-app-icon { background: var(--purple-soft); color: var(--purple); }
-  .mac-teal   .mini-app-icon { background: var(--teal-soft); color: var(--teal); }
+  .app-card-icon svg { width: 20px; height: 20px; }
+  .app-card.tone-cyan .app-card-icon { background: #E0F2FE; color: #0284C7; }
 
-  .mini-app-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-  .mini-app-desc { font-size: 13px; color: var(--text-body); line-height: 1.45; }
+  .app-card-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .app-card-name { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.2px; }
+  .app-card-desc { font-size: 13.5px; color: var(--text-body); line-height: 1.5; }
 
-  .mini-app-footer {
-    display: flex; align-items: center; justify-content: space-between;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
+  .app-card-cta {
+    font-size: 14px; font-weight: 600; color: var(--primary);
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 4px;
   }
-  .mini-app-steps { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
-  .step-dots { display: inline-flex; gap: 3px; }
-  .step-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border-strong); }
-  .step-dot.filled { background: var(--primary); }
-  .mini-app-cta { font-size: 13px; font-weight: 600; color: var(--primary); display: inline-flex; align-items: center; gap: 4px; }
+  .app-card:hover .app-card-cta { color: var(--primary-hover); }
+
+  .app-card-coming {
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    display: flex; align-items: center; gap: 14px;
+    color: var(--text-muted);
+    grid-column: 1 / -1;
+  }
+  .app-card-coming-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .app-card-coming-icon svg { width: 18px; height: 18px; }
+  .app-card-coming-text { flex: 1; }
+  .app-card-coming-title { font-size: 13.5px; font-weight: 600; color: var(--text-strong); }
+  .app-card-coming-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+  .app-card-coming-list {
+    display: inline-flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;
+  }
+  .coming-tag {
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
 
   /* ─────────── TWO-COL ─────────── */
   .two-col { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: flex-start; }
@@ -652,101 +667,52 @@
         <div class="section-header">
           <div class="section-title-group">
             <span class="section-title">Apps</span>
-            <span class="section-subtitle">Build dynamic templates without the image→HTML→JS-injection slog, or spin variants on the ones you already have</span>
+            <span class="section-subtitle">Two apps live now. More land as the modular foundation lets us build them in isolation.</span>
           </div>
         </div>
 
-        <div class="apps-shell">
+        <div class="apps-grid">
 
-          <!-- PATH A: TEMPLATE-FIRST -->
-          <div class="app-path">
-            <div class="app-path-header">
-              <span class="app-path-pill pill-create">Build new</span>
-              <span class="app-path-desc">Replace image→HTML→JS injection. Define a dynamic template from scratch, bind it to a feed, ship it the same day.</span>
+          <a class="app-card" href="/ralph_lauren/template-builder">
+            <div class="app-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
             </div>
-            <div class="app-path-cards">
-
-              <button class="mini-app mac-blue">
-                <div class="mini-app-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
-                </div>
-                <div>
-                  <div class="mini-app-name">New Dynamic Template</div>
-                  <div class="mini-app-desc">Build a fresh dynamic template from brand + feed + brief — no static image conversion, no JS injection, no week-long approval round.</div>
-                </div>
-                <div class="mini-app-footer">
-                  <span class="mini-app-steps">5 steps <span class="step-dots"><span class="step-dot filled"></span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></span>
-                  <span class="mini-app-cta">Start →</span>
-                </div>
-              </button>
-
-              <button class="mini-app mac-warn">
-                <div class="mini-app-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                </div>
-                <div>
-                  <div class="mini-app-name">Batch Variants</div>
-                  <div class="mini-app-desc">Take a live template, define slot variations, run the full matrix — 60+ variants without one HTML edit or approval ticket.</div>
-                </div>
-                <div class="mini-app-footer">
-                  <span class="mini-app-steps">4 steps <span class="step-dots"><span class="step-dot filled"></span><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></span>
-                  <span class="mini-app-cta">Start →</span>
-                </div>
-              </button>
-
+            <div class="app-card-body">
+              <div class="app-card-name">New Dynamic Template</div>
+              <div class="app-card-desc">Build a fresh dynamic template from brand + feed + brief — no static image conversion, no JS injection, no week-long approval round.</div>
             </div>
-          </div>
+            <span class="app-card-cta">Start workflow →</span>
+          </a>
 
-          <!-- PATH B: ASSET-FIRST -->
-          <div class="app-path">
-            <div class="app-path-header">
-              <span class="app-path-pill pill-edit">Reformat &amp; iterate</span>
-              <span class="app-path-desc">Drop in any static asset — even one a client just delivered. AdLabs decomposes it (text → Brand Asset House, imagery → AI expand/crop), then re-emits at the size or format you need. Deterministic pipeline, minimal drift.</span>
+          <a class="app-card tone-cyan" href="/ralph_lauren/video-cutdown">
+            <div class="app-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="6" r="3"/>
+                <circle cx="6" cy="18" r="3"/>
+                <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+                <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+                <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+              </svg>
             </div>
-            <div class="app-path-cards">
+            <div class="app-card-body">
+              <div class="app-card-name">Video Cutdown</div>
+              <div class="app-card-desc">Upload a video and get AI-recommended cutdowns (15s, 30s, etc.) with automated stitching.</div>
+            </div>
+            <span class="app-card-cta">Start workflow →</span>
+          </a>
 
-              <button class="mini-app mac-teal">
-                <div class="mini-app-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/><path d="M21 9v12a0 0 0 010 0H9"/></svg>
-                </div>
-                <div>
-                  <div class="mini-app-name">Reformat to New Size</div>
-                  <div class="mini-app-desc">Client gave you a 1:1 Instagram, you need an FB banner. AdLabs lifts the text into BAH, AI-expands the imagery, recomposes at the new dimensions.</div>
-                </div>
-                <div class="mini-app-footer">
-                  <span class="mini-app-steps">3 steps <span class="step-dots"><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></span>
-                  <span class="mini-app-cta">Start →</span>
-                </div>
-              </button>
-
-              <button class="mini-app mac-purple">
-                <div class="mini-app-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4z"/></svg>
-                </div>
-                <div>
-                  <div class="mini-app-name">Edit &amp; Tweak</div>
-                  <div class="mini-app-desc">Open any variant, swap one slot value (headline, CTA, hero image), re-render. No HTML edits, no batch re-run, no approval round.</div>
-                </div>
-                <div class="mini-app-footer">
-                  <span class="mini-app-steps">2 steps <span class="step-dots"><span class="step-dot"></span><span class="step-dot"></span></span></span>
-                  <span class="mini-app-cta">Start →</span>
-                </div>
-              </button>
-
-              <button class="mini-app mac-success">
-                <div class="mini-app-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
-                </div>
-                <div>
-                  <div class="mini-app-name">Video Cutdown</div>
-                  <div class="mini-app-desc">Drop in long-form video, AdLabs picks platform-shaped in/out points, AI reframes for vertical/square, exports platform-ready cuts.</div>
-                </div>
-                <div class="mini-app-footer">
-                  <span class="mini-app-steps">3 steps <span class="step-dots"><span class="step-dot"></span><span class="step-dot"></span><span class="step-dot"></span></span></span>
-                  <span class="mini-app-cta">Start →</span>
-                </div>
-              </button>
-
+          <div class="app-card-coming">
+            <div class="app-card-coming-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            </div>
+            <div class="app-card-coming-text">
+              <div class="app-card-coming-title">Next up — building on the modular foundation</div>
+              <div class="app-card-coming-sub">Resize Image (1:1 → banner via AI expand/crop), then more apps land here as each one lifts cleanly out of isolation.</div>
+              <div class="app-card-coming-list">
+                <span class="coming-tag">Resize Image</span>
+                <span class="coming-tag">Edit &amp; Tweak</span>
+                <span class="coming-tag">Batch Variants</span>
+              </div>
             </div>
           </div>
 
