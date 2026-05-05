@@ -422,12 +422,21 @@ export const contextStep: WizardStep<TemplateBuilderStepData> = {
     const hasTitle = !!data.jobTitle?.trim();
     const hasChannel = !!data.channel;
     const hasSizes = (data.ratios?.length ?? 0) > 0;
+    // Wireframe selection is required for Social — every downstream step
+    // (Mapping live preview, Generate scaffolds, Refine mapped preview,
+    // Export scaffold readout) is wireframe-driven. Without one, the user
+    // falls into the placeholder "Generative Asset Constructor" branch
+    // which is not a shippable experience for the channels we support.
+    const isSocial = data.channel === 'Social';
+    const hasWireframe = !!data.selectedWireframe;
+    const wireframeMet = !isSocial || hasWireframe;
     const requirements = [
       { label: 'Project Title', met: hasTitle },
       { label: 'Channel', met: hasChannel },
       { label: 'Size Selected', met: hasSizes },
+      ...(isSocial ? [{ label: 'Wireframe Selected', met: hasWireframe }] : []),
     ];
-    if (hasTitle && hasChannel && hasSizes) return { ok: true };
+    if (hasTitle && hasChannel && hasSizes && wireframeMet) return { ok: true };
     return {
       ok: false,
       requirements,
@@ -435,7 +444,9 @@ export const contextStep: WizardStep<TemplateBuilderStepData> = {
         ? 'Project title required'
         : !hasChannel
         ? 'Channel required'
-        : 'At least one size required',
+        : !hasSizes
+        ? 'At least one size required'
+        : 'Wireframe selection required',
     };
   },
 

@@ -87,14 +87,43 @@ describe('contextStep.validate', () => {
       { label: 'Project Title', met: true },
       { label: 'Channel', met: true },
       { label: 'Size Selected', met: false },
+      { label: 'Wireframe Selected', met: false },
     ]);
   });
 
-  it('accepts a fully-populated context', () => {
+  it('rejects Social channel when no wireframe selected — only Wireframe unmet', () => {
+    const result = contextStep.validate({
+      jobTitle: 'Q4 Promo',
+      channel: 'Social',
+      ratios: ['1:1'],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('Wireframe selection required');
+    expect(result.requirements).toEqual([
+      { label: 'Project Title', met: true },
+      { label: 'Channel', met: true },
+      { label: 'Size Selected', met: true },
+      { label: 'Wireframe Selected', met: false },
+    ]);
+  });
+
+  it('accepts a fully-populated Social context with wireframe', () => {
     expect(
       contextStep.validate({
         jobTitle: 'Q4 Promo',
         channel: 'Social',
+        ratios: ['1:1'],
+        selectedWireframe: 'original_2',
+      })
+    ).toEqual({ ok: true });
+  });
+
+  it('accepts a non-Social context without a wireframe', () => {
+    expect(
+      contextStep.validate({
+        jobTitle: 'Q4 Promo',
+        channel: 'Programmatic',
         ratios: ['1:1'],
       })
     ).toEqual({ ok: true });
@@ -105,6 +134,7 @@ describe('contextStep.validate', () => {
       jobTitle: '   ',
       channel: 'Social',
       ratios: ['1:1'],
+      selectedWireframe: 'original_2',
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -113,6 +143,7 @@ describe('contextStep.validate', () => {
       { label: 'Project Title', met: false },
       { label: 'Channel', met: true },
       { label: 'Size Selected', met: true },
+      { label: 'Wireframe Selected', met: true },
     ]);
   });
 });
