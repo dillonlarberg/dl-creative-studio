@@ -49,6 +49,13 @@ export function usePersistedStepData<S extends StepData>({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestStepDataRef = useRef<S>(stepData);
   const creatingRef = useRef<Promise<string> | null>(null);
+  // Tracks the (clientSlug, manifestId, resumeId) triple we've already
+  // hydrated for. The hydration effect must only run once per triple — if
+  // it re-fires after the user has merged data in (e.g. when clientSlug
+  // transitions from a fallback to the resolved slug from useCurrentClient),
+  // the wipe branch (`stored === null`) silently clears stepData and the
+  // user loses their selectedWireframe / requirements / brand-overrides.
+  const hydratedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     latestStepDataRef.current = stepData;
@@ -56,6 +63,27 @@ export function usePersistedStepData<S extends StepData>({
 
   // Hydrate from URL ?creative= or localStorage on mount / when slug changes.
   useEffect(() => {
+    const hydrationKey = `${clientSlug}::${manifest.id}::${resumeId ?? ''}`;
+    if (hydratedKeyRef.current === hydrationKey) {
+      // Already hydrated for this triple — do not re-fire. Re-firing would
+      // wipe in-memory stepData via the `stored === null` branch below.
+      return;
+    }
+    const isFirstHydration = hydratedKeyRef.current === null;
+    // If this is a *re-hydration* (key changed because, e.g., useCurrentClient
+    // resolved and clientSlug transitioned from a fallback to the real slug)
+    // AND the user has already merged data in or we already have a creativeId,
+    // do not wipe in-memory state. The user's writes win over a slug change.
+    const userHasInteracted =
+      Object.keys(latestStepDataRef.current as object).length > 0 ||
+      creativeId !== null ||
+      creatingRef.current !== null;
+    if (!isFirstHydration && userHasInteracted) {
+      hydratedKeyRef.current = hydrationKey;
+      return;
+    }
+    hydratedKeyRef.current = hydrationKey;
+
     let cancelled = false;
     setIsLoading(true);
 
