@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creative Alli Studio — Execution Plan</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #F4F6FC;
+    --white: #FFFFFF;
+    --dark: #0F1623;
+    --dark-2: #1A2236;
+    --text-primary: #1A2236;
+    --text-secondary: #4B5675;
+    /* #8B95B0 replaced with #5C6478 for WCAG AA on white/light bg */
+    --text-muted: #5C6478;
+    --border: #E2E6F0;
+    --success: #10B981;
+    --success-light: #D1FAE5;
+    --warning: #F59E0B;
+    --warning-light: #FEF3C7;
+    --danger: #EF4444;
+    --danger-light: #FEE2E2;
+    /* purple kept as phase-discriminator color only */
+    --purple: #7C3AED;
+    --purple-light: #EDE9FE;
+    --orange: #EA580C;
+    --orange-light: #FFF0E8;
+    --teal: #0891B2;
+    --teal-light: #E0F7FA;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── COVER ── */
+  .cover {
+    background: var(--dark);
+    padding: 56px 64px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(12,105,234,0.3) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 200px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(124,58,237,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cover-eyebrow {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+
+  .cover-title {
+    font-size: 38px;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    max-width: 600px;
+  }
+
+  /* #4F9EF8 on dark bg (#0F1623) is fine — contrast ~5.8:1 */
+  .cover-title span { color: #4F9EF8; }
+
+  .cover-sub {
+    font-size: 15px;
+    /* was #8B95B0 on dark — still readable, but use a lighter muted for dark bg */
+    color: #A8B3CC;
+    max-width: 520px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .cover-meta-item { }
+  /* bumped from 10px to 11px */
+  .cover-meta-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #6B7A99; margin-bottom: 3px; }
+  .cover-meta-value { font-size: 13px; font-weight: 600; color: white; }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 40px 40px; }
+
+  .section { margin-bottom: 48px; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .section-number {
+    width: 28px; height: 28px;
+    background: var(--blue);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    flex: 1;
+  }
+
+  .section-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── PHASE TIMELINE ── */
+  .phase-timeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--white);
+  }
+
+  .phase-col {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .phase-col:last-child { border-right: none; }
+
+  .phase-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .phase-tag {
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+
+  .phase-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+
+  .phase-duration {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .phase-body { padding: 12px 16px; flex: 1; }
+
+  .phase-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .phase-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .phase-milestone {
+    margin-top: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* phase color themes */
+  .ph-0 .phase-tag { background: #F3F4F6; color: var(--text-secondary); }
+  .ph-0 .phase-dot { background: var(--text-muted); }
+  .ph-0 .phase-milestone { background: #F3F4F6; color: var(--text-secondary); }
+
+  .ph-1 .phase-tag { background: var(--blue-light); color: var(--blue); }
+  .ph-1 .phase-dot { background: var(--blue); }
+  .ph-1 .phase-milestone { background: var(--blue-light); color: var(--blue); }
+
+  .ph-2 .phase-tag { background: var(--purple-light); color: var(--purple); }
+  .ph-2 .phase-dot { background: var(--purple); }
+  .ph-2 .phase-milestone { background: var(--purple-light); color: var(--purple); }
+
+  .ph-3 .phase-tag { background: var(--teal-light); color: var(--teal); }
+  .ph-3 .phase-dot { background: var(--teal); }
+  .ph-3 .phase-milestone { background: var(--teal-light); color: var(--teal); }
+
+  .ph-4 .phase-tag { background: var(--orange-light); color: var(--orange); }
+  .ph-4 .phase-dot { background: var(--orange); }
+  .ph-4 .phase-milestone { background: var(--orange-light); color: var(--orange); }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    background: var(--dark);
+    border-radius: 12px;
+    padding: 32px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(12,105,234,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .arch-row {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 0;
+    position: relative;
+  }
+
+  .arch-layer-label {
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    /* on dark bg (#0F1623): #4B5675 is sufficient, but let's use slightly lighter for dark bg */
+    color: #6B7A99;
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+
+  .arch-layer-label:first-child { margin-top: 0; }
+
+  .arch-box {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .arch-box-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+  }
+
+  /* #8B95B0 on dark bg — bumped to lighter color for dark bg legibility */
+  .arch-box-tech {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    color: #A8B3CC;
+    line-height: 1.5;
+  }
+
+  .arch-box-tech span {
+    display: inline-block;
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin: 1px 2px 1px 0;
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .arch-arrow {
+    text-align: center;
+    /* on dark bg — #4B5675 is fine, but slightly lighter for dark bg */
+    color: #6B7A99;
+    font-size: 16px;
+    margin: 4px 0;
+    user-select: none;
+  }
+
+  .arch-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .arch-cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .arch-cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .arch-cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+  .arch-box.highlight {
+    border-color: rgba(12,105,234,0.5);
+    background: rgba(12,105,234,0.12);
+  }
+
+  /* #4F9EF8 on dark bg (#0F1623 + rgba(12,105,234,0.12)) — fine, ~5.5:1 contrast */
+  .arch-box.highlight .arch-box-title { color: #4F9EF8; }
+
+  /* ── WORK BREAKDOWN ── */
+  .wbs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .wbs-lane {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .wbs-lane-header {
+    padding: 12px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .wbs-icon {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .wbs-body { padding: 12px 14px; }
+
+  .wbs-phase-group { margin-bottom: 14px; }
+
+  .wbs-phase-label {
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .wbs-task {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.4;
+  }
+
+  .wbs-task:last-child { border-bottom: none; }
+
+  .wbs-task-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  .wbs-effort {
+    margin-left: auto;
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* lane color themes */
+  .lane-fe .wbs-lane-header { background: var(--blue-light); color: var(--blue); }
+  .lane-fe .wbs-icon { background: var(--blue); color: white; }
+  .lane-fe .wbs-task-dot { background: var(--blue); }
+  .lane-fe .wbs-phase-label { background: var(--blue-light); color: var(--blue); }
+
+  .lane-be .wbs-lane-header { background: var(--purple-light); color: var(--purple); }
+  .lane-be .wbs-icon { background: var(--purple); color: white; }
+  .lane-be .wbs-task-dot { background: var(--purple); }
+  .lane-be .wbs-phase-label { background: var(--purple-light); color: var(--purple); }
+
+  .lane-data .wbs-lane-header { background: var(--teal-light); color: var(--teal); }
+  .lane-data .wbs-icon { background: var(--teal); color: white; }
+  .lane-data .wbs-task-dot { background: var(--teal); }
+  .lane-data .wbs-phase-label { background: var(--teal-light); color: var(--teal); }
+
+  .lane-content .wbs-lane-header { background: var(--orange-light); color: var(--orange); }
+  .lane-content .wbs-icon { background: var(--orange); color: white; }
+  .lane-content .wbs-task-dot { background: var(--orange); }
+  .lane-content .wbs-phase-label { background: var(--orange-light); color: var(--orange); }
+
+  /* ── SPRINT PLAN ── */
+  .sprint-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .sprint-table thead tr {
+    background: var(--dark);
+    color: white;
+  }
+
+  .sprint-table th {
+    padding: 10px 14px;
+    text-align: left;
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    /* on dark bg: #8B95B0 is acceptable but use #A8B3CC for better legibility */
+    color: #A8B3CC;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .sprint-table th:last-child { border-right: none; }
+
+  .sprint-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .sprint-table td:last-child { border-right: none; }
+  .sprint-table tr:last-child td { border-bottom: none; }
+
+  .sprint-table tbody tr:hover { background: var(--bg); }
+
+  .sprint-num {
+    font-weight: 800;
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  .sprint-phase-badge {
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+    display: inline-block;
+    margin-bottom: 4px;
+    white-space: nowrap;
+  }
+
+  .sprint-goal { font-weight: 700; color: var(--text-primary); font-size: 12px; margin-bottom: 4px; }
+  .sprint-tasks { color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+  .sprint-tasks li { margin-left: 14px; margin-bottom: 2px; }
+
+  .sprint-owner-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .owner-pill {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .pill-fe { background: var(--blue-light); color: var(--blue); }
+  .pill-be { background: var(--purple-light); color: var(--purple); }
+  .pill-data { background: var(--teal-light); color: var(--teal); }
+  .pill-content { background: var(--orange-light); color: var(--orange); }
+
+  .sprint-milestone-row td {
+    background: var(--dark-2);
+    color: white;
+    font-weight: 700;
+    font-size: 11px;
+    text-align: center;
+    letter-spacing: 0.3px;
+    padding: 8px 14px;
+  }
+
+  .sprint-milestone-emoji { margin-right: 6px; }
+
+  /* ── CRITICAL PATH ── */
+  .crit-path {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .dep-chain {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+
+  .dep-node {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .dep-node.critical {
+    background: var(--blue-light);
+    border-color: var(--blue-mid);
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  .dep-arrow {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+
+  .dep-section-label {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  .dep-section-label:first-child { margin-top: 0; }
+
+  /* ── RISK MATRIX ── */
+  .risk-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  /*
+   * FIX: Removed separate .risk-level-bar element (4px wide bar + border-radius = banned).
+   * Now using 3px colored left border with border-radius only on right side.
+   * The risk-card itself gets border-radius: 0 10px 10px 0 so the left edge is square
+   * and the colored border reads as a clean stripe without the rounded-corner conflict.
+   * Plus a subtle background tint matching the risk level color.
+   */
+  .risk-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 0 10px 10px 0;
+    padding: 16px;
+    border-left-width: 3px;
+  }
+
+  .risk-card-high {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.03);
+  }
+
+  .risk-card-med {
+    border-left-color: var(--warning);
+    background: rgba(245, 158, 11, 0.03);
+  }
+
+  .risk-card-low {
+    border-left-color: var(--success);
+    background: rgba(16, 185, 129, 0.03);
+  }
+
+  .risk-content { flex: 1; }
+
+  .risk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .risk-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+
+  .risk-badge {
+    /* bumped from 9px to 11px */
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+
+  .badge-high { background: var(--danger-light); color: var(--danger); }
+  .badge-med { background: var(--warning-light); color: #92400E; }
+  .badge-low { background: var(--success-light); color: #166534; }
+
+  .risk-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 8px; }
+
+  .risk-mitigation {
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .risk-mitigation::before { content: '→'; flex-shrink: 0; }
+
+  /* ── DATA MODEL ── */
+  .db-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .db-table {
+    background: var(--dark);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 11px;
+  }
+
+  .db-table-name {
+    background: rgba(12,105,234,0.3);
+    padding: 8px 12px;
+    font-weight: 800;
+    /* #4F9EF8 on dark bg (rgba(12,105,234,0.3) over #0F1623) — ~5.5:1, acceptable */
+    color: #4F9EF8;
+    /* bumped from 10px to 11px */
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .db-field {
+    padding: 5px 12px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center;
+  }
+
+  .db-field:last-child { border-bottom: none; }
+
+  /*
+   * DB field names and types: intentionally kept at 10px / 9px.
+   * These are in a dark-background code-like technical data table — acceptable exception.
+   */
+  .db-field-name { color: white; font-weight: 600; flex: 1; font-size: 10px; }
+  .db-field-type { color: #6B7A99; font-size: 9px; white-space: nowrap; }
+  .db-pk { color: #F59E0B; font-size: 9px; font-weight: 800; }
+  .db-fk { color: #10B981; font-size: 9px; font-weight: 800; }
+
+  /* ── LAUNCH CHECKLIST ── */
+  .checklist-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .checklist-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .checklist-card-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .checklist-item:last-child { border-bottom: none; }
+
+  .check-box {
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── SUMMARY METRICS ── */
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .metric-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+
+  .metric-value {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--text-primary);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .metric-value.blue { color: var(--blue); }
+  .metric-value.purple { color: var(--purple); }
+  .metric-value.teal { color: var(--teal); }
+  .metric-value.orange { color: var(--orange); }
+  .metric-value.green { color: var(--success); }
+
+  /* bumped from 10px to 11px */
+  .metric-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 8px 0 32px; }
+
+  /* ── FOOTER ── */
+  .footer {
+    background: var(--dark);
+    padding: 24px 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #6B7A99;
+    font-size: 11px;
+  }
+
+  .footer-brand { color: white; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-eyebrow">PMG · Internal Platform</div>
+  <div class="cover-title">Creative Alli Studio<br><span>Execution Plan</span></div>
+  <div class="cover-sub">Strategic roadmap, technical architecture, work breakdown, sprint plan, and launch criteria for the full replacement of the Firebase creative wizard app.</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Owner</div>
+      <div class="cover-meta-value">Annie Nguyen</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Start Date</div>
+      <div class="cover-meta-value">May 2026</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">MVP Target</div>
+      <div class="cover-meta-value">~10 Weeks</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Status</div>
+      <div class="cover-meta-value">Planning</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-label">Replaces</div>
+      <div class="cover-meta-value">Firebase Wizard App</div>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- SUMMARY METRICS -->
+  <div class="metrics-row" style="margin-top: 32px;">
+    <div class="metric-card">
+      <div class="metric-value blue">5</div>
+      <div class="metric-label">Phases</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value purple">10</div>
+      <div class="metric-label">Sprints</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value teal">~10</div>
+      <div class="metric-label">Weeks to MVP</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value orange">4</div>
+      <div class="metric-label">Work Streams</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value green">7</div>
+      <div class="metric-label">Core Components</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#EF4444">5</div>
+      <div class="metric-label">Risk Flags</div>
+    </div>
+  </div>
+
+  <!-- ── SECTION 1: PHASE TIMELINE ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">1</div>
+      <div class="section-title">Strategic Phase Timeline</div>
+      <div class="section-subtitle">5 phases · ~18 weeks total</div>
+    </div>
+
+    <div class="phase-timeline">
+
+      <div class="phase-col ph-0">
+        <div class="phase-header">
+          <div class="phase-tag">Phase 0</div>
+          <div class="phase-name">Foundation</div>
+          <div class="phase-duration">Weeks 1–2</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-item"><div class="phase-dot"></div>Finalize tech stack decisions (Fabric.js, BullMQ, Puppeteer, Clerk)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Define JSON template spec + slot schema</div>
+          <div class="phase-item"><div class="phase-dot"></div>Set up PostgreSQL schema (all tables)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Connect Alli API (brand profiles, client data)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Commission 20 client templates from design team</div>
+          <div class="phase-item"><div class="phase-dot"></div>Set up monorepo, CI/CD, staging environment</div>
+          <div class="phase-item"><div class="phase-dot"></div>Add status + variant_id fields to schema now (for future approval/naming flows)</div>
+          <div class="phase-milestone">🏁 Milestone: Infra running, schema locked, 5 templates done</div>
+        </div>
+      </div>
+
+      <div class="phase-col ph-1">
+        <div class="phase-header">
+          <div class="phase-tag">Phase 1 · MVP Core</div>
+          <div class="phase-name">Single Variant Flow</div>
+          <div class="phase-duration">Weeks 3–5</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-item"><div class="phase-dot"></div>Template picker UI (list + filter)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Brand kit loader (auto-pull from Alli per client)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Slot-fill interface (headline, CTA, image upload)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Single variant render → PNG export</div>
+          <div class="phase-item"><div class="phase-dot"></div>Puppeteer render worker (containerized)</div>
+          <div class="phase-item"><div class="phase-dot"></div>S3/R2 upload + signed URL return</div>
+          <div class="phase-item"><div class="phase-dot"></div>Auth (Clerk) + basic user/client routing</div>
+          <div class="phase-milestone">🏁 Milestone: End-to-end — pick template → fill → render → download</div>
+        </div>
+      </div>
+
+      <div class="phase-col ph-2">
+        <div class="phase-header">
+          <div class="phase-tag">Phase 2 · Core Value</div>
+          <div class="phase-name">Batch Engine</div>
+          <div class="phase-duration">Weeks 6–8</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-item"><div class="phase-dot"></div>Batch editor UI (slot manager, value tags, math display)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Combination engine (Cartesian product logic)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Exclusion rules + hypothesis tagging</div>
+          <div class="phase-item"><div class="phase-dot"></div>BullMQ job queue + Redis setup</div>
+          <div class="phase-item"><div class="phase-dot"></div>Multi-size output (1080×1080, 1080×1920, 1200×628)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Batch progress UI (done/running/queued)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Bulk export (zip of all rendered variants)</div>
+          <div class="phase-milestone">🏁 Milestone: Generate + export 60 variants in one click</div>
+        </div>
+      </div>
+
+      <div class="phase-col ph-3">
+        <div class="phase-header">
+          <div class="phase-tag">Phase 3 · Editor</div>
+          <div class="phase-name">Canvas + AI</div>
+          <div class="phase-duration">Weeks 9–12</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-item"><div class="phase-dot"></div>Fabric.js canvas editor (select, drag, resize, layers)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Layer panel + property inspector</div>
+          <div class="phase-item"><div class="phase-dot"></div>AI copywriting (Claude API — headline / description gen)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Background removal (Remove.bg or rembg)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Text-to-image (Replicate / Flux Schnell)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Save / load design state (JSON → DB)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Magic resize (rule-based repositioning per aspect ratio)</div>
+          <div class="phase-milestone">🏁 Milestone: Full canvas editor with AI features live</div>
+        </div>
+      </div>
+
+      <div class="phase-col ph-4">
+        <div class="phase-header">
+          <div class="phase-tag">Phase 4 · Intelligence</div>
+          <div class="phase-name">Feedback Loop</div>
+          <div class="phase-duration">Weeks 13–18</div>
+        </div>
+        <div class="phase-body">
+          <div class="phase-item"><div class="phase-dot"></div>Performance data connection (creative ID → Alli campaign data)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Winner badge on top-performing variants</div>
+          <div class="phase-item"><div class="phase-dot"></div>"Seed new batch from winner" flow</div>
+          <div class="phase-item"><div class="phase-dot"></div>Template authoring UI (admin — drag + define slots)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Platform-specific feed shaping (Pinterest, etc.)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Video workflow integration (same job queue, video worker)</div>
+          <div class="phase-item"><div class="phase-dot"></div>Approval + trafficking workflow UI</div>
+          <div class="phase-milestone">🏁 Milestone: Closed-loop creative intelligence platform</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 2: TECHNICAL ARCHITECTURE ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">2</div>
+      <div class="section-title">Technical Architecture</div>
+      <div class="section-subtitle">System design · data flow · integrations</div>
+    </div>
+
+    <div class="arch-diagram">
+
+      <div class="arch-layer-label">Client Layer</div>
+      <div class="arch-row arch-cols-3">
+        <div class="arch-box highlight">
+          <div class="arch-box-title">Canvas Editor</div>
+          <div class="arch-box-tech"><span>Fabric.js</span> <span>React</span> <span>Zustand</span><br>Select, drag, resize, layers. Holds design as JSON object in memory.</div>
+        </div>
+        <div class="arch-box highlight">
+          <div class="arch-box-title">Batch Editor UI</div>
+          <div class="arch-box-tech"><span>Next.js</span> <span>React</span> <span>Tailwind</span><br>Slot manager, combination math, live generation grid with progress tracking.</div>
+        </div>
+        <div class="arch-box highlight">
+          <div class="arch-box-title">Template Picker + Brand Kit</div>
+          <div class="arch-box-tech"><span>Next.js</span> <span>React</span><br>Browse templates, auto-load client brand profile, filter by size/type.</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer-label">Application Layer</div>
+      <div class="arch-row arch-cols-4">
+        <div class="arch-box">
+          <div class="arch-box-title">Auth + Routing</div>
+          <div class="arch-box-tech"><span>Clerk</span><br>User auth, client-scoped routing, session management.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">API Layer</div>
+          <div class="arch-box-tech"><span>Next.js API Routes</span><br>Design CRUD, template CRUD, brand kit, batch job submission.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">Job Queue Manager</div>
+          <div class="arch-box-tech"><span>BullMQ</span> <span>Redis</span><br>Submit render jobs, track status (queued → running → done), retry on failure.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">Alli API Connector</div>
+          <div class="arch-box-tech"><span>REST</span><br>Pull brand profiles, client data, campaign structure. Source of truth for all client metadata.</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer-label">Worker Layer (background processes)</div>
+      <div class="arch-row arch-cols-5">
+        <div class="arch-box">
+          <div class="arch-box-title">HTML → Image Worker</div>
+          <div class="arch-box-tech"><span>Puppeteer</span><br>Renders JSON template + variant data to HTML → screenshots to PNG. Containerized, horizontally scalable.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">AI Image Worker</div>
+          <div class="arch-box-tech"><span>Replicate</span> <span>Flux Schnell</span><br>Text-to-image generation. Flux 1.0 for quality, Schnell for speed. Flux.1 Kontext for image editing.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">AI Copy Worker</div>
+          <div class="arch-box-tech"><span>Claude API</span><br>Headline + description generation. Prompt includes brand guidelines, product context, platform constraints.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">BG Removal Worker</div>
+          <div class="arch-box-tech"><span>rembg</span> <span>Remove.bg</span><br>Segment and remove product image backgrounds. Self-hosted for cost at scale.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">Video Worker</div>
+          <div class="arch-box-tech"><span>Phase 4</span><br>Same BullMQ queue, different worker type. Creatify or custom FFmpeg pipeline.</div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-layer-label">Persistence Layer</div>
+      <div class="arch-row arch-cols-3">
+        <div class="arch-box">
+          <div class="arch-box-title">PostgreSQL</div>
+          <div class="arch-box-tech"><span>Primary DB</span><br>users, clients, templates, designs (JSON), brand_kits, variants, render_jobs, creative_lineage.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">Redis</div>
+          <div class="arch-box-tech"><span>Job queue + cache</span><br>BullMQ job state, render progress events, session cache, brand kit short-term cache.</div>
+        </div>
+        <div class="arch-box">
+          <div class="arch-box-title">S3 / Cloudflare R2</div>
+          <div class="arch-box-tech"><span>Object storage</span><br>Asset uploads, generated images, exported PNGs/ZIPs, HTML template files. Signed URLs for delivery.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 3: DATA MODEL ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">3</div>
+      <div class="section-title">Core Data Model</div>
+      <div class="section-subtitle">PostgreSQL schema — key tables</div>
+    </div>
+
+    <div class="db-grid">
+
+      <div class="db-table">
+        <div class="db-table-name">templates</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">client_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">name</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">scene_json</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">slot_manifest</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">sizes</span><span class="db-field-type">text[]</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">thumbnail_url</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">created_at</span><span class="db-field-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-name">designs</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">template_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">client_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">created_by</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">name</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">canvas_json</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">status</span><span class="db-field-type">enum</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">parent_design_id</span><span class="db-field-type">uuid</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-name">variants</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">design_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">variant_key</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">slot_values</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">size</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">status</span><span class="db-field-type">enum</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">output_url</span><span class="db-field-type">text</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">perf_ctr</span><span class="db-field-type">float — Phase 4</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-name">render_jobs</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">variant_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">job_type</span><span class="db-field-type">enum</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">status</span><span class="db-field-type">enum</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">payload</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">started_at</span><span class="db-field-type">timestamptz</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">completed_at</span><span class="db-field-type">timestamptz</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">error</span><span class="db-field-type">text</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-name">brand_kits</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">client_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">logo_urls</span><span class="db-field-type">text[]</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">colors</span><span class="db-field-type">text[]</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">fonts</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">alli_synced_at</span><span class="db-field-type">timestamptz</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-table-name">batch_configs</div>
+        <div class="db-field"><span class="db-pk">PK</span><span class="db-field-name">id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-fk">FK</span><span class="db-field-name">design_id</span><span class="db-field-type">uuid</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">slots</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">exclusion_rules</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">hypotheses</span><span class="db-field-type">jsonb</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">sizes</span><span class="db-field-type">text[]</span></div>
+        <div class="db-field"><span class="db-field-name" style="padding-left:24px">total_combinations</span><span class="db-field-type">int</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 4: WORK BREAKDOWN ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">4</div>
+      <div class="section-title">Work Breakdown by Stream</div>
+      <div class="section-subtitle">4 parallel workstreams · owner per task</div>
+    </div>
+
+    <div class="wbs-grid">
+
+      <!-- Frontend -->
+      <div class="wbs-lane lane-fe">
+        <div class="wbs-lane-header">
+          <div class="wbs-icon">⬡</div>
+          Frontend / UI
+        </div>
+        <div class="wbs-body">
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 0</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Set up Next.js project, Tailwind, Zustand <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Design system tokens (colors, fonts, spacing) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Shared layout components (sidebar, topbar) <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 1</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Template picker page (grid, filter, search) <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Brand kit panel (auto-load, color swatches, fonts) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Slot-fill form UI (text, image upload, CTA) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Single render preview + download button <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 2</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Batch editor — slot manager + value tags <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Combination math display (5×3×4=60) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Generation grid (done/running/queued states) <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Hypothesis tags + exclusion rule builder <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Bulk export UI (select all, download zip) <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 3</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Fabric.js canvas integration <span class="wbs-effort">5d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Layers panel + object tree <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Properties panel (type, position, AI actions) <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>AI panel (copy gen, BG remove, img gen) <span class="wbs-effort">3d</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backend -->
+      <div class="wbs-lane lane-be">
+        <div class="wbs-lane-header">
+          <div class="wbs-icon">⬡</div>
+          Backend / API
+        </div>
+        <div class="wbs-body">
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 0</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>PostgreSQL schema + migrations <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Redis + BullMQ setup <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>S3/R2 bucket + upload service <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Clerk auth middleware + client routing <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 1</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Template CRUD API (GET /templates, filters) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Brand kit API (GET /brand-kit/:clientId) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Design save/load API <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Single render job submit → Puppeteer worker <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Signed URL return + output storage <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 2</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Batch config API (POST /batch-configs) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Cartesian combination engine <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Exclusion rule evaluator <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Multi-size job fan-out (sizes array per job) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>SSE / WebSocket for render progress events <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>ZIP bundle export endpoint <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 3</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Claude API route (copywriting) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Replicate/Flux route (text-to-image) <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>BG removal route (rembg worker) <span class="wbs-effort">2d</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data / Integrations -->
+      <div class="wbs-lane lane-data">
+        <div class="wbs-lane-header">
+          <div class="wbs-icon">⬡</div>
+          Data / Integrations
+        </div>
+        <div class="wbs-body">
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 0</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Alli API auth + client profile pull <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Brand kit sync (Alli → local DB) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>JSON template spec + slot schema definition <span class="wbs-effort">2d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 1</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Puppeteer render worker (Dockerized) <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Template-to-HTML render pipeline <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Output resolution + format config (sizes) <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 2</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Worker scaling (concurrent render jobs) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Job retry + dead letter queue <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Variant ID naming convention (structured key) <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 3–4</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>AI worker setup (Replicate + Claude API) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>rembg container deploy <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Alli perf data connector (Phase 4) <span class="wbs-effort">5d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Creative ID → campaign record matching <span class="wbs-effort">3d</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content / Design -->
+      <div class="wbs-lane lane-content">
+        <div class="wbs-lane-header">
+          <div class="wbs-icon">⬡</div>
+          Content / Design
+        </div>
+        <div class="wbs-body">
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 0 — Critical</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Define JSON slot schema with engineering <span class="wbs-effort">1d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Author 5 Ralph Lauren templates <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Author 5 SharkNinja templates <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Author 5 Apple Services templates <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Author 5 generic / blank templates <span class="wbs-effort">2d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 1</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>QA templates vs. render output (pixel accuracy) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Iterate on templates based on render feedback <span class="wbs-effort">2d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 2</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Define slot variation test hypotheses per client <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Run first real batch test (20+ variants) <span class="wbs-effort">2d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>QA multi-size output across 3 sizes <span class="wbs-effort">1d</span></div>
+          </div>
+          <div class="wbs-phase-group">
+            <div class="wbs-phase-label">Phase 3+</div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Expand template library (ongoing) <span class="wbs-effort">ongoing</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Train template authoring process for non-eng <span class="wbs-effort">3d</span></div>
+            <div class="wbs-task"><div class="wbs-task-dot"></div>Pinterest + display size templates <span class="wbs-effort">3d</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 5: SPRINT PLAN ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">5</div>
+      <div class="section-title">Sprint-by-Sprint Execution Plan</div>
+      <div class="section-subtitle">2-week sprints · 10 sprints to Phase 3 complete</div>
+    </div>
+
+    <table class="sprint-table">
+      <thead>
+        <tr>
+          <th style="width:80px">Sprint</th>
+          <th style="width:100px">Phase</th>
+          <th>Goal</th>
+          <th>Key Deliverables</th>
+          <th style="width:160px">Owners</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td class="sprint-num">S1</td>
+          <td><span class="sprint-phase-badge" style="background:#F3F4F6;color:#4B5675">Phase 0</span></td>
+          <td>
+            <div class="sprint-goal">Foundation & Schema</div>
+            <div class="sprint-tasks">Lock all tech decisions. Get infra running.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Next.js + Tailwind + Zustand project bootstrapped</li>
+              <li>PostgreSQL schema + all migrations</li>
+              <li>Redis + BullMQ initialized</li>
+              <li>S3/R2 bucket + upload service</li>
+              <li>Clerk auth + basic client routing</li>
+              <li>Staging environment live</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-data">Data</span></div></td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S2</td>
+          <td><span class="sprint-phase-badge" style="background:#F3F4F6;color:#4B5675">Phase 0</span></td>
+          <td>
+            <div class="sprint-goal">Template Spec + Alli Integration</div>
+            <div class="sprint-tasks">Define the JSON slot format. Connect to Alli.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>JSON template spec finalized + documented</li>
+              <li>Alli API auth + brand kit sync to local DB</li>
+              <li>Template authoring guide for content team</li>
+              <li>5 Ralph Lauren templates authored in JSON format</li>
+              <li>Shared layout (sidebar, topbar, nav) built</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-data">Data</span><span class="owner-pill pill-content">Content</span></div></td>
+        </tr>
+
+        <tr class="sprint-milestone-row">
+          <td colspan="5"><span class="sprint-milestone-emoji">🏁</span> Phase 0 Complete — infra running, schema locked, 5+ templates ready, Alli connected</td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S3</td>
+          <td><span class="sprint-phase-badge" style="background:var(--blue-light);color:var(--blue)">Phase 1</span></td>
+          <td>
+            <div class="sprint-goal">Template Picker + Brand Kit</div>
+            <div class="sprint-tasks">First real UI milestone. Users can browse and select.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Template picker page (grid, filter by client/size/type)</li>
+              <li>Template thumbnail generation</li>
+              <li>Brand kit panel — auto-loads per client from Alli</li>
+              <li>Color swatches, font preview, logo display</li>
+              <li>Template CRUD API (GET /templates)</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-content">Content</span></div></td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S4</td>
+          <td><span class="sprint-phase-badge" style="background:var(--blue-light);color:var(--blue)">Phase 1</span></td>
+          <td>
+            <div class="sprint-goal">Slot Fill → Single Render → Export</div>
+            <div class="sprint-tasks">Full end-to-end for one variant. The core value prop working.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Slot-fill form (text, image upload, CTA)</li>
+              <li>Puppeteer render worker (Dockerized + queue connected)</li>
+              <li>Template JSON → HTML render pipeline</li>
+              <li>PNG output → S3 → signed URL → download</li>
+              <li>Multi-size output (1080×1080, 1080×1920, 1200×628) from day 1</li>
+              <li>Design save API (POST /designs)</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-data">Data</span></div></td>
+        </tr>
+
+        <tr class="sprint-milestone-row">
+          <td colspan="5"><span class="sprint-milestone-emoji">🏁</span> Phase 1 Complete — pick template → fill slots → render → download PNG. Show to stakeholders.</td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S5</td>
+          <td><span class="sprint-phase-badge" style="background:var(--purple-light);color:var(--purple)">Phase 2</span></td>
+          <td>
+            <div class="sprint-goal">Batch Editor UI + Combination Engine</div>
+            <div class="sprint-tasks">Build the batch slot manager and combination logic.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Batch editor page — slot cards, value tags, add/remove</li>
+              <li>Combination math display (A × B × C = N)</li>
+              <li>Cartesian product engine (backend)</li>
+              <li>Exclusion rule builder UI + evaluator</li>
+              <li>Hypothesis tagging (per slot, free text)</li>
+              <li>Batch config API (POST /batch-configs)</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span></div></td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S6</td>
+          <td><span class="sprint-phase-badge" style="background:var(--purple-light);color:var(--purple)">Phase 2</span></td>
+          <td>
+            <div class="sprint-goal">Batch Render Pipeline + Progress Grid</div>
+            <div class="sprint-tasks">Jobs in, variants out. The 60-in-one-click moment.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Batch job fan-out (one job per variant × per size)</li>
+              <li>SSE / WebSocket for live render progress events</li>
+              <li>Generation grid UI (done / running / queued / failed)</li>
+              <li>Worker concurrency tuning</li>
+              <li>Job retry + dead letter queue</li>
+              <li>ZIP bundle export endpoint + bulk download UI</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-data">Data</span></div></td>
+        </tr>
+
+        <tr class="sprint-milestone-row">
+          <td colspan="5"><span class="sprint-milestone-emoji">🏁</span> Phase 2 Complete — MVP launch candidate. Generate 60 variants across 3 sizes. Internal rollout begins.</td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S7–S8</td>
+          <td><span class="sprint-phase-badge" style="background:var(--teal-light);color:var(--teal)">Phase 3</span></td>
+          <td>
+            <div class="sprint-goal">Fabric.js Canvas Editor</div>
+            <div class="sprint-tasks">Full in-browser editing layer for fine-tuning before batch.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Fabric.js canvas init + element primitives (text, image, shape)</li>
+              <li>Select, drag, resize, rotate, layer controls</li>
+              <li>Layer panel + object tree</li>
+              <li>Properties inspector (position, size, typography, color)</li>
+              <li>Canvas → JSON serialization (save/load state)</li>
+              <li>Canvas → render pipeline connection</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span></div></td>
+        </tr>
+
+        <tr>
+          <td class="sprint-num">S9–S10</td>
+          <td><span class="sprint-phase-badge" style="background:var(--teal-light);color:var(--teal)">Phase 3</span></td>
+          <td>
+            <div class="sprint-goal">AI Features Layer</div>
+            <div class="sprint-tasks">Copywriting, image gen, background removal wired in.</div>
+          </td>
+          <td>
+            <ul class="sprint-tasks">
+              <li>Claude API integration — headline + description generation</li>
+              <li>Replicate/Flux — text-to-image background generation</li>
+              <li>rembg container — product background removal</li>
+              <li>Magic resize — rule-based reposition per aspect ratio</li>
+              <li>AI panel UI in canvas editor (generate, remove bg, copy)</li>
+            </ul>
+          </td>
+          <td><div class="sprint-owner-pills"><span class="owner-pill pill-fe">FE</span><span class="owner-pill pill-be">BE</span><span class="owner-pill pill-data">Data</span></div></td>
+        </tr>
+
+        <tr class="sprint-milestone-row">
+          <td colspan="5"><span class="sprint-milestone-emoji">🎉</span> Phase 3 Complete — Full creative platform with canvas editor + AI. Broad internal rollout + client demos.</td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── SECTION 6: CRITICAL PATH ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">6</div>
+      <div class="section-title">Critical Path & Dependencies</div>
+      <div class="section-subtitle">What blocks what — sequence that cannot slip</div>
+    </div>
+
+    <div class="crit-path">
+
+      <div class="dep-section-label">Core Render Path (blocks everything)</div>
+      <div class="dep-chain">
+        <div class="dep-node critical">JSON Template Spec</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Template Authoring (Content)</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Template API (GET /templates)</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Slot Fill UI</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Puppeteer Render Worker</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">S3 Output + Download</div>
+      </div>
+
+      <div class="dep-section-label">Batch Path (blocks Phase 2)</div>
+      <div class="dep-chain">
+        <div class="dep-node critical">Single Render Working</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">BullMQ Job Queue</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Combination Engine</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Multi-Size Fan-Out</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">SSE Progress Events</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Batch Grid UI</div>
+      </div>
+
+      <div class="dep-section-label">Brand Data Path (blocks Phase 1 UI)</div>
+      <div class="dep-chain">
+        <div class="dep-node critical">Alli API Auth</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Brand Kit Sync (DB)</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node critical">Brand Kit API</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Brand Kit Panel UI</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Template Picker (with brand filter)</div>
+      </div>
+
+      <div class="dep-section-label">AI Path (Phase 3, parallel to canvas)</div>
+      <div class="dep-chain">
+        <div class="dep-node">Canvas Editor working</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Claude API route</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Replicate/Flux route</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">rembg worker</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">AI Panel UI</div>
+      </div>
+
+      <div class="dep-section-label">Phase 4 Feedback Loop (post-MVP)</div>
+      <div class="dep-chain">
+        <div class="dep-node">Variant ID on render job</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Alli campaign data pull</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">CTR match to variant record</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Winner badge on batch grid</div>
+        <div class="dep-arrow">→</div>
+        <div class="dep-node">Seed new batch from winner</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 7: RISK MATRIX ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">7</div>
+      <div class="section-title">Risk Matrix</div>
+      <div class="section-subtitle">5 risks · severity + mitigation</div>
+    </div>
+
+    <div class="risk-grid">
+
+      <div class="risk-card risk-card-high">
+        <div class="risk-header">
+          <div class="risk-name">Template library empty at launch</div>
+          <span class="risk-badge badge-high">HIGH</span>
+        </div>
+        <div class="risk-desc">If creative teams open the tool and find no templates matching their active clients, they will not use it again. First impression is permanent in internal tooling.</div>
+        <div class="risk-mitigation">Commission 20 templates in Phase 0 as a sprint-0 gate. Do not open Phase 1 until 15+ templates exist. Designate a permanent template author role now.</div>
+      </div>
+
+      <div class="risk-card risk-card-high">
+        <div class="risk-header">
+          <div class="risk-name">Render output doesn't match approved ads</div>
+          <span class="risk-badge badge-high">HIGH</span>
+        </div>
+        <div class="risk-desc">Client-approved creative has a specific look. If the Puppeteer render produces even slightly different font rendering or layout, it won't pass QA and the tool can't be used on real accounts.</div>
+        <div class="risk-mitigation">In S4, render existing approved ads through the new pipeline and diff against originals. Make pixel accuracy a gate before Phase 1 sign-off.</div>
+      </div>
+
+      <div class="risk-card risk-card-high">
+        <div class="risk-header">
+          <div class="risk-name">Batch generates bad combinations</div>
+          <span class="risk-badge badge-high">HIGH</span>
+        </div>
+        <div class="risk-desc">Without exclusion rules, media teams see obvious mismatch pairings (luxury headline + clearance image). They curate manually. The tool created work instead of saving it.</div>
+        <div class="risk-mitigation">Ship exclusion rules in S5, same sprint as the combination engine. Not post-MVP — it's part of the batch MVP definition.</div>
+      </div>
+
+      <div class="risk-card risk-card-med">
+        <div class="risk-header">
+          <div class="risk-name">No designated template author</div>
+          <span class="risk-badge badge-med">MEDIUM</span>
+        </div>
+        <div class="risk-desc">The CRM team built templates before. If ownership of new template creation is ambiguous, template production will stall and the library will never grow past launch content.</div>
+        <div class="risk-mitigation">Designate a template author in Phase 0. Build the template authoring UI (Phase 4) so it doesn't require engineering to produce new templates.</div>
+      </div>
+
+      <div class="risk-card risk-card-med">
+        <div class="risk-header">
+          <div class="risk-name">Feedback loop never gets built</div>
+          <span class="risk-badge badge-med">MEDIUM</span>
+        </div>
+        <div class="risk-desc">Without performance data connected to creative output, the tool is a render machine. It competes with Canva, not with a creative intelligence platform. Differentiation erodes.</div>
+        <div class="risk-mitigation">Add perf_ctr field to variants table now. Build Alli data connector in Phase 4 (within 90 days of Phase 2 launch). Write the spec before Phase 2 ships.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SECTION 8: LAUNCH CRITERIA ── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-number">8</div>
+      <div class="section-title">MVP Launch Criteria</div>
+      <div class="section-subtitle">Must be true before internal rollout — non-negotiable</div>
+    </div>
+
+    <div class="checklist-grid">
+
+      <div class="checklist-card">
+        <div class="checklist-card-title">
+          <span>🖼️</span> Content
+        </div>
+        <div class="checklist-item"><div class="check-box"></div>20 real client templates authored and QA'd</div>
+        <div class="checklist-item"><div class="check-box"></div>3 clients covered: Ralph Lauren, SharkNinja, Apple Services</div>
+        <div class="checklist-item"><div class="check-box"></div>Each template renders correctly at 3 sizes</div>
+        <div class="checklist-item"><div class="check-box"></div>Template author role assigned + process documented</div>
+        <div class="checklist-item"><div class="check-box"></div>Brand kits loaded for all 3 clients from Alli</div>
+      </div>
+
+      <div class="checklist-card">
+        <div class="checklist-card-title">
+          <span>⚙️</span> Technical
+        </div>
+        <div class="checklist-item"><div class="check-box"></div>Single variant render → PNG in under 10 seconds</div>
+        <div class="checklist-item"><div class="check-box"></div>60-variant batch completes in under 5 minutes</div>
+        <div class="checklist-item"><div class="check-box"></div>Multi-size output (1080×1080, 1080×1920, 1200×628) confirmed</div>
+        <div class="checklist-item"><div class="check-box"></div>Render output pixel-matches existing approved ads</div>
+        <div class="checklist-item"><div class="check-box"></div>Job failure + retry works correctly</div>
+        <div class="checklist-item"><div class="check-box"></div>Auth + client data isolation confirmed (no cross-client bleed)</div>
+      </div>
+
+      <div class="checklist-card">
+        <div class="checklist-card-title">
+          <span>✅</span> Product
+        </div>
+        <div class="checklist-item"><div class="check-box"></div>End-to-end flow works: template → fill → render → download</div>
+        <div class="checklist-item"><div class="check-box"></div>Batch editor: slot values, exclusion rules, hypothesis tags</div>
+        <div class="checklist-item"><div class="check-box"></div>Bulk ZIP export working</div>
+        <div class="checklist-item"><div class="check-box"></div>Status field + structured variant key on all records</div>
+        <div class="checklist-item"><div class="check-box"></div>At least 1 media team member has used it on a real brief</div>
+        <div class="checklist-item"><div class="check-box"></div>Perf feedback loop spec written + Phase 4 ticket created</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div><span class="footer-brand">Creative Alli Studio</span> · PMG Internal Platform · Execution Plan v1.0</div>
+  <div>Generated 2026-05-04 · Living document — update as decisions are made</div>
+</div>
+
+</body>
+</html>

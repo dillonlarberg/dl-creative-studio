@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creative Alli Studio — Architecture &amp; Tech Stack</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #EBEDF7;
+      color: #1E2A3B;
+      min-height: 100vh;
+      padding: 48px 32px 64px;
+    }
+
+    /* ─── Page Header ─── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 52px;
+    }
+    .page-header .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0C69EA;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 99px;
+      margin-bottom: 16px;
+    }
+    .page-header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #1E2A3B;
+      margin-bottom: 8px;
+    }
+    .page-header .subtitle {
+      font-size: 15px;
+      color: #6B7280;
+      font-weight: 400;
+    }
+
+    /* ─── Section Headings ─── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #6B7280;
+      margin-bottom: 20px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #E2E8F0;
+    }
+
+    /* ─── SECTION 1: Tech Stack Grid ─── */
+    .section-tech {
+      max-width: 1280px;
+      margin: 0 auto 60px;
+    }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+
+    .stack-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 24px 20px 22px;
+      box-shadow: 0 1px 3px rgba(30,42,59,0.06), 0 4px 16px rgba(30,42,59,0.04);
+      transition: box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .stack-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 14px 14px 0 0;
+    }
+    .stack-card.blue::before   { background: #0C69EA; }
+    .stack-card.indigo::before { background: #4F46E5; }
+    .stack-card.teal::before   { background: #0D9488; }
+    .stack-card.purple::before { background: #7C3AED; }
+    .stack-card.orange::before { background: #EA580C; }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+    .card-icon.blue   { background: #EFF6FF; }
+    .card-icon.indigo { background: #EEF2FF; }
+    .card-icon.teal   { background: #F0FDFA; }
+    .card-icon.purple { background: #F5F3FF; }
+    .card-icon.orange { background: #FFF7ED; }
+
+    .card-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    .card-icon.blue   svg { color: #0C69EA; }
+    .card-icon.indigo svg { color: #4F46E5; }
+    .card-icon.teal   svg { color: #0D9488; }
+    .card-icon.purple svg { color: #7C3AED; }
+    .card-icon.orange svg { color: #EA580C; }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1E2A3B;
+      margin-bottom: 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .pill-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 10px;
+      border-radius: 6px;
+      line-height: 1.3;
+    }
+    .pill.blue   { background: #EFF6FF; color: #1D4ED8; }
+    .pill.indigo { background: #EEF2FF; color: #3730A3; }
+    .pill.teal   { background: #F0FDFA; color: #0F766E; }
+    .pill.purple { background: #F5F3FF; color: #5B21B6; }
+    .pill.orange { background: #FFF7ED; color: #C2410C; }
+
+    .pill-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .blue .pill-dot   { background: #0C69EA; }
+    .indigo .pill-dot { background: #4F46E5; }
+    .teal .pill-dot   { background: #0D9488; }
+    .purple .pill-dot { background: #7C3AED; }
+    .orange .pill-dot { background: #EA580C; }
+
+    /* ─── SECTION 2: Architecture Diagram ─── */
+    .section-arch {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .arch-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* Flow nodes */
+    .flow-node {
+      width: 100%;
+      max-width: 680px;
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 18px 24px;
+      box-shadow: 0 1px 4px rgba(30,42,59,0.07), 0 6px 20px rgba(30,42,59,0.05);
+      text-align: center;
+      position: relative;
+    }
+    .flow-node.user {
+      background: linear-gradient(135deg, #0C69EA 0%, #1D4ED8 100%);
+      border-color: #0C69EA;
+      color: #fff;
+      max-width: 240px;
+    }
+    .flow-node.user .node-label {
+      color: rgba(255,255,255,0.75);
+    }
+
+    .node-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #1E2A3B;
+      margin-bottom: 4px;
+    }
+    .flow-node.user .node-title { color: #fff; }
+
+    .node-label {
+      font-size: 11px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+
+    .node-chips {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .node-chip {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 5px;
+      background: #EBEDF7;
+      color: #1E2A3B;
+    }
+    .flow-node.user .node-chip {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    .flow-node.frontend .node-chip { background: #EFF6FF; color: #1D4ED8; }
+    .flow-node.backend  .node-chip { background: #EEF2FF; color: #3730A3; }
+
+    /* Arrow connector */
+    .arrow-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 4px 0;
+    }
+    .arrow-line {
+      width: 2px;
+      height: 28px;
+      background: #CBD5E1;
+    }
+    .arrow-head {
+      width: 0;
+      height: 0;
+      border-left: 7px solid transparent;
+      border-right: 7px solid transparent;
+      border-top: 9px solid #CBD5E1;
+    }
+
+    /* Branch row */
+    .branch-row {
+      width: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 20px;
+      position: relative;
+      margin-top: 0;
+    }
+
+    .branch-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 4px 0;
+    }
+
+    .branch-connector {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      position: relative;
+    }
+
+    .h-line-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .h-bar {
+      display: flex;
+      align-items: flex-start;
+      position: relative;
+      width: 100%;
+    }
+    .h-bar-line {
+      position: absolute;
+      top: 0;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: #CBD5E1;
+    }
+
+    .branch-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .branch-col .arrow-line { height: 24px; }
+
+    .leaf-node {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(30,42,59,0.06), 0 4px 14px rgba(30,42,59,0.04);
+      width: 100%;
+      text-align: center;
+    }
+    .leaf-node.db   { border-top: 3px solid #4F46E5; }
+    .leaf-node.s3   { border-top: 3px solid #0D9488; }
+    .leaf-node.ai   { border-top: 3px solid #7C3AED; }
+
+    .leaf-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1E2A3B;
+      margin-bottom: 4px;
+    }
+    .leaf-sub {
+      font-size: 11px;
+      color: #6B7280;
+    }
+    .leaf-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+    .leaf-node.db .leaf-badge   { background: #EEF2FF; color: #3730A3; }
+    .leaf-node.s3 .leaf-badge   { background: #F0FDFA; color: #0F766E; }
+    .leaf-node.ai .leaf-badge   { background: #F5F3FF; color: #5B21B6; }
+
+    /* ─── Creative Engine ─── */
+    .engine-section {
+      max-width: 1100px;
+      margin: 52px auto 0;
+    }
+
+    .engine-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .engine-layer {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      box-shadow: 0 1px 3px rgba(30,42,59,0.05);
+    }
+    .engine-layer:first-child { border-radius: 12px 12px 0 0; border-bottom: none; }
+    .engine-layer:last-child  { border-radius: 0 0 12px 12px; }
+    .engine-layer:not(:first-child):not(:last-child) { border-bottom: none; }
+
+    .layer-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .layer-num.l1 { background: #EFF6FF; color: #0C69EA; }
+    .layer-num.l2 { background: #EEF2FF; color: #4F46E5; }
+    .layer-num.l3 { background: #F5F3FF; color: #7C3AED; }
+
+    .layer-body { flex: 1; }
+    .layer-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1E2A3B;
+      margin-bottom: 6px;
+    }
+    .layer-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .layer-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 5px;
+      background: #F8FAFC;
+      color: #475569;
+      border: 1px solid #E2E8F0;
+    }
+
+    /* ─── Render Pipeline ─── */
+    .pipeline-section {
+      max-width: 1100px;
+      margin: 40px auto 0;
+    }
+
+    .pipeline-track {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 24px 28px;
+      box-shadow: 0 1px 3px rgba(30,42,59,0.06), 0 4px 16px rgba(30,42,59,0.04);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .pipeline-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 12px 16px;
+      min-width: 140px;
+    }
+
+    .p-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .p-icon.gray   { background: #F1F5F9; }
+    .p-icon.blue   { background: #EFF6FF; }
+    .p-icon.indigo { background: #EEF2FF; }
+    .p-icon.purple { background: #F5F3FF; }
+    .p-icon.teal   { background: #F0FDFA; }
+
+    .p-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1E2A3B;
+      margin-bottom: 3px;
+    }
+    .p-sub {
+      font-size: 10px;
+      color: #6B7280;
+      line-height: 1.4;
+    }
+
+    .pipeline-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      margin-bottom: 18px;
+    }
+    .pipeline-arrow svg {
+      width: 20px;
+      height: 20px;
+      color: #CBD5E1;
+    }
+
+    /* ─── Footer ─── */
+    .page-footer {
+      text-align: center;
+      margin-top: 52px;
+      font-size: 11px;
+      color: #9CA3AF;
+    }
+    .page-footer span { color: #6B7280; font-weight: 500; }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .stack-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .stack-grid { grid-template-columns: repeat(2, 1fr); }
+      body { padding: 28px 16px 48px; }
+      .page-header h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       PAGE HEADER
+  ════════════════════════════════════════════ -->
+  <header class="page-header">
+    <div class="badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      PMG Creative Automation Platform
+    </div>
+    <h1>Creative Alli Studio — Architecture &amp; Tech Stack</h1>
+    <p class="subtitle">System overview · Internal stakeholder reference · May 2026</p>
+  </header>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 1: TECH STACK
+  ════════════════════════════════════════════ -->
+  <div class="section-tech">
+    <div class="section-label">Section 1 — Tech Stack</div>
+
+    <div class="stack-grid">
+
+      <!-- Frontend -->
+      <div class="stack-card blue">
+        <div class="card-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0C69EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <div class="card-title">Frontend</div>
+        <div class="pill-list">
+          <div class="pill blue"><span class="pill-dot"></span>React / Next.js</div>
+          <div class="pill blue"><span class="pill-dot"></span>Fabric.js (Canvas)</div>
+          <div class="pill blue"><span class="pill-dot"></span>Tailwind CSS</div>
+          <div class="pill blue"><span class="pill-dot"></span>Zustand (State)</div>
+        </div>
+      </div>
+
+      <!-- Backend -->
+      <div class="stack-card indigo">
+        <div class="card-icon indigo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>
+          </svg>
+        </div>
+        <div class="card-title">Backend</div>
+        <div class="pill-list">
+          <div class="pill indigo"><span class="pill-dot"></span>Next.js API Routes</div>
+          <div class="pill indigo"><span class="pill-dot"></span>PostgreSQL</div>
+          <div class="pill indigo"><span class="pill-dot"></span>Redis (queue/cache)</div>
+        </div>
+      </div>
+
+      <!-- Storage -->
+      <div class="stack-card teal">
+        <div class="card-icon teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="card-title">Storage</div>
+        <div class="pill-list">
+          <div class="pill teal"><span class="pill-dot"></span>S3 / Cloudflare R2</div>
+          <div class="pill teal"><span class="pill-dot"></span>Uploads</div>
+          <div class="pill teal"><span class="pill-dot"></span>Generated Images</div>
+          <div class="pill teal"><span class="pill-dot"></span>Exports</div>
+        </div>
+      </div>
+
+      <!-- AI APIs -->
+      <div class="stack-card purple">
+        <div class="card-icon purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+          </svg>
+        </div>
+        <div class="card-title">AI APIs</div>
+        <div class="pill-list">
+          <div class="pill purple"><span class="pill-dot"></span>Replicate / fal.ai</div>
+          <div class="pill purple"><span class="pill-dot"></span>Flux / Stable Diffusion</div>
+          <div class="pill purple"><span class="pill-dot"></span>Claude API (copy)</div>
+          <div class="pill purple"><span class="pill-dot"></span>Remove.bg</div>
+        </div>
+      </div>
+
+      <!-- Auth & Infra -->
+      <div class="stack-card orange">
+        <div class="card-icon orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="card-title">Auth &amp; Infra</div>
+        <div class="pill-list">
+          <div class="pill orange"><span class="pill-dot"></span>Clerk / Auth0</div>
+          <div class="pill orange"><span class="pill-dot"></span>BullMQ (job queue)</div>
+          <div class="pill orange"><span class="pill-dot"></span>Puppeteer (render)</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       SECTION 2: ARCHITECTURE DIAGRAM
+  ════════════════════════════════════════════ -->
+  <div class="section-arch">
+    <div class="section-label">Section 2 — Architecture Diagram</div>
+
+    <div class="arch-flow">
+
+      <!-- USER NODE -->
+      <div class="flow-node user">
+        <div style="font-size:22px;margin-bottom:6px;">👤</div>
+        <div class="node-title">USER (Browser)</div>
+        <div class="node-label">Marketing designer / creative team</div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="arrow-connector">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+
+      <!-- FRONTEND NODE -->
+      <div class="flow-node frontend">
+        <div class="node-title">FRONTEND</div>
+        <div class="node-label" style="margin-bottom:10px;">Next.js · Fabric.js · Tailwind · Zustand</div>
+        <div class="node-chips">
+          <span class="node-chip">Canvas Editor</span>
+          <span class="node-chip">Template Picker</span>
+          <span class="node-chip">Brand Kit UI</span>
+        </div>
+      </div>
+
+      <!-- Arrow -->
+      <div class="arrow-connector">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+
+      <!-- BACKEND NODE -->
+      <div class="flow-node backend">
+        <div class="node-title">BACKEND</div>
+        <div class="node-label" style="margin-bottom:10px;">Next.js API Routes · PostgreSQL · Redis</div>
+        <div class="node-chips">
+          <span class="node-chip">Auth</span>
+          <span class="node-chip">Design CRUD</span>
+          <span class="node-chip">Job Queue (Redis)</span>
+        </div>
+      </div>
+
+      <!-- Branch connectors -->
+      <div style="width:100%;max-width:760px;display:flex;flex-direction:column;align-items:center;">
+
+        <!-- Vertical down then horizontal bar -->
+        <div style="width:2px;height:24px;background:#CBD5E1;"></div>
+        <div style="width:72%;height:2px;background:#CBD5E1;position:relative;display:flex;justify-content:space-between;align-items:flex-start;">
+          <!-- left tick -->
+          <div style="width:2px;height:20px;background:#CBD5E1;margin-top:0;"></div>
+          <!-- center tick -->
+          <div style="width:2px;height:20px;background:#CBD5E1;margin-top:0;"></div>
+          <!-- right tick -->
+          <div style="width:2px;height:20px;background:#CBD5E1;margin-top:0;"></div>
+        </div>
+
+        <!-- Three leaf nodes -->
+        <div style="width:72%;display:flex;gap:16px;align-items:flex-start;">
+
+          <!-- Arrow heads for each branch -->
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #CBD5E1;margin-bottom:8px;"></div>
+            <div class="leaf-node db">
+              <div style="font-size:20px;margin-bottom:6px;">🗄️</div>
+              <div class="leaf-title">PostgreSQL</div>
+              <div class="leaf-sub">Designs · Templates<br/>Brand Kits</div>
+              <div class="leaf-badge">Relational DB</div>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #CBD5E1;margin-bottom:8px;"></div>
+            <div class="leaf-node s3">
+              <div style="font-size:20px;margin-bottom:6px;">☁️</div>
+              <div class="leaf-title">Object Storage</div>
+              <div class="leaf-sub">S3 / Cloudflare R2<br/>Assets &amp; Exports</div>
+              <div class="leaf-badge">CDN-backed</div>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #CBD5E1;margin-bottom:8px;"></div>
+            <div class="leaf-node ai">
+              <div style="font-size:20px;margin-bottom:6px;">✨</div>
+              <div class="leaf-title">AI APIs</div>
+              <div class="leaf-sub">Replicate · fal.ai<br/>Claude · Remove.bg</div>
+              <div class="leaf-badge">Worker Process</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       3-LAYER CREATIVE ENGINE
+  ════════════════════════════════════════════ -->
+  <div class="engine-section">
+    <div class="section-label">3-Layer Creative Engine</div>
+
+    <div class="engine-layers">
+
+      <div class="engine-layer">
+        <div class="layer-num l1">1</div>
+        <div class="layer-body">
+          <div class="layer-name">Creative Object Model</div>
+          <div class="layer-items">
+            <span class="layer-tag">source</span>
+            <span class="layer-tag">template_binding</span>
+            <span class="layer-tag">asset</span>
+            <span class="layer-tag">lineage</span>
+            <span class="layer-tag">metadata</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9CA3AF;font-weight:500;white-space:nowrap;">Data Model</div>
+      </div>
+
+      <div class="engine-layer">
+        <div class="layer-num l2">2</div>
+        <div class="layer-body">
+          <div class="layer-name">Template + Variant System</div>
+          <div class="layer-items">
+            <span class="layer-tag">JSON Scene</span>
+            <span class="layer-tag">Named Slots</span>
+            <span class="layer-tag">Render Strategy</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9CA3AF;font-weight:500;white-space:nowrap;">Templating</div>
+      </div>
+
+      <div class="engine-layer">
+        <div class="layer-num l3">3</div>
+        <div class="layer-body">
+          <div class="layer-name">Workflow Layer</div>
+          <div class="layer-items">
+            <span class="layer-tag">Resize</span>
+            <span class="layer-tag">Edit</span>
+            <span class="layer-tag">Generate</span>
+            <span class="layer-tag">Batch</span>
+            <span class="layer-tag">Video</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#9CA3AF;font-weight:500;white-space:nowrap;">Execution</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════
+       RENDER PIPELINE
+  ════════════════════════════════════════════ -->
+  <div class="pipeline-section">
+    <div class="section-label">Render Pipeline</div>
+
+    <div class="pipeline-track">
+
+      <!-- Canvas JSON -->
+      <div class="pipeline-node">
+        <div class="p-icon gray">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div class="p-title">Canvas JSON</div>
+        <div class="p-sub">Fabric.js scene<br/>serialized state</div>
+      </div>
+
+      <div class="pipeline-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+
+      <!-- Job Queue -->
+      <div class="pipeline-node">
+        <div class="p-icon blue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0C69EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </div>
+        <div class="p-title">Job Queue</div>
+        <div class="p-sub">BullMQ + Redis<br/>priority scheduling</div>
+      </div>
+
+      <div class="pipeline-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+
+      <!-- Worker -->
+      <div class="pipeline-node" style="min-width:200px;">
+        <div class="p-icon purple">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </div>
+        <div class="p-title">Worker Process</div>
+        <div class="p-sub">HTML→img (Puppeteer)<br/>AI img gen · Video edit<br/>Video gen</div>
+      </div>
+
+      <div class="pipeline-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+
+      <!-- S3/R2 Storage -->
+      <div class="pipeline-node">
+        <div class="p-icon teal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="p-title">S3 / R2 Storage</div>
+        <div class="p-sub">Final assets<br/>CDN delivery</div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ─── Footer ─── -->
+  <footer class="page-footer">
+    <p>Generated <span>May 4, 2026</span> · Creative Alli Studio · <span>PMG Internal</span> · Architecture v1.0</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batch Editor — Slot Compare Mode — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --sidebar-text: #A8B3CF;
+    --sidebar-active: #FFFFFF;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --gold: #D97706;
+    --gold-light: #FEF3C7;
+    --purple: #7C3AED;
+    --purple-light: #F5F3FF;
+    --radius: 8px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--blue);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--sidebar-text); letter-spacing: 0.5px; text-transform: uppercase; margin-left: 36px; }
+
+  .client-pill {
+    margin: 14px 18px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .client-avatar {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: #C9A96E;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: white;
+  }
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: var(--sidebar-text); }
+
+  .sidebar-section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--sidebar-text);
+    padding: 12px 18px 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 18px;
+    color: var(--sidebar-text);
+    cursor: pointer; font-size: 12px; font-weight: 500;
+    transition: all 0.15s; text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+  .nav-item.active { background: rgba(12, 105, 234, 0.2); color: white; border-right: 2px solid var(--blue); }
+  .nav-item svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+  .nav-item.active svg { opacity: 1; }
+
+  /* ── MAIN ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px; height: 52px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .breadcrumb-part { color: var(--text-muted); cursor: pointer; }
+  .breadcrumb-part:hover { color: var(--blue); }
+  .breadcrumb-sep { color: var(--border); }
+  .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+  .app-type-badge { background: var(--blue-light); color: var(--blue); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.2px; border: 1px solid rgba(12,105,234,0.2); }
+
+  .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text-primary); }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: var(--blue-hover); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+  /* ── CONTENT LAYOUT ── */
+  .content { flex: 1; display: flex; overflow: hidden; }
+
+  /* ── LEFT CONFIG PANEL ── */
+  .config-panel {
+    width: 280px; flex-shrink: 0;
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .panel-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-section:last-child { border-bottom: none; }
+
+  .panel-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .panel-section-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+
+  /* Template strip */
+  .template-strip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px;
+  }
+  .template-thumb {
+    width: 48px; height: 36px; border-radius: 4px;
+    background: #1A1A2E;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .template-info { flex: 1; min-width: 0; }
+  .template-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .template-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .template-change { font-size: 11px; color: var(--blue); cursor: pointer; white-space: nowrap; }
+
+  /* Slot cards */
+  .slot-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .slot-card:last-child { margin-bottom: 0; }
+  .slot-card:hover { border-color: var(--blue-mid); background: #FAFBFF; }
+
+  /* Active/comparing slot */
+  .slot-card.comparing {
+    border-color: var(--blue);
+    background: var(--blue-light);
+    box-shadow: 0 0 0 3px rgba(12,105,234,0.12);
+  }
+
+  /* Locked slot */
+  .slot-card.locked {
+    opacity: 0.7;
+    cursor: default;
+  }
+  .slot-card.locked:hover { border-color: var(--border); background: transparent; }
+
+  .slot-card-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .slot-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); flex: 1; }
+  .slot-count { font-size: 11px; color: var(--text-muted); }
+
+  /* Compare badge */
+  .compare-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--blue); color: white;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+    padding: 2px 7px; border-radius: 10px;
+  }
+  .compare-badge svg { width: 9px; height: 9px; fill: white; }
+
+  /* Lock badge */
+  .lock-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #E2E5EF; color: var(--text-muted);
+    font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 10px;
+  }
+  .lock-badge svg { width: 9px; height: 9px; fill: var(--text-muted); }
+
+  .slot-values {
+    display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .slot-value-chip {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    background: var(--white); border: 1px solid var(--border);
+    color: var(--text-secondary); white-space: nowrap;
+    max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .slot-card.comparing .slot-value-chip {
+    background: rgba(12,105,234,0.08); border-color: var(--blue-mid);
+    color: var(--blue);
+  }
+  .slot-value-chip.locked-active {
+    background: #F0F0F0; border-color: #D0D4DE;
+    color: var(--text-muted); font-style: italic;
+  }
+
+  .slot-locked-value {
+    font-size: 12px; color: var(--text-secondary);
+    background: #F4F5F8; padding: 6px 8px; border-radius: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .slot-locked-value svg { width: 12px; height: 12px; fill: var(--text-muted); flex-shrink: 0; }
+
+  /* Hypothesis tag */
+  .hypothesis-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--purple-light); color: var(--purple);
+    font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+    margin-left: auto;
+  }
+
+  /* Locked footer info */
+  .locked-footer {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 4px; padding-top: 8px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .locked-footer a { color: var(--blue); cursor: pointer; text-decoration: none; }
+
+  /* Math pill */
+  .combo-math {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .combo-math-label { font-size: 12px; color: var(--text-muted); }
+  .combo-math-value { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-left: auto; }
+  .combo-math-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ── RIGHT COMPARE PANEL ── */
+  .compare-area {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  }
+
+  /* Compare context bar */
+  .compare-context-bar {
+    background: var(--blue-light);
+    border-bottom: 1px solid var(--blue-mid);
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .compare-context-label {
+    font-size: 12px; font-weight: 700; color: var(--blue);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .compare-context-label svg { width: 13px; height: 13px; fill: var(--blue); }
+  .compare-lock-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .compare-lock-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(12,105,234,0.12); border: 1px solid var(--blue-mid);
+    border-radius: 4px; padding: 3px 8px;
+    font-size: 11px; color: var(--text-secondary);
+  }
+  .compare-lock-chip strong { color: var(--text-primary); }
+  .compare-lock-chip svg { width: 10px; height: 10px; fill: var(--text-muted); }
+  .compare-context-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* View toggle */
+  .view-toggle {
+    display: flex; background: var(--white);
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  }
+  .view-toggle-btn {
+    padding: 5px 12px; font-size: 11px; font-weight: 600;
+    cursor: pointer; color: var(--text-muted);
+    border: none; background: transparent;
+    display: flex; align-items: center; gap: 5px;
+    transition: all 0.15s;
+  }
+  .view-toggle-btn.active { background: var(--blue); color: white; }
+  .view-toggle-btn svg { width: 12px; height: 12px; }
+  .view-toggle-btn.active svg { fill: white; }
+  .view-toggle-btn:not(.active) svg { fill: var(--text-muted); }
+
+  /* Column compare grid */
+  .compare-grid-wrap {
+    flex: 1; overflow: auto; padding: 20px;
+  }
+
+  .compare-grid-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .compare-grid-title {
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+  }
+  .compare-grid-subtitle {
+    font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  }
+  .compare-grid-meta { display: flex; gap: 12px; align-items: center; }
+
+  .sort-control {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted); cursor: pointer;
+  }
+  .sort-control select {
+    font-size: 11px; border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 6px; background: white;
+    color: var(--text-secondary); cursor: pointer;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+
+  /* Variant column card */
+  .variant-col {
+    background: var(--white);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: all 0.15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .variant-col:hover { box-shadow: var(--shadow-md); border-color: var(--blue-mid); transform: translateY(-1px); }
+
+  /* Winner card */
+  .variant-col.winner {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(217,119,6,0.15), var(--shadow-sm);
+  }
+
+  /* Winner ribbon */
+  .winner-ribbon {
+    position: absolute; top: 0; right: 0;
+    background: var(--gold); color: white;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 0 10px 0 6px;
+    display: flex; align-items: center; gap: 3px;
+    text-transform: uppercase;
+  }
+  .winner-ribbon svg { width: 9px; height: 9px; fill: white; }
+
+  /* Thumbnail */
+  .variant-thumb {
+    width: 100%; aspect-ratio: 4/3;
+    background: #1A1A2E;
+    position: relative; overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* Hover overlay */
+  .variant-thumb-overlay {
+    position: absolute; inset: 0;
+    background: rgba(12,105,234,0.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .variant-col:hover .variant-thumb-overlay { opacity: 1; }
+  .thumb-overlay-btn {
+    background: white; color: var(--blue);
+    border: none; border-radius: 6px;
+    font-size: 11px; font-weight: 700;
+    padding: 6px 14px; cursor: pointer;
+    width: 80%;
+  }
+
+  /* Variant body */
+  .variant-body { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+  /* Slot value label */
+  .variant-value-label {
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .variant-value-label.winner-text { color: #92400E; }
+
+  /* Variant ID */
+  .variant-id-tag {
+    font-size: 10px; font-family: 'SF Mono', 'Fira Mono', monospace;
+    color: var(--text-muted); background: var(--bg);
+    padding: 2px 6px; border-radius: 3px;
+    letter-spacing: 0.2px;
+    display: inline-block;
+  }
+
+  /* Performance bar */
+  .perf-section { margin-top: 4px; }
+  .perf-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .perf-label { font-size: 10px; color: var(--text-muted); }
+  .perf-value { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .perf-value.winner-val { color: var(--gold); }
+  .perf-bar-track {
+    height: 3px; background: var(--bg);
+    border-radius: 2px; overflow: hidden;
+  }
+  .perf-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: var(--blue);
+    transition: width 0.3s;
+  }
+  .perf-bar-fill.winner-fill { background: var(--gold); }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+  }
+  .status-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+  .status-done { background: #ECFDF5; color: #065F46; }
+  .status-done::before { background: var(--success); }
+  .status-pending { background: #F4F5F8; color: var(--text-muted); }
+  .status-pending::before { background: #9CA3AF; }
+  .status-running { background: #EFF6FF; color: #1E40AF; }
+  .status-running::before { background: var(--blue); }
+
+  /* Variant footer actions */
+  .variant-footer {
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .variant-action-btn {
+    font-size: 11px; font-weight: 600; color: var(--blue);
+    background: none; border: none; cursor: pointer; padding: 0;
+  }
+  .variant-action-btn.danger { color: var(--danger); }
+  .variant-footer-sep { color: var(--border); }
+  .promote-btn {
+    margin-left: auto;
+    font-size: 11px; font-weight: 700; padding: 4px 10px;
+    border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--gold); color: var(--gold);
+    background: var(--gold-light);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .promote-btn svg { width: 10px; height: 10px; fill: var(--gold); }
+
+  /* Pending state for no-data cards */
+  .no-data-state {
+    font-size: 11px; color: var(--text-muted);
+    text-align: center; padding: 8px 0;
+    font-style: italic;
+  }
+
+  /* "Seed from winner" callout */
+  .seed-callout {
+    background: var(--gold-light);
+    border: 1px solid #FDE68A;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 16px;
+  }
+  .seed-callout-icon { font-size: 18px; flex-shrink: 0; }
+  .seed-callout-text { flex: 1; }
+  .seed-callout-title { font-size: 12px; font-weight: 700; color: #92400E; margin-bottom: 2px; }
+  .seed-callout-body { font-size: 11px; color: #B45309; }
+  .seed-callout-btn {
+    background: var(--gold); color: white;
+    border: none; border-radius: 6px;
+    font-size: 11px; font-weight: 700;
+    padding: 7px 14px; cursor: pointer; white-space: nowrap;
+  }
+
+  /* Annotation tooltip */
+  .axis-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--blue);
+    text-align: center; margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--blue-mid);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .axis-label svg { width: 11px; height: 11px; fill: var(--blue); }
+
+  /* Inline annotations */
+  .annotation {
+    position: absolute;
+    background: var(--sidebar-bg);
+    color: white; font-size: 10px; font-weight: 600;
+    padding: 3px 8px; border-radius: 4px;
+    white-space: nowrap; pointer-events: none;
+    z-index: 10;
+  }
+  .annotation::after {
+    content: '';
+    position: absolute;
+    border: 4px solid transparent;
+  }
+
+  /* SVG thumb content per variant */
+  .thumb-svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16"><path d="M8 1L14 4.5V11.5L8 15L2 11.5V4.5L8 1Z"/></svg>
+      </div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative</div>
+  </div>
+
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+
+  <div class="sidebar-section-label">Workspace</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>Dashboard</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="2" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h6M4 5h4"/></svg>Templates</a>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".7"/></svg>Batch Jobs <span class="nav-badge" style="margin-left:auto; background:var(--blue); color:white; font-size:10px; font-weight:700; padding:1px 5px; border-radius:8px;">3</span></a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M7 1L9 5H13L9.5 7.5L11 12L7 9L3 12L4.5 7.5L1 5H5L7 1Z" opacity=".8"/></svg>Assets</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><circle cx="7" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1 13c0-3 2.7-5 6-5s6 2 6 5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Brand Kit</a>
+
+  <div class="sidebar-section-label" style="margin-top:8px;">Create New</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="2" y="2" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 5v4M5 7h4" stroke="currentColor" stroke-width="1.2"/></svg>Create Static Ad</a>
+  <a class="nav-item active"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 2h4v4H2zM8 2h4v4H8zM2 8h4v4H2zM8 8h4v4H8z" opacity=".8"/></svg>Batch Generator</a>
+  <div class="sidebar-section-label" style="margin-top:6px;">Edit Existing</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h2M8 5v4" stroke="currentColor" stroke-width="1.2"/></svg>Resize to New Sizes</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 12l3-3 2 2 4-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Edit &amp; Tweak</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="3" width="12" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 6l3 1.5L6 9V6z" fill="currentColor"/></svg>Video Cutdown</a>
+  <div class="sidebar-section-label" style="margin-top:8px;">Reports</div>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M2 10V6h2.5v4H2zM5.5 10V3H8v7H5.5zM9 10V8h2.5v2H9z" opacity=".8"/></svg>Performance</a>
+  <a class="nav-item"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h6M7 4v6" stroke="currentColor" stroke-width="1.5"/></svg>Export History</a>
+</nav>
+
+<!-- ══════════════════════════════════════════════
+     MAIN AREA
+══════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-part">Batch Jobs</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-part">Summer Sale 2026</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Compare Headline</span>
+    </div>
+    <span class="app-type-badge">Create new</span>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="var(--text-muted)"><path d="M1 3h10M3 6h6M5 9h2"/></svg>
+        Filter
+      </button>
+      <button class="btn btn-ghost btn-sm">Export View</button>
+      <button class="btn btn-primary btn-sm">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="white"><path d="M6 1v7M3 5l3 3 3-3M1 10h10" stroke="white" fill="none" stroke-width="1.5"/></svg>
+        Export Batch
+      </button>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- ── LEFT CONFIG PANEL ── -->
+    <aside class="config-panel">
+
+      <!-- Template -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <span class="panel-section-label">Template</span>
+        </div>
+        <div class="template-strip">
+          <div class="template-thumb">
+            <svg class="thumb-svg" viewBox="0 0 48 36">
+              <rect width="48" height="36" fill="#1A1A2E"/>
+              <rect x="4" y="4" width="20" height="14" rx="1" fill="#C9A96E" opacity=".3"/>
+              <text x="4" y="26" font-size="4" fill="#C9A96E" font-family="sans-serif" font-weight="bold">SUMMER SALE</text>
+              <rect x="4" y="29" width="12" height="3" rx="1" fill="#C9A96E" opacity=".6"/>
+            </svg>
+          </div>
+          <div class="template-info">
+            <div class="template-name">Summer Banner</div>
+            <div class="template-meta">1200 × 628 · 3 slots</div>
+          </div>
+          <span class="template-change">Change</span>
+        </div>
+      </div>
+
+      <!-- Slot configuration — Headline is COMPARING -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <span class="panel-section-label">Slots</span>
+          <span style="font-size:11px; color:var(--blue); cursor:pointer;">+ Add slot</span>
+        </div>
+
+        <!-- HEADLINE — comparing axis (active) -->
+        <div class="slot-card comparing">
+          <div class="slot-card-header">
+            <span class="slot-label">Headline</span>
+            <span class="slot-count">5 values</span>
+            <span class="compare-badge">
+              <svg viewBox="0 0 9 9"><path d="M1 4.5h7M4.5 1v7" stroke="white" fill="none" stroke-width="1.5"/></svg>
+              Comparing
+            </span>
+          </div>
+          <div class="slot-values">
+            <div class="slot-value-chip">H1: Bold Summer Sale</div>
+            <div class="slot-value-chip">H2: Up to 50% Off</div>
+            <div class="slot-value-chip">H3: Refresh Your Wardrobe</div>
+            <div class="slot-value-chip">H4: Summer Essentials</div>
+            <div class="slot-value-chip">H5: Shop the Season</div>
+          </div>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:6px;">
+            <span class="hypothesis-tag">✦ Hypothesis</span>
+            <span style="font-size:10px; color:var(--purple);">Urgency vs. discovery framing</span>
+          </div>
+        </div>
+
+        <!-- CTA — locked -->
+        <div class="slot-card locked">
+          <div class="slot-card-header">
+            <span class="slot-label">CTA</span>
+            <span class="slot-count">3 values</span>
+            <span class="lock-badge">
+              <svg viewBox="0 0 9 9"><rect x="1.5" y="4" width="6" height="4.5" rx="1" fill="currentColor"/><path d="M3 4V3a1.5 1.5 0 013 0v1" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+              Locked
+            </span>
+          </div>
+          <div class="slot-locked-value">
+            <svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.5" fill="currentColor"/><path d="M4 5V3.5a2 2 0 014 0V5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Shop Now
+          </div>
+          <div class="locked-footer">
+            <span>Locked to this value for comparison</span>
+            <a>Unlock</a>
+          </div>
+        </div>
+
+        <!-- Image — locked -->
+        <div class="slot-card locked">
+          <div class="slot-card-header">
+            <span class="slot-label">Product Image</span>
+            <span class="slot-count">4 values</span>
+            <span class="lock-badge">
+              <svg viewBox="0 0 9 9"><rect x="1.5" y="4" width="6" height="4.5" rx="1" fill="currentColor"/><path d="M3 4V3a1.5 1.5 0 013 0v1" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+              Locked
+            </span>
+          </div>
+          <div class="slot-locked-value">
+            <svg viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.5" fill="currentColor"/><path d="M4 5V3.5a2 2 0 014 0V5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+            Product Hero
+          </div>
+          <div class="locked-footer">
+            <span>Locked to this value for comparison</span>
+            <a>Unlock</a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Combination math -->
+      <div class="panel-section">
+        <div class="panel-section-header">
+          <span class="panel-section-label">Showing</span>
+        </div>
+        <div class="combo-math">
+          <div>
+            <div class="combo-math-label">Headline values shown</div>
+            <div class="combo-math-sub">CTA + Image locked</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="combo-math-value">5 variants</div>
+            <div class="combo-math-sub">of 60 total</div>
+          </div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--text-muted); line-height:1.5;">
+          Click any slot above to change the comparison axis. Locked slots are held constant across all shown variants.
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── RIGHT COMPARE PANEL ── -->
+    <div class="compare-area">
+
+      <!-- Context bar -->
+      <div class="compare-context-bar">
+        <div class="compare-context-label">
+          <svg viewBox="0 0 13 13"><path d="M1 6.5h11M6.5 1v11" stroke="currentColor" fill="none" stroke-width="1.8"/></svg>
+          Comparing Headline
+        </div>
+        <div class="compare-lock-chips">
+          <div class="compare-lock-chip">
+            <svg viewBox="0 0 10 10" style="width:10px;height:10px;fill:var(--text-muted);"><rect x="1.5" y="4" width="7" height="5.5" rx="1.5"/><path d="M3 4V3a2 2 0 014 0v1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+            CTA: <strong>&nbsp;Shop Now</strong>
+          </div>
+          <div class="compare-lock-chip">
+            <svg viewBox="0 0 10 10" style="width:10px;height:10px;fill:var(--text-muted);"><rect x="1.5" y="4" width="7" height="5.5" rx="1.5"/><path d="M3 4V3a2 2 0 014 0v1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+            Image: <strong>&nbsp;Product Hero</strong>
+          </div>
+        </div>
+        <div class="compare-context-actions">
+          <div class="view-toggle">
+            <button class="view-toggle-btn">
+              <svg viewBox="0 0 12 12"><rect x="1" y="1" width="4.5" height="4.5" rx=".5" fill="currentColor"/><rect x="6.5" y="1" width="4.5" height="4.5" rx=".5" fill="currentColor"/><rect x="1" y="6.5" width="4.5" height="4.5" rx=".5" fill="currentColor"/><rect x="6.5" y="6.5" width="4.5" height="4.5" rx=".5" fill="currentColor"/></svg>
+              All Variants
+            </button>
+            <button class="view-toggle-btn active">
+              <svg viewBox="0 0 12 12"><rect x="1" y="1" width="2.5" height="10" rx=".5"/><rect x="4.75" y="1" width="2.5" height="10" rx=".5"/><rect x="8.5" y="1" width="2.5" height="10" rx=".5"/></svg>
+              Slot Compare
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid area -->
+      <div class="compare-grid-wrap">
+
+        <div class="compare-grid-header">
+          <div>
+            <div class="compare-grid-title">5 headline variants · Summer Sale 2026</div>
+            <div class="compare-grid-subtitle">Sorted by CTR · Data from last 7 days · 3 variants have live performance data</div>
+          </div>
+          <div class="compare-grid-meta">
+            <div class="sort-control">
+              Sort by:
+              <select>
+                <option>CTR (highest)</option>
+                <option>Impressions</option>
+                <option>Variant ID</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Axis label -->
+        <div class="axis-label">
+          <svg viewBox="0 0 11 11"><path d="M1 5.5h9M5.5 1v9" stroke="currentColor" fill="none" stroke-width="1.6"/></svg>
+          Comparing: Headline slot — each column = one value
+        </div>
+
+        <!-- ── COMPARE GRID ── -->
+        <div class="compare-grid">
+
+          <!-- H2: winner -->
+          <div class="variant-col winner">
+            <div class="winner-ribbon">
+              <svg viewBox="0 0 9 9"><path d="M4.5 1L5.7 3.7H8.5L6.4 5.3L7.2 8L4.5 6.3L1.8 8L2.6 5.3L.5 3.7H3.3L4.5 1Z" fill="white"/></svg>
+              Top CTR
+            </div>
+            <div class="variant-thumb">
+              <svg class="thumb-svg" viewBox="0 0 200 150">
+                <rect width="200" height="150" fill="#1A1A2E"/>
+                <!-- image placeholder -->
+                <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+                <circle cx="170" cy="55" r="25" fill="#C9A96E" opacity=".25"/>
+                <!-- headline -->
+                <text x="12" y="45" font-size="11" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Up to</text>
+                <text x="12" y="60" font-size="16" font-weight="bold" fill="white" font-family="sans-serif">50% Off</text>
+                <!-- CTA -->
+                <rect x="12" y="80" width="70" height="18" rx="3" fill="#C9A96E"/>
+                <text x="47" y="92" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+                <!-- winner glow -->
+                <rect x="0" y="0" width="200" height="150" fill="none" stroke="#D97706" stroke-width="3"/>
+              </svg>
+              <div class="variant-thumb-overlay">
+                <button class="thumb-overlay-btn">Open in Editor</button>
+                <button class="thumb-overlay-btn" style="background:rgba(255,255,255,0.2); color:white;">Preview Full Size</button>
+              </div>
+            </div>
+            <div class="variant-body">
+              <div class="variant-value-label winner-text">"Up to 50% Off"</div>
+              <div class="variant-id-tag">RL_Summer_H2_C2_I3</div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">CTR</span>
+                  <span class="perf-value winner-val">3.8%</span>
+                </div>
+                <div class="perf-bar-track"><div class="perf-bar-fill winner-fill" style="width:95%"></div></div>
+              </div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">Impressions</span>
+                  <span class="perf-value" style="font-size:11px;color:var(--text-muted);">24,180</span>
+                </div>
+              </div>
+              <div><span class="status-badge status-done">Live</span></div>
+            </div>
+            <div class="variant-footer">
+              <span class="variant-action-btn">Edit</span>
+              <span class="variant-footer-sep">·</span>
+              <span class="variant-action-btn">Duplicate</span>
+              <span class="promote-btn">
+                <svg viewBox="0 0 10 10"><path d="M5 1L9 5H6.5V9H3.5V5H1L5 1Z" fill="currentColor"/></svg>
+                Seed batch
+              </span>
+            </div>
+          </div>
+
+          <!-- H1 -->
+          <div class="variant-col">
+            <div class="variant-thumb">
+              <svg class="thumb-svg" viewBox="0 0 200 150">
+                <rect width="200" height="150" fill="#1A1A2E"/>
+                <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+                <circle cx="170" cy="55" r="25" fill="#C9A96E" opacity=".2"/>
+                <text x="12" y="50" font-size="13" font-weight="bold" fill="white" font-family="sans-serif">Bold</text>
+                <text x="12" y="65" font-size="13" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Summer Sale</text>
+                <rect x="12" y="80" width="70" height="18" rx="3" fill="#C9A96E"/>
+                <text x="47" y="92" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+              </svg>
+              <div class="variant-thumb-overlay">
+                <button class="thumb-overlay-btn">Open in Editor</button>
+                <button class="thumb-overlay-btn" style="background:rgba(255,255,255,0.2); color:white;">Preview Full Size</button>
+              </div>
+            </div>
+            <div class="variant-body">
+              <div class="variant-value-label">"Bold Summer Sale"</div>
+              <div class="variant-id-tag">RL_Summer_H1_C2_I3</div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">CTR</span>
+                  <span class="perf-value">2.4%</span>
+                </div>
+                <div class="perf-bar-track"><div class="perf-bar-fill" style="width:60%"></div></div>
+              </div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">Impressions</span>
+                  <span class="perf-value" style="font-size:11px;color:var(--text-muted);">18,440</span>
+                </div>
+              </div>
+              <div><span class="status-badge status-done">Live</span></div>
+            </div>
+            <div class="variant-footer">
+              <span class="variant-action-btn">Edit</span>
+              <span class="variant-footer-sep">·</span>
+              <span class="variant-action-btn">Duplicate</span>
+            </div>
+          </div>
+
+          <!-- H3 -->
+          <div class="variant-col">
+            <div class="variant-thumb">
+              <svg class="thumb-svg" viewBox="0 0 200 150">
+                <rect width="200" height="150" fill="#1A1A2E"/>
+                <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+                <circle cx="170" cy="55" r="25" fill="#C9A96E" opacity=".2"/>
+                <text x="12" y="45" font-size="9" fill="#A8B3CF" font-family="sans-serif">NEW THIS SEASON</text>
+                <text x="12" y="60" font-size="11" font-weight="bold" fill="white" font-family="sans-serif">Refresh Your</text>
+                <text x="12" y="74" font-size="11" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Wardrobe</text>
+                <rect x="12" y="86" width="70" height="18" rx="3" fill="#C9A96E"/>
+                <text x="47" y="98" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+              </svg>
+              <div class="variant-thumb-overlay">
+                <button class="thumb-overlay-btn">Open in Editor</button>
+                <button class="thumb-overlay-btn" style="background:rgba(255,255,255,0.2); color:white;">Preview Full Size</button>
+              </div>
+            </div>
+            <div class="variant-body">
+              <div class="variant-value-label">"Refresh Your Wardrobe"</div>
+              <div class="variant-id-tag">RL_Summer_H3_C2_I3</div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">CTR</span>
+                  <span class="perf-value">1.9%</span>
+                </div>
+                <div class="perf-bar-track"><div class="perf-bar-fill" style="width:47%"></div></div>
+              </div>
+              <div class="perf-section">
+                <div class="perf-row">
+                  <span class="perf-label">Impressions</span>
+                  <span class="perf-value" style="font-size:11px;color:var(--text-muted);">21,060</span>
+                </div>
+              </div>
+              <div><span class="status-badge status-done">Live</span></div>
+            </div>
+            <div class="variant-footer">
+              <span class="variant-action-btn">Edit</span>
+              <span class="variant-footer-sep">·</span>
+              <span class="variant-action-btn">Duplicate</span>
+            </div>
+          </div>
+
+          <!-- H4 — running -->
+          <div class="variant-col">
+            <div class="variant-thumb">
+              <svg class="thumb-svg" viewBox="0 0 200 150">
+                <rect width="200" height="150" fill="#1A1A2E"/>
+                <rect x="110" y="10" width="80" height="100" rx="4" fill="#2A2A4A"/>
+                <circle cx="170" cy="55" r="25" fill="#C9A96E" opacity=".2"/>
+                <text x="12" y="52" font-size="13" font-weight="bold" fill="white" font-family="sans-serif">Summer</text>
+                <text x="12" y="68" font-size="13" font-weight="bold" fill="#C9A96E" font-family="sans-serif">Essentials</text>
+                <rect x="12" y="80" width="70" height="18" rx="3" fill="#C9A96E"/>
+                <text x="47" y="92" font-size="8" fill="white" text-anchor="middle" font-family="sans-serif" font-weight="bold">Shop Now</text>
+                <!-- running overlay tint -->
+                <rect width="200" height="150" fill="rgba(12,105,234,0.08)"/>
+              </svg>
+              <div class="variant-thumb-overlay">
+                <button class="thumb-overlay-btn">Open in Editor</button>
+                <button class="thumb-overlay-btn" style="background:rgba(255,255,255,0.2); color:white;">Preview Full Size</button>
+              </div>
+            </div>
+            <div class="variant-body">
+              <div class="variant-value-label">"Summer Essentials"</div>
+              <div class="variant-id-tag">RL_Summer_H4_C2_I3</div>
+              <div class="no-data-state">Rendering… performance data pending</div>
+              <div><span class="status-badge status-running">Rendering</span></div>
+            </div>
+            <div class="variant-footer">
+              <span class="variant-action-btn">Edit</span>
+              <span class="variant-footer-sep">·</span>
+              <span class="variant-action-btn danger">Cancel</span>
+            </div>
+          </div>
+
+          <!-- H5 — queued / not yet run -->
+          <div class="variant-col">
+            <div class="variant-thumb" style="background:#242840; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="#4B5675" stroke-width="1.5"/>
+                <path d="M12 7v5l3 3" stroke="#4B5675" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span style="font-size:10px; color:#5C6478;">Not yet rendered</span>
+            </div>
+            <div class="variant-body">
+              <div class="variant-value-label">"Shop the Season"</div>
+              <div class="variant-id-tag">RL_Summer_H5_C2_I3</div>
+              <div class="no-data-state">Queued — will render on run</div>
+              <div><span class="status-badge status-pending">Queued</span></div>
+            </div>
+            <div class="variant-footer">
+              <span class="variant-action-btn">Edit</span>
+              <span class="variant-footer-sep">·</span>
+              <span class="variant-action-btn">Render now</span>
+            </div>
+          </div>
+
+        </div>
+        <!-- end .compare-grid -->
+
+        <!-- Seed from winner callout -->
+        <div class="seed-callout">
+          <div class="seed-callout-icon">✦</div>
+          <div class="seed-callout-text">
+            <div class="seed-callout-title">H2 is your top performer — seed a new batch from it</div>
+            <div class="seed-callout-body">Lock headline to "Up to 50% Off" and run all 12 CTA × Image combinations to find the highest-performing full variant.</div>
+          </div>
+          <button class="seed-callout-btn">Seed Batch</button>
+        </div>
+
+        <!-- Annotation: how to change axis -->
+        <div style="margin-top:20px; background:var(--white); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; display:flex; align-items:flex-start; gap:10px;">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="var(--blue)" style="margin-top:1px; flex-shrink:0;"><circle cx="7" cy="7" r="6" fill="var(--blue-light)"/><text x="7" y="10.5" font-size="8" text-anchor="middle" fill="var(--blue)" font-weight="bold">i</text></svg>
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text-primary); margin-bottom:3px;">How to change the comparison axis</div>
+            <div style="font-size:11px; color:var(--text-secondary); line-height:1.5;">Click any slot card in the left panel to pivot the comparison to that slot. The currently selected slot becomes the column axis; all other slots lock to their current value. You can unlock a slot to include its full range in the comparison.</div>
+          </div>
+        </div>
+
+      </div>
+      <!-- end .compare-grid-wrap -->
+    </div>
+    <!-- end .compare-area -->
+
+  </div>
+  <!-- end .content -->
+</div>
+<!-- end .main -->
+
+</body>
+</html>

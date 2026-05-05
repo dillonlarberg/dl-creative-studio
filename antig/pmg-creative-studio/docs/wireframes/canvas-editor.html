@@ -1,0 +1,2280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alli Studio — Canvas Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-stage: #EBEDF7;
+      --primary: #0C69EA;
+      --primary-hover: #0B5FD4;
+      --primary-light: #EEF4FF;
+      --dark: #1A1F2E;
+      /* #6B7280 = ~4.6:1 on white — borderline. Use #5C6478 (5.2:1) for muted text on white/light */
+      --muted: #5C6478;
+      /* --text-secondary on #EBEDF7 bg: use #4A5568 (passes 4.5:1 on that bg) */
+      --text-secondary: #4A5568;
+      --panel: #FFFFFF;
+      --border: #E2E5EF;
+      --hover-bg: #F8F9FA;
+      --success: #10B981;
+      --radius: 6px;
+      --toolbar-h: 52px;
+      --statusbar-h: 28px;
+      --left-panel-w: 224px;
+      --right-panel-w: 264px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      color: var(--dark);
+      background: var(--bg-stage);
+      overflow: hidden;
+    }
+
+    /* ─── APP SHELL ─────────────────────────────────────────────── */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* ─── TOP TOOLBAR ───────────────────────────────────────────── */
+    .toolbar {
+      height: var(--toolbar-h);
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 0;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    /* Logo + breadcrumb */
+    .toolbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+    .logo-mark {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+    }
+    .logo-divider {
+      color: var(--border);
+      font-size: 18px;
+      font-weight: 300;
+      line-height: 1;
+      margin: 0 2px;
+      user-select: none;
+    }
+    .filename-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: text;
+      padding: 3px 5px;
+      border-radius: var(--radius);
+      transition: background 0.12s;
+    }
+    .filename-wrapper:hover {
+      background: var(--hover-bg);
+    }
+    .filename {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      white-space: nowrap;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pencil-icon {
+      color: var(--muted);
+      font-size: 11px;
+      opacity: 0.7;
+    }
+
+    /* Draft badge — fix #5: dark text on light bg */
+    .draft-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      padding: 0 7px;
+      background: #E2E6F0;
+      border: 1px solid #C8CEDC;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #4A5568;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    /* Center tools */
+    .toolbar-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .tool-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+    .tool-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      transition: background 0.1s, color 0.1s;
+      position: relative;
+    }
+    .tool-btn:hover {
+      background: #F3F4F6;
+      color: var(--dark);
+    }
+    .tool-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    .tool-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tool-btn.t-btn {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    /* Zoom controls */
+    .zoom-group {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .zoom-btn {
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.1s;
+    }
+    .zoom-btn:hover {
+      background: var(--hover-bg);
+    }
+    .zoom-value {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      padding: 0 8px;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      height: 26px;
+      display: flex;
+      align-items: center;
+      cursor: default;
+      min-width: 42px;
+      justify-content: center;
+    }
+
+    /* Size chip / Magic Resize area */
+    .size-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 6px;
+    }
+    .size-chip {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+      position: relative;
+    }
+    .size-chip:hover {
+      background: var(--hover-bg);
+      border-color: #CBD5E1;
+    }
+    .size-chip-arrow {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: 1px;
+    }
+    .size-dropdown {
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+      min-width: 160px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+      z-index: 200;
+      overflow: hidden;
+      display: none;
+    }
+    .size-chip:hover .size-dropdown {
+      display: block;
+    }
+    .size-dropdown-item {
+      height: 34px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--dark);
+      cursor: pointer;
+      transition: background 0.08s;
+    }
+    .size-dropdown-item:hover {
+      background: var(--hover-bg);
+    }
+    .size-dropdown-item.active-size {
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .size-dropdown-item .size-ratio {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .magic-resize-btn {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--primary);
+      border-radius: var(--radius);
+      background: var(--primary-light);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .magic-resize-btn:hover {
+      background: #dbeafe;
+    }
+    .magic-resize-btn .sparkle {
+      font-size: 11px;
+    }
+
+    /* Right toolbar */
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+      margin-left: 14px;
+    }
+
+    /* Export split button */
+    .export-split {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: visible;
+      position: relative;
+    }
+    .export-main {
+      height: 32px;
+      padding: 0 11px;
+      border: none;
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s;
+      border-right: 1px solid var(--border);
+      border-radius: var(--radius) 0 0 var(--radius);
+    }
+    .export-main:hover {
+      background: var(--hover-bg);
+    }
+    .export-chevron {
+      height: 32px;
+      width: 26px;
+      border: none;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      transition: background 0.12s;
+      position: relative;
+    }
+    .export-chevron:hover {
+      background: var(--hover-bg);
+    }
+    .export-chevron svg {
+      width: 10px;
+      height: 10px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .export-dropdown {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      min-width: 210px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06);
+      z-index: 200;
+      overflow: hidden;
+      display: none;
+    }
+    .export-split:hover .export-dropdown {
+      display: block;
+    }
+    .export-dropdown-item {
+      height: 38px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--dark);
+      cursor: pointer;
+      gap: 8px;
+      transition: background 0.08s;
+    }
+    .export-dropdown-item:hover {
+      background: var(--hover-bg);
+    }
+    .export-dropdown-item .export-icon {
+      font-size: 13px;
+      width: 16px;
+      text-align: center;
+    }
+    .export-dropdown-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+    .export-dropdown-item.batch-item {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      height: 32px;
+      padding: 0 14px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-primary .sparkle {
+      font-size: 11px;
+    }
+    .user-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      flex-shrink: 0;
+      letter-spacing: 0.3px;
+    }
+
+    /* ─── BODY ROW ──────────────────────────────────────────────── */
+    .body-row {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ─── LEFT PANEL ────────────────────────────────────────────── */
+    .left-panel {
+      width: var(--left-panel-w);
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    /* Panel Tabs */
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .panel-tab {
+      flex: 1;
+      height: 38px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .panel-tab:hover {
+      color: var(--dark);
+    }
+    .panel-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Layer list */
+    .layer-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+      min-height: 0;
+    }
+    .layer-row {
+      display: flex;
+      align-items: center;
+      height: 36px;
+      padding: 0 10px;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.08s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+    .layer-row:hover {
+      background: var(--hover-bg);
+    }
+    .layer-row.selected {
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+    .layer-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .layer-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .layer-row.selected .layer-name {
+      font-weight: 500;
+    }
+    .layer-icons {
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .layer-row:hover .layer-icons,
+    .layer-row.selected .layer-icons {
+      opacity: 1;
+    }
+    .layer-icon-btn {
+      width: 18px;
+      height: 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 11px;
+      border-radius: 3px;
+      transition: background 0.08s, color 0.08s;
+    }
+    .layer-icon-btn:hover {
+      background: rgba(0,0,0,0.06);
+      color: var(--dark);
+    }
+    .layer-icon-btn svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Thumbnail fills */
+    .thumb-logo {
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* SVG internal label — font-size exception allowed */
+      font-size: 9px;
+      font-weight: 700;
+      color: #001E4E;
+      letter-spacing: 0.5px;
+    }
+    .thumb-text {
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* SVG internal label — font-size exception allowed */
+      font-size: 8px;
+      font-weight: 800;
+      color: #1A1F2E;
+    }
+    .thumb-photo {
+      background: linear-gradient(135deg, #F4A261, #E76F51);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .thumb-photo-inner {
+      width: 12px;
+      height: 14px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 2px;
+    }
+    .thumb-sub-headline {
+      background: #fef3c7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* SVG internal label — font-size exception allowed */
+      font-size: 7px;
+      font-weight: 600;
+      color: #92400e;
+    }
+    .thumb-bg {
+      background: linear-gradient(135deg, #F4A261 0%, #E76F51 100%);
+    }
+
+    /* Brand colors section */
+    .brand-section {
+      border-top: 1px solid var(--border);
+      padding: 10px 13px 0;
+      flex-shrink: 0;
+    }
+    .brand-sync-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+    .brand-sync-indicator {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .brand-sync-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--success);
+      letter-spacing: 0.2px;
+    }
+    /* Short section label (≤ 20 chars) — all-caps kept */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+    .brand-colors {
+      display: flex;
+      gap: 7px;
+      padding-bottom: 12px;
+    }
+    .color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 1.5px solid rgba(0,0,0,0.12);
+      transition: transform 0.1s;
+      flex-shrink: 0;
+    }
+    .color-swatch:hover {
+      transform: scale(1.15);
+    }
+    .color-swatch.white {
+      border-color: var(--border);
+    }
+
+    /* Multi-size preview strip */
+    .size-preview-strip {
+      border-top: 1px solid var(--border);
+      padding: 10px 13px;
+      flex-shrink: 0;
+    }
+    /* Short label (≤ 20 chars) — all-caps kept */
+    .size-preview-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .size-preview-chips {
+      display: flex;
+      gap: 6px;
+    }
+    .size-chip-thumb {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 5px 4px;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      transition: border-color 0.12s, background 0.12s;
+      background: #fff;
+    }
+    .size-chip-thumb:hover {
+      border-color: #CBD5E1;
+      background: var(--hover-bg);
+    }
+    .size-chip-thumb.active-thumb {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .thumb-box {
+      border-radius: 2px;
+      background: #E8E8E8;
+      border: 1px solid rgba(0,0,0,0.08);
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .thumb-box-inner {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #F4A261 0%, #E76F51 100%);
+    }
+    .size-chip-thumb.greyed-thumb .thumb-box {
+      background: #E8E8E8;
+    }
+    .size-chip-thumb.greyed-thumb .thumb-box-inner {
+      display: none;
+    }
+    .size-chip-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.3px;
+    }
+    .size-chip-thumb.active-thumb .size-chip-label {
+      color: var(--primary);
+    }
+    .size-chip-thumb.greyed-thumb .size-chip-label {
+      color: #D1D5DB;
+    }
+
+    /* Panel footer */
+    .panel-footer {
+      border-top: 1px solid var(--border);
+      padding: 8px 10px;
+      flex-shrink: 0;
+    }
+    .add-layer-btn {
+      width: 100%;
+      height: 30px;
+      border: 1px dashed #CBD5E1;
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .add-layer-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+    }
+
+    /* ─── CENTER STAGE ──────────────────────────────────────────── */
+    .stage {
+      flex: 1;
+      background: #E8E8E8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle grid dots on stage */
+    .stage::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, #C0C3D0 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* Floating element toolbar above canvas */
+    .element-toolbar {
+      position: absolute;
+      top: calc(50% - 250px - 46px);
+      left: 50%;
+      transform: translateX(-50%);
+      height: 32px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    .el-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .el-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+    }
+    .el-tool {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 12px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .el-tool:hover {
+      background: var(--hover-bg);
+      color: var(--dark);
+    }
+    .el-tool.active {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .el-tool svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .el-size {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dark);
+      min-width: 24px;
+      text-align: center;
+    }
+    .el-color {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      background: #fff;
+      border: 2px solid var(--dark);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.1s;
+    }
+    .el-color:hover {
+      transform: scale(1.1);
+    }
+
+    /* Artboard wrapper — for label below */
+    .artboard-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* Artboard */
+    .artboard {
+      width: 500px;
+      height: 500px;
+      background: #fff;
+      border-radius: 2px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.06),
+        0 12px 40px rgba(0,0,0,0.22),
+        0 4px 12px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* Artboard size label */
+    .artboard-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(90, 95, 115, 0.75);
+      letter-spacing: 0.3px;
+      user-select: none;
+    }
+
+    /* Artboard interior */
+    .artboard-bg {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(155deg, #F6A96A 0%, #E8803E 45%, #E06645 80%, #D85840 100%);
+    }
+
+    /* Subtle vignette */
+    .artboard-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(255,220,180,0.18) 0%, rgba(0,0,0,0.08) 100%);
+      pointer-events: none;
+    }
+
+    /* Art typography */
+    .art-eyebrow {
+      position: absolute;
+      top: 44px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 8px;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase;
+      z-index: 2;
+    }
+
+    .art-summer {
+      position: absolute;
+      top: 62px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 34px;
+      font-weight: 400;
+      letter-spacing: 18px;
+      color: rgba(255,255,255,0.93);
+      text-transform: uppercase;
+      z-index: 2;
+    }
+
+    /* The selected text element (SALE headline) */
+    .art-sale-wrapper {
+      position: absolute;
+      top: 116px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      padding: 4px;
+    }
+    /* Selection bounding box */
+    .art-sale-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border: 1.5px dashed var(--primary);
+      border-radius: 1px;
+      pointer-events: none;
+    }
+
+    /* 8 handle squares */
+    .selection-handles {
+      position: absolute;
+      inset: -8px;
+      pointer-events: none;
+    }
+    .handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      border: 1.5px solid var(--primary);
+      border-radius: 1px;
+    }
+    .handle.tl { top: -4px;    left: -4px; }
+    .handle.tc { top: -4px;    left: calc(50% - 4px); }
+    .handle.tr { top: -4px;    right: -4px; }
+    .handle.ml { top: calc(50% - 4px); left: -4px; }
+    .handle.mr { top: calc(50% - 4px); right: -4px; }
+    .handle.bl { bottom: -4px; left: -4px; }
+    .handle.bc { bottom: -4px; left: calc(50% - 4px); }
+    .handle.br { bottom: -4px; right: -4px; }
+
+    .art-sale {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 104px;
+      font-weight: 900;
+      letter-spacing: 5px;
+      color: #fff;
+      text-shadow: 0 4px 28px rgba(0,0,0,0.22), 0 1px 6px rgba(0,0,0,0.16);
+      line-height: 1;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    /* Sub-headline offer strip */
+    .art-offer {
+      position: absolute;
+      top: 252px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.85);
+      z-index: 3;
+    }
+
+    /* Decorative line */
+    .art-line {
+      position: absolute;
+      top: 115px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50px;
+      height: 1px;
+      background: rgba(255,255,255,0.45);
+      z-index: 2;
+    }
+
+    /* Product silhouette */
+    .art-product {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 155px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 10px;
+      border: 1.5px solid rgba(255,255,255,0.38);
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      backdrop-filter: blur(3px);
+    }
+    .product-tag {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.55);
+      position: absolute;
+      top: -11px;
+      right: 16px;
+    }
+    .product-body {
+      width: 68px;
+      height: 80px;
+      background: rgba(255,255,255,0.16);
+      border-radius: 5px;
+      border: 1px solid rgba(255,255,255,0.32);
+      margin-top: 12px;
+    }
+    .product-base {
+      width: 88px;
+      height: 8px;
+      background: rgba(255,255,255,0.13);
+      border-radius: 2px;
+    }
+
+    /* RL monogram bottom-right */
+    .art-monogram {
+      position: absolute;
+      bottom: 26px;
+      right: 30px;
+      font-family: 'Georgia', serif;
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.78);
+      z-index: 4;
+    }
+
+    /* Bottom-left tiny label — inside artboard on dark bg, contrast OK */
+    .art-season {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 2.5px;
+      color: rgba(255,255,255,0.6);
+      text-transform: uppercase;
+      z-index: 4;
+    }
+
+    /* Canvas zoom indicator chip */
+    .zoom-chip {
+      position: absolute;
+      bottom: calc(var(--statusbar-h) + 16px);
+      right: calc(var(--right-panel-w) + 16px);
+      height: 22px;
+      background: rgba(26,31,46,0.72);
+      border-radius: 11px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    /* ─── RIGHT PANEL ───────────────────────────────────────────── */
+    .right-panel {
+      width: var(--right-panel-w);
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    .right-panel::-webkit-scrollbar {
+      width: 4px;
+    }
+    .right-panel::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .rp-header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .rp-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--dark);
+      letter-spacing: 0.1px;
+    }
+    .rp-subtitle {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .rp-selected-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    /* Property section */
+    .prop-section {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px 12px;
+    }
+    /* Short section label (≤ 20 chars) — all-caps kept */
+    .prop-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    /* Form rows */
+    .prop-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 7px;
+    }
+    .prop-row:last-child {
+      margin-bottom: 0;
+    }
+    .prop-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+    }
+    .prop-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+    }
+    .prop-input {
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      padding: 0 8px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.12s, box-shadow 0.12s;
+      cursor: text;
+    }
+    .prop-input:hover {
+      border-color: #CBD5E1;
+    }
+    .prop-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(12, 105, 234, 0.12);
+    }
+    .prop-select {
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235C6478' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      padding: 0 26px 0 8px;
+      width: 100%;
+      outline: none;
+      appearance: none;
+      cursor: pointer;
+      transition: border-color 0.12s;
+    }
+    .prop-select:hover {
+      border-color: #CBD5E1;
+    }
+
+    /* Color + opacity row */
+    .color-opacity-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .prop-color-field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .prop-color-swatch {
+      width: 52px;
+      height: 28px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 3px 6px;
+      transition: border-color 0.12s;
+    }
+    .prop-color-swatch:hover {
+      border-color: #CBD5E1;
+    }
+    .swatch-square {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: #fff;
+      border: 1.5px solid #1A1F2E;
+      flex-shrink: 0;
+    }
+    .swatch-hex {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Text align buttons */
+    .align-buttons {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .align-btn {
+      flex: 1;
+      height: 28px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+      transition: background 0.1s, color 0.1s;
+    }
+    .align-btn:last-child {
+      border-right: none;
+    }
+    .align-btn:hover {
+      background: var(--hover-bg);
+      color: var(--dark);
+    }
+    .align-btn.active {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .align-btn svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+    }
+
+    /* Link icon between W/H */
+    .link-icon {
+      width: 16px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--muted);
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+    .link-icon svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* AI generate copy — prominent */
+    .generate-copy-btn {
+      width: 100%;
+      height: 34px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      transition: background 0.12s;
+    }
+    .generate-copy-btn:hover {
+      background: var(--primary-hover);
+    }
+    .generate-copy-btn .sparkle {
+      font-size: 13px;
+    }
+
+    /* AI copy preview */
+    .copy-preview {
+      background: #F8FAFF;
+      border: 1px solid #DBEAFE;
+      border-radius: var(--radius);
+      padding: 8px 10px;
+      margin-bottom: 6px;
+    }
+    .copy-preview-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--dark);
+      font-style: italic;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+    .copy-preview-use {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .copy-preview-use:hover {
+      text-decoration: underline;
+    }
+
+    /* AI remove bg button */
+    .ai-btn-secondary {
+      width: 100%;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .ai-btn-secondary:hover {
+      background: var(--hover-bg);
+      border-color: #CBD5E1;
+      color: var(--dark);
+    }
+
+    /* Creative notes collapsible */
+    .creative-notes-section {
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .creative-notes-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.1s;
+    }
+    .creative-notes-toggle:hover {
+      background: var(--hover-bg);
+    }
+    .creative-notes-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .creative-notes-title .cn-icon {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .creative-notes-chevron {
+      color: var(--muted);
+      font-size: 11px;
+      transition: transform 0.15s;
+    }
+    .creative-notes-body {
+      padding: 0 14px 14px;
+    }
+    .cn-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .cn-textarea {
+      width: 100%;
+      min-height: 60px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--dark);
+      padding: 7px 9px;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      transition: border-color 0.12s, box-shadow 0.12s;
+      margin-bottom: 10px;
+    }
+    .cn-textarea::placeholder {
+      color: #C0C5D0;
+    }
+    .cn-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(12, 105, 234, 0.1);
+    }
+    .cn-variant-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #F8F9FA;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 9px;
+    }
+    .cn-variant-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .cn-variant-id {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--dark);
+      font-family: 'Courier New', monospace;
+      letter-spacing: 0.2px;
+    }
+
+    /* AI Tools section wrapper */
+    .ai-section {
+      padding: 10px 14px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    /* Short label (≤ 20 chars) — all-caps kept */
+    .ai-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ─── STATUS BAR ────────────────────────────────────────────── */
+    .status-bar {
+      height: var(--statusbar-h);
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 0;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+    }
+    .status-item {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .status-center {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-zoom-mini {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-zoom-bar {
+      width: 60px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      position: relative;
+    }
+    .status-zoom-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 56%;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .status-saved {
+      font-size: 11px;
+      color: #16A34A;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .status-check {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #DCFCE7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* SVG internal icon — small size exception */
+      font-size: 8px;
+      color: #16A34A;
+    }
+
+    /* Scrollbar styling */
+    .layer-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .layer-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── TOP TOOLBAR ─────────────────────────────────────────── -->
+  <div class="toolbar">
+
+    <!-- Logo, Filename, Draft Badge -->
+    <div class="toolbar-logo">
+      <span class="logo-mark">✦ Alli Studio</span>
+      <span class="logo-divider">/</span>
+      <div class="filename-wrapper">
+        <span class="filename">Ralph Lauren — Summer Campaign</span>
+        <span class="pencil-icon">✎</span>
+      </div>
+      <span class="draft-badge">Draft</span>
+      <span style="background:#E8F0FD;color:#0C69EA;font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:0.2px;border:1px solid rgba(12,105,234,0.2);margin-left:4px;">Create new</span>
+    </div>
+
+    <!-- Center Tools -->
+    <div class="toolbar-center">
+      <div class="tool-group">
+
+        <!-- Select/Arrow -->
+        <button class="tool-btn active" title="Select (V)">
+          <svg viewBox="0 0 16 16">
+            <path d="M3 2l10 6.5-5.5 1.5-2 5.5L3 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+        </button>
+
+        <!-- Text -->
+        <button class="tool-btn t-btn" title="Text (T)">T</button>
+
+        <!-- Image -->
+        <button class="tool-btn" title="Image (I)">
+          <svg viewBox="0 0 16 16">
+            <rect x="2" y="2" width="12" height="12" rx="1.5"/>
+            <circle cx="6" cy="6" r="1.3"/>
+            <path d="M2 11l3.5-3.5 2.5 2.5 2-2 4 4"/>
+          </svg>
+        </button>
+
+        <!-- Rectangle -->
+        <button class="tool-btn" title="Shape (R)">
+          <svg viewBox="0 0 16 16">
+            <rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/>
+          </svg>
+        </button>
+
+        <!-- Crop -->
+        <button class="tool-btn" title="Crop (C)">
+          <svg viewBox="0 0 16 16">
+            <path d="M4 1v10a1 1 0 001 1h10"/>
+            <path d="M1 4h10a1 1 0 011 1v10"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="tool-divider"></div>
+
+      <div class="tool-group">
+        <!-- Undo -->
+        <button class="tool-btn" title="Undo (⌘Z)">
+          <svg viewBox="0 0 16 16">
+            <path d="M3 7a5 5 0 115 5"/>
+            <path d="M3 3.5V7h3.5"/>
+          </svg>
+        </button>
+        <!-- Redo -->
+        <button class="tool-btn" title="Redo (⌘⇧Z)">
+          <svg viewBox="0 0 16 16">
+            <path d="M13 7a5 5 0 10-5 5"/>
+            <path d="M13 3.5V7H9.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="tool-divider"></div>
+
+      <!-- Zoom -->
+      <div class="zoom-group">
+        <button class="zoom-btn" title="Zoom out">−</button>
+        <span class="zoom-value">75%</span>
+        <button class="zoom-btn" title="Zoom in">+</button>
+      </div>
+
+      <div class="tool-divider"></div>
+
+      <!-- Canvas Size + Magic Resize -->
+      <div class="size-controls">
+        <div class="size-chip" title="Switch canvas size">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:#5C6478;">
+            <rect x="1" y="1" width="10" height="10" rx="1"/>
+          </svg>
+          <span style="font-size:12px;font-weight:600;color:#1A1F2E;">1080 &times; 1080</span>
+          <span class="size-chip-arrow">&#9660;</span>
+          <!-- Dropdown -->
+          <div class="size-dropdown">
+            <div class="size-dropdown-item active-size">
+              <span>1080 &times; 1080</span>
+              <span class="size-ratio">1:1</span>
+            </div>
+            <div class="size-dropdown-item">
+              <span>1080 &times; 1920</span>
+              <span class="size-ratio">9:16</span>
+            </div>
+            <div class="size-dropdown-item">
+              <span>1200 &times; 628</span>
+              <span class="size-ratio">16:9</span>
+            </div>
+            <div class="size-dropdown-item">
+              <span>1000 &times; 1500</span>
+              <span class="size-ratio">2:3</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="magic-resize-btn" title="Magic Resize — resize to all formats at once">
+          <span class="sparkle">✦</span>
+          Magic Resize
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Right Actions -->
+    <div class="toolbar-right">
+      <!-- Export split button -->
+      <div class="export-split">
+        <button class="export-main" title="Export current size as PNG">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6.5 1v8M3.5 6l3 3 3-3"/><rect x="1.5" y="10" width="10" height="1.5" rx="0.5"/>
+          </svg>
+          Export
+        </button>
+        <button class="export-chevron" title="More export options">
+          <svg viewBox="0 0 10 6">
+            <path d="M2 1.5l3 3 3-3"/>
+          </svg>
+          <!-- Export dropdown -->
+          <div class="export-dropdown">
+            <div class="export-dropdown-item">
+              <span class="export-icon">&#128444;</span>
+              Export current size (1080&times;1080)
+            </div>
+            <div class="export-dropdown-item">
+              <span class="export-icon">&#128190;</span>
+              Export all 3 sizes (PNG)
+            </div>
+            <div class="export-dropdown-divider"></div>
+            <div class="export-dropdown-item batch-item">
+              <span class="export-icon">&#9889;</span>
+              Send to Batch Editor
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <button class="btn-primary">
+        <span class="sparkle">✦</span>
+        Generate Batch
+      </button>
+      <div class="user-avatar" title="Annie Nguyen">AN</div>
+    </div>
+
+  </div><!-- /toolbar -->
+
+  <!-- ── BODY ROW ────────────────────────────────────────────── -->
+  <div class="body-row">
+
+    <!-- ── LEFT PANEL ──────────────────────────────────────── -->
+    <div class="left-panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active">Layers</button>
+        <button class="panel-tab">Assets</button>
+      </div>
+
+      <div class="layer-list">
+
+        <!-- Layer 1: Brand Logo -->
+        <div class="layer-row">
+          <div class="layer-thumb thumb-logo">RL</div>
+          <span class="layer-name">Brand Logo</span>
+          <div class="layer-icons">
+            <button class="layer-icon-btn" title="Toggle visibility">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="7" ry="5"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+            <button class="layer-icon-btn" title="Toggle lock">
+              <svg viewBox="0 0 16 16"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Layer 2: Headline Text (SELECTED) -->
+        <div class="layer-row selected">
+          <div class="layer-thumb thumb-text">SALE</div>
+          <span class="layer-name">Headline Text</span>
+          <div class="layer-icons">
+            <button class="layer-icon-btn" title="Toggle visibility">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="7" ry="5"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+            <button class="layer-icon-btn" title="Toggle lock">
+              <svg viewBox="0 0 16 16"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Layer 3: Sub-headline -->
+        <div class="layer-row">
+          <div class="layer-thumb thumb-sub-headline" style="font-size:6px;font-weight:700;color:#92400e;background:#fef3c7;display:flex;align-items:center;justify-content:center;">40%</div>
+          <span class="layer-name">Sub-headline</span>
+          <div class="layer-icons">
+            <button class="layer-icon-btn" title="Toggle visibility">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="7" ry="5"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+            <button class="layer-icon-btn" title="Toggle lock">
+              <svg viewBox="0 0 16 16"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Layer 4: Product Photo -->
+        <div class="layer-row">
+          <div class="layer-thumb thumb-photo">
+            <div class="thumb-photo-inner"></div>
+          </div>
+          <span class="layer-name">Product Photo</span>
+          <div class="layer-icons">
+            <button class="layer-icon-btn" title="Toggle visibility">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="7" ry="5"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+            <button class="layer-icon-btn" title="Toggle lock">
+              <svg viewBox="0 0 16 16"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Layer 5: Background -->
+        <div class="layer-row">
+          <div class="layer-thumb thumb-bg"></div>
+          <span class="layer-name">Background</span>
+          <div class="layer-icons">
+            <button class="layer-icon-btn" title="Toggle visibility">
+              <svg viewBox="0 0 16 16"><ellipse cx="8" cy="8" rx="7" ry="5"/><circle cx="8" cy="8" r="2"/></svg>
+            </button>
+            <button class="layer-icon-btn" title="Toggle lock">
+              <svg viewBox="0 0 16 16"><rect x="4" y="7" width="8" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /layer-list -->
+
+      <!-- Brand Colors — Alli Synced -->
+      <div class="brand-section">
+        <div class="brand-sync-label">
+          <div class="brand-sync-indicator"></div>
+          <span class="brand-sync-text">Alli Synced ✓</span>
+        </div>
+        <div class="section-label">Brand Colors</div>
+        <div class="brand-colors">
+          <div class="color-swatch" style="background:#1A1F2E;" title="Black"></div>
+          <div class="color-swatch white" style="background:#fff;" title="White"></div>
+          <div class="color-swatch" style="background:#001E4E;" title="RL Navy"></div>
+          <div class="color-swatch" style="background:#B8960C;" title="Gold"></div>
+          <div class="color-swatch" style="background:#8C8279;" title="Warm Gray"></div>
+          <div class="color-swatch" style="background:#CC0000;" title="Red"></div>
+        </div>
+      </div>
+
+      <!-- Multi-size preview strip -->
+      <div class="size-preview-strip">
+        <div class="size-preview-label">Other Sizes</div>
+        <div class="size-preview-chips">
+          <!-- 1:1 — active -->
+          <div class="size-chip-thumb active-thumb" title="1080 × 1080 — current">
+            <div class="thumb-box" style="width:32px;height:32px;">
+              <div class="thumb-box-inner"></div>
+            </div>
+            <span class="size-chip-label">1:1</span>
+          </div>
+          <!-- 9:16 — not rendered -->
+          <div class="size-chip-thumb greyed-thumb" title="1080 × 1920 — not yet rendered">
+            <div class="thumb-box" style="width:18px;height:32px;"></div>
+            <span class="size-chip-label">9:16</span>
+          </div>
+          <!-- 16:9 — not rendered -->
+          <div class="size-chip-thumb greyed-thumb" title="1200 × 628 — not yet rendered">
+            <div class="thumb-box" style="width:32px;height:17px;"></div>
+            <span class="size-chip-label">16:9</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-footer">
+        <button class="add-layer-btn">+ Add Layer</button>
+      </div>
+    </div><!-- /left-panel -->
+
+    <!-- ── CENTER STAGE ─────────────────────────────────────── -->
+    <div class="stage">
+
+      <!-- Floating element toolbar above artboard -->
+      <div class="element-toolbar">
+        <span class="el-label">Headline Text</span>
+        <div class="el-divider"></div>
+
+        <!-- Align left -->
+        <button class="el-tool" title="Align left">
+          <svg viewBox="0 0 16 16"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+        </button>
+        <!-- Align center (active) -->
+        <button class="el-tool active" title="Align center">
+          <svg viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M3 12h10"/></svg>
+        </button>
+        <!-- Align right -->
+        <button class="el-tool" title="Align right">
+          <svg viewBox="0 0 16 16"><path d="M2 4h12M6 8h8M4 12h10"/></svg>
+        </button>
+
+        <div class="el-divider"></div>
+
+        <span class="el-size">72</span>
+
+        <div class="el-divider"></div>
+
+        <div class="el-color" title="Text color: White"></div>
+      </div>
+
+      <!-- Artboard + label -->
+      <div class="artboard-wrapper">
+        <div class="artboard">
+          <!-- Background gradient -->
+          <div class="artboard-bg"></div>
+
+          <!-- COLLECTION eyebrow -->
+          <div class="art-eyebrow">Collection 2026</div>
+
+          <!-- SUMMER text -->
+          <div class="art-summer">Summer</div>
+
+          <!-- Thin decorative line -->
+          <div class="art-line"></div>
+
+          <!-- SALE (selected element with bounding box + handles) -->
+          <div class="art-sale-wrapper">
+            <div class="selection-handles">
+              <div class="handle tl"></div>
+              <div class="handle tc"></div>
+              <div class="handle tr"></div>
+              <div class="handle ml"></div>
+              <div class="handle mr"></div>
+              <div class="handle bl"></div>
+              <div class="handle bc"></div>
+              <div class="handle br"></div>
+            </div>
+            <div class="art-sale">SALE</div>
+          </div>
+
+          <!-- Sub-headline -->
+          <div class="art-offer">Up to 40% Off — Limited Time</div>
+
+          <!-- Product silhouette -->
+          <div class="art-product">
+            <div class="product-tag"></div>
+            <div class="product-body"></div>
+            <div class="product-base"></div>
+          </div>
+
+          <!-- RL Monogram -->
+          <div class="art-monogram">RL</div>
+
+          <!-- Season label -->
+          <div class="art-season">Summer 2026</div>
+        </div>
+
+        <!-- Artboard size label below artboard -->
+        <div class="artboard-label">1080 &times; 1080</div>
+      </div>
+
+      <!-- Zoom chip -->
+      <div class="zoom-chip">75%</div>
+
+    </div><!-- /stage -->
+
+    <!-- ── RIGHT PANEL ──────────────────────────────────────── -->
+    <div class="right-panel">
+
+      <div class="rp-header">
+        <div class="rp-title">Properties</div>
+        <div class="rp-subtitle">
+          <div class="rp-selected-dot"></div>
+          Headline Text
+        </div>
+      </div>
+
+      <!-- TYPOGRAPHY -->
+      <div class="prop-section">
+        <div class="prop-section-label">Typography</div>
+
+        <!-- Font family -->
+        <div class="prop-row">
+          <div class="prop-field">
+            <span class="prop-label">Font</span>
+            <select class="prop-select">
+              <option>Helvetica Neue</option>
+              <option>Inter</option>
+              <option>Georgia</option>
+              <option>Times New Roman</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Size + Weight -->
+        <div class="prop-row">
+          <div class="prop-field" style="max-width:72px;">
+            <span class="prop-label">Size</span>
+            <input class="prop-input" type="text" value="72" />
+          </div>
+          <div class="prop-field">
+            <span class="prop-label">Weight</span>
+            <select class="prop-select">
+              <option>Bold</option>
+              <option>Black</option>
+              <option>Semibold</option>
+              <option>Medium</option>
+              <option>Regular</option>
+              <option>Light</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Color + Opacity -->
+        <div class="prop-row color-opacity-row">
+          <div class="prop-color-field">
+            <span class="prop-label">Color</span>
+            <div class="prop-color-swatch">
+              <div class="swatch-square"></div>
+              <span class="swatch-hex">FFF</span>
+            </div>
+          </div>
+          <div class="prop-field">
+            <span class="prop-label">Opacity</span>
+            <input class="prop-input" type="text" value="100%" />
+          </div>
+        </div>
+
+        <!-- Text alignment -->
+        <div class="prop-row">
+          <div class="prop-field">
+            <span class="prop-label">Alignment</span>
+            <div class="align-buttons">
+              <button class="align-btn" title="Left">
+                <svg viewBox="0 0 14 14"><path d="M1 2h12M1 5h8M1 8h10M1 11h6"/></svg>
+              </button>
+              <button class="align-btn active" title="Center">
+                <svg viewBox="0 0 14 14"><path d="M1 2h12M3 5h8M2 8h10M4 11h6"/></svg>
+              </button>
+              <button class="align-btn" title="Right">
+                <svg viewBox="0 0 14 14"><path d="M1 2h12M5 5h8M3 8h10M7 11h6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- AI COPY GENERATION — prominent section -->
+      <div class="ai-section">
+        <div class="ai-section-label">
+          <span>✦</span> AI Copywriting
+        </div>
+
+        <!-- Primary generate copy button -->
+        <button class="generate-copy-btn">
+          <span class="sparkle">✦</span>
+          Generate Copy
+        </button>
+
+        <!-- AI-generated preview -->
+        <div class="copy-preview">
+          <div class="copy-preview-text">"Summer Sale — Up to 40% Off"</div>
+          <a class="copy-preview-use">Use this</a>
+        </div>
+
+        <!-- Secondary AI action -->
+        <button class="ai-btn-secondary">✦ Remove background</button>
+      </div>
+
+      <!-- POSITION & SIZE -->
+      <div class="prop-section">
+        <div class="prop-section-label">Position &amp; Size</div>
+
+        <!-- X / Y -->
+        <div class="prop-row">
+          <div class="prop-field">
+            <span class="prop-label">X</span>
+            <input class="prop-input" type="text" value="240" />
+          </div>
+          <div class="prop-field">
+            <span class="prop-label">Y</span>
+            <input class="prop-input" type="text" value="180" />
+          </div>
+        </div>
+
+        <!-- W / H with link icon -->
+        <div class="prop-row" style="align-items: flex-end;">
+          <div class="prop-field">
+            <span class="prop-label">W</span>
+            <input class="prop-input" type="text" value="480" />
+          </div>
+          <div class="link-icon" title="Lock aspect ratio">
+            <svg viewBox="0 0 12 12">
+              <path d="M4 5V4a2 2 0 014 0v1"/>
+              <rect x="2.5" y="5" width="7" height="5" rx="1"/>
+              <circle cx="6" cy="7.5" r="0.75" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="prop-field">
+            <span class="prop-label">H</span>
+            <input class="prop-input" type="text" value="90" />
+          </div>
+        </div>
+
+        <!-- Rotation -->
+        <div class="prop-row">
+          <div class="prop-field" style="max-width:90px;">
+            <span class="prop-label">Rotation</span>
+            <input class="prop-input" type="text" value="0°" />
+          </div>
+        </div>
+
+      </div>
+
+      <!-- APPEARANCE -->
+      <div class="prop-section">
+        <div class="prop-section-label">Appearance</div>
+
+        <!-- Letter spacing / Line height -->
+        <div class="prop-row">
+          <div class="prop-field">
+            <span class="prop-label">Letter spacing</span>
+            <input class="prop-input" type="text" value="8px" />
+          </div>
+          <div class="prop-field">
+            <span class="prop-label">Line height</span>
+            <input class="prop-input" type="text" value="1.2" />
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CREATIVE NOTES — collapsible -->
+      <div class="creative-notes-section">
+        <div class="creative-notes-toggle">
+          <span class="creative-notes-title">
+            <span class="cn-icon">&#128221;</span>
+            Creative Notes
+          </span>
+          <span class="creative-notes-chevron">&#9660;</span>
+        </div>
+        <div class="creative-notes-body">
+          <label class="cn-label">What are you testing with this variant?</label>
+          <textarea
+            class="cn-textarea"
+            placeholder="e.g. Testing serif headline vs. bold sans-serif for summer sale lift on Instagram feed..."
+          ></textarea>
+          <div class="cn-variant-row">
+            <span class="cn-variant-label">Variant ID</span>
+            <span class="cn-variant-id">RL_SummerBanner_H1_v001</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+
+  </div><!-- /body-row -->
+
+  <!-- ── STATUS BAR ──────────────────────────────────────────── -->
+  <div class="status-bar">
+    <div class="status-left">
+      <span class="status-item">1080 &times; 1080 px</span>
+      <span class="status-dot"></span>
+      <span class="status-item">RGB</span>
+      <span class="status-dot"></span>
+      <span class="status-item">5 layers</span>
+    </div>
+    <div class="status-center">
+      <div class="status-zoom-mini">
+        <span style="font-size:11px;color:var(--muted);">Zoom</span>
+        <div class="status-zoom-bar">
+          <div class="status-zoom-fill"></div>
+        </div>
+        <span style="font-size:11px;color:var(--dark);font-weight:500;">75%</span>
+      </div>
+    </div>
+    <div class="status-right">
+      <div class="status-saved">
+        <div class="status-check">&#10003;</div>
+        Auto-saved 2 min ago
+      </div>
+    </div>
+  </div><!-- /status-bar -->
+
+</div><!-- /app -->
+</body>
+</html>

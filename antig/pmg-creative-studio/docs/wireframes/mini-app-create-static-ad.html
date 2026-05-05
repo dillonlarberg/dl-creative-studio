@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Static Ad — Alli Creative Studio</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C69EA;
+    --blue-hover: #0A5DD4;
+    --blue-light: #E8F0FD;
+    --blue-mid: #C5D9FB;
+    --bg: #EBEDF7;
+    --white: #FFFFFF;
+    --sidebar-bg: #1A1F2E;
+    --text-primary: #1A1F2E;
+    --text-secondary: #4A5568;
+    --text-muted: #5C6478;
+    --border: #E2E5EF;
+    --success: #10B981;
+    --success-light: #D1FAE5;
+    --warning: #F59E0B;
+    --gold: #C9A96E;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 220px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+  }
+
+  .logo-mark { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--blue);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+  .logo-name { font-size: 14px; font-weight: 700; color: white; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: #A8B3CF; letter-spacing: 0.3px; margin-left: 36px; }
+
+  .client-pill {
+    margin: 14px 18px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .client-avatar {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #1A1A2E;
+  }
+
+  .client-name { font-size: 11px; font-weight: 600; color: white; flex: 1; }
+  .client-chevron { font-size: 11px; color: #A8B3CF; }
+
+  /* Step list in sidebar */
+  .step-nav { padding: 12px 0; flex: 1; overflow-y: auto; }
+
+  .step-nav-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: #A8B3CF;
+    padding: 8px 18px 6px;
+  }
+
+  .step-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 18px;
+    cursor: pointer; transition: background 0.15s;
+  }
+
+  .step-nav-item:hover { background: rgba(255,255,255,0.05); }
+  .step-nav-item.active { background: rgba(12,105,234,0.18); border-right: 2px solid var(--blue); }
+
+  .step-circle {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .step-circle.done { background: var(--success); color: white; }
+  .step-circle.active { background: var(--blue); color: white; }
+  .step-circle.pending { background: rgba(255,255,255,0.1); color: #A8B3CF; border: 1px solid rgba(255,255,255,0.12); }
+
+  .step-nav-text {}
+  .step-nav-name { font-size: 12px; font-weight: 600; color: white; line-height: 1.2; }
+  .step-nav-name.pending { color: #A8B3CF; font-weight: 500; }
+  .step-nav-sub { font-size: 11px; color: #A8B3CF; }
+  .step-nav-sub.done-sub { color: var(--success); }
+
+  .step-connector {
+    width: 1px; height: 12px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 auto 0 26px;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 220px;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 52px;
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 5;
+  }
+
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .breadcrumb-sep { color: #C5CBDA; }
+  .breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+
+  .topbar-spacer { flex: 1; }
+
+  .topbar-step-indicator {
+    font-size: 12px; color: var(--text-muted); font-weight: 500;
+  }
+
+  .topbar-step-indicator strong { color: var(--text-primary); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; font-family: var(--font); transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn svg { width: 13px; height: 13px; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text-primary); }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: var(--blue-hover); }
+
+  /* ── PAGE LAYOUT ── */
+  .page-body { flex: 1; padding: 32px 28px 48px; max-width: 1100px; }
+
+  /* ── STEP HEADER ── */
+  .step-header {
+    margin-bottom: 28px;
+  }
+
+  .step-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase; color: var(--blue);
+    background: var(--blue-light);
+    padding: 3px 10px; border-radius: 20px;
+    margin-bottom: 10px;
+  }
+
+  .step-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+
+  .step-title {
+    font-size: 22px; font-weight: 800; color: var(--text-primary);
+    letter-spacing: -0.4px; margin-bottom: 6px;
+  }
+
+  .step-desc { font-size: 13px; color: var(--text-secondary); max-width: 560px; }
+
+  /* ── TWO-COLUMN LAYOUT ── */
+  .step-columns { display: grid; grid-template-columns: 1fr 360px; gap: 20px; align-items: start; }
+
+  /* ── FORM CARD ── */
+  .form-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .form-section {
+    padding: 20px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-section:last-child { border-bottom: none; }
+
+  .form-section-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .form-section-title svg { width: 12px; height: 12px; }
+
+  /* Slot input row */
+  .slot-row {
+    margin-bottom: 14px;
+  }
+
+  .slot-row:last-child { margin-bottom: 0; }
+
+  .slot-label {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .slot-label-text {
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .slot-type-chip {
+    font-size: 10px; font-weight: 700; padding: 1px 6px;
+    border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+
+  .chip-text { background: #E0F2FE; color: #0369A1; }
+  .chip-image { background: #F3E8FF; color: #6D28D9; }
+  .chip-cta { background: #FEF3C7; color: #92400E; }
+
+  .slot-ai-btn {
+    font-size: 11px; font-weight: 600; color: var(--blue);
+    background: transparent; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+    font-family: var(--font); padding: 0;
+  }
+
+  .slot-ai-btn:hover { color: var(--blue-hover); }
+
+  .field-input {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font-size: 13px; font-family: var(--font);
+    color: var(--text-primary); background: var(--white);
+    outline: none; transition: border-color 0.15s;
+    resize: none;
+  }
+
+  .field-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(12,105,234,0.08); }
+  .field-input.filled { border-color: var(--border); background: #FAFBFF; }
+  .field-input::placeholder { color: #9DAAB8; }
+
+  .field-input.active-field { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(12,105,234,0.08); }
+
+  .field-char-count { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 3px; }
+
+  /* AI suggestion strip */
+  .ai-suggestion {
+    margin-top: 6px;
+    background: var(--blue-light);
+    border: 1px solid var(--blue-mid);
+    border-radius: 6px;
+    padding: 8px 12px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+
+  .ai-suggestion-icon {
+    font-size: 12px; flex-shrink: 0; margin-top: 1px;
+  }
+
+  .ai-suggestion-text {
+    font-size: 12px; color: var(--text-primary); flex: 1; font-style: italic;
+  }
+
+  .ai-suggestion-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
+
+  .ai-use-btn {
+    font-size: 11px; font-weight: 700; color: var(--blue);
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--font); padding: 0; white-space: nowrap;
+  }
+
+  .ai-dismiss-btn {
+    font-size: 11px; color: var(--text-muted);
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--font); padding: 0;
+  }
+
+  /* Image upload slot */
+  .image-upload-area {
+    border: 1px dashed var(--border); border-radius: 6px;
+    padding: 16px; display: flex; align-items: center; gap: 14px;
+    background: var(--bg); cursor: pointer; transition: all 0.15s;
+  }
+
+  .image-upload-area:hover { border-color: var(--blue); background: var(--blue-light); }
+
+  .image-upload-area.has-image {
+    border: 1px solid var(--border); background: var(--white);
+    cursor: default;
+  }
+
+  .image-upload-area.has-image:hover { border-color: var(--border); background: var(--white); }
+
+  .img-thumb {
+    width: 64px; height: 64px; border-radius: 6px; flex-shrink: 0;
+    overflow: hidden; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+  }
+
+  .img-thumb svg { width: 100%; height: 100%; }
+
+  .img-upload-meta { flex: 1; min-width: 0; }
+  .img-upload-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .img-upload-size { font-size: 11px; color: var(--text-muted); }
+
+  .img-upload-actions { display: flex; gap: 6px; }
+
+  .img-action-btn {
+    font-size: 11px; font-weight: 600;
+    padding: 5px 10px; border-radius: 5px;
+    border: 1px solid var(--border); background: var(--white);
+    color: var(--text-secondary); cursor: pointer; font-family: var(--font);
+  }
+
+  .img-action-btn.primary { background: var(--blue-light); color: var(--blue); border-color: var(--blue-mid); }
+
+  .upload-icon-area { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-muted); }
+  .upload-icon-area svg { width: 24px; height: 24px; }
+  .upload-icon-area span { font-size: 11px; font-weight: 600; }
+
+  /* Background selector */
+  .bg-options { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .bg-option {
+    width: 52px; height: 52px; border-radius: 6px;
+    cursor: pointer; border: 2px solid transparent;
+    transition: all 0.15s; flex-shrink: 0; overflow: hidden;
+  }
+
+  .bg-option.selected { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-light); }
+  .bg-option:hover:not(.selected) { border-color: var(--border); }
+
+  .bg-option-ai {
+    width: 52px; height: 52px; border-radius: 6px;
+    border: 1px dashed var(--border); background: transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; cursor: pointer; transition: all 0.15s; color: var(--text-muted);
+    font-size: 10px; font-weight: 600;
+  }
+
+  .bg-option-ai:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+  .bg-option-ai svg { width: 18px; height: 18px; }
+
+  /* ── PREVIEW COLUMN ── */
+  .preview-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: sticky;
+    top: 72px;
+  }
+
+  .preview-card-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .preview-card-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+
+  .preview-size-tabs {
+    display: flex; gap: 2px;
+    background: var(--bg); border-radius: 6px; padding: 2px;
+  }
+
+  .preview-size-tab {
+    padding: 3px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    color: var(--text-muted); border: none; background: transparent;
+    font-family: var(--font); transition: all 0.15s;
+  }
+
+  .preview-size-tab.active { background: var(--white); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+
+  .preview-stage {
+    background: #D8DBE8;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    min-height: 280px;
+  }
+
+  .preview-artboard {
+    width: 240px; height: 240px;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.20);
+    position: relative;
+  }
+
+  .preview-artboard svg { width: 100%; height: 100%; display: block; }
+
+  .preview-artboard-label {
+    text-align: center; font-size: 11px; color: var(--text-muted);
+    margin-top: 8px;
+  }
+
+  .preview-meta {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .preview-fields {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+
+  .preview-field {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11px;
+  }
+
+  .preview-field-key { color: var(--text-muted); width: 64px; flex-shrink: 0; font-weight: 500; }
+  .preview-field-val { color: var(--text-primary); font-weight: 600; flex: 1; }
+  .preview-field-val.empty { color: #C5CBDA; font-weight: 400; font-style: italic; }
+
+  .preview-incomplete {
+    background: #FEF3C7; border: 1px solid #FDE68A;
+    border-radius: 6px; padding: 8px 12px; margin-top: 10px;
+    font-size: 11px; color: #92400E; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── BRAND KIT PANEL ── */
+  .brand-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .brand-card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .brand-card-title { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+
+  .alli-sync-badge {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; color: var(--success);
+  }
+
+  .sync-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .brand-card-body { padding: 12px 16px; }
+
+  .brand-logo-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    padding: 10px; background: #1A1A2E; border-radius: 6px;
+  }
+
+  .brand-logo-img {
+    height: 28px; display: flex; align-items: center;
+  }
+
+  .brand-logo-img svg { height: 28px; width: auto; }
+
+  .brand-logo-label { font-size: 11px; color: #A8B3CF; margin-left: auto; }
+
+  .brand-colors-row {
+    display: flex; gap: 6px; margin-bottom: 12px;
+  }
+
+  .brand-swatch {
+    width: 28px; height: 28px; border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.08);
+    cursor: pointer; transition: transform 0.1s;
+  }
+
+  .brand-swatch:hover { transform: scale(1.1); }
+
+  .brand-font-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; background: var(--bg); border-radius: 5px;
+  }
+
+  .brand-font-preview { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+  .brand-font-name { font-size: 11px; color: var(--text-muted); }
+
+  /* ── COMPLETED STEPS — shown above active step ── */
+  .completed-step {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 12px;
+    cursor: pointer; transition: all 0.15s;
+  }
+
+  .completed-step:hover { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+
+  .completed-check {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--success); color: white;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 12px;
+  }
+
+  .completed-step-info { flex: 1; }
+  .completed-step-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+  .completed-step-summary { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .completed-step-edit { font-size: 11px; color: var(--blue); font-weight: 600; }
+
+  /* ── UPCOMING STEPS ── */
+  .upcoming-steps {
+    margin-top: 20px;
+  }
+
+  .upcoming-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .upcoming-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 6px;
+    opacity: 0.6;
+  }
+
+  .upcoming-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .upcoming-step-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: sticky; bottom: 0;
+    background: var(--white); border-top: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex; align-items: center; gap: 12px;
+    margin-left: 0;
+    z-index: 5;
+  }
+
+  .bottom-nav-info { font-size: 12px; color: var(--text-muted); flex: 1; }
+  .bottom-nav-info strong { color: var(--text-primary); }
+
+  .slot-progress {
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .slot-progress-bar-bg {
+    width: 120px; height: 4px; background: var(--border); border-radius: 4px; overflow: hidden;
+  }
+
+  .slot-progress-bar-fill {
+    height: 100%; width: 66%; background: var(--blue); border-radius: 4px;
+  }
+
+  .slot-progress-label { font-size: 11px; color: var(--text-muted); }
+
+  /* ── SECTION DIVIDER ── */
+  .screen-divider {
+    display: flex; align-items: center; gap: 16px;
+    margin: 40px 0 32px;
+  }
+
+  .screen-divider-line { flex: 1; height: 1px; background: var(--border); }
+
+  .screen-divider-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--text-muted);
+    background: var(--bg); padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  /* ── SIZE SELECTION STEP ── */
+  .size-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  .size-option {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; cursor: pointer; transition: all 0.15s;
+    background: var(--white);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+
+  .size-option.selected { border-color: var(--blue); background: var(--blue-light); }
+  .size-option:hover:not(.selected) { border-color: var(--blue-mid); }
+
+  .size-preview-thumb {
+    border-radius: 3px; background: var(--border);
+    transition: background 0.15s;
+  }
+
+  .size-option.selected .size-preview-thumb { background: var(--blue-mid); }
+
+  .size-name { font-size: 11px; font-weight: 700; color: var(--text-primary); text-align: center; }
+  .size-dims { font-size: 11px; color: var(--text-muted); text-align: center; }
+
+  .size-check {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--blue); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; margin-left: auto;
+  }
+
+  .size-option-row {
+    display: flex; flex-direction: row; align-items: center; gap: 12px;
+    flex: 1; width: 100%;
+  }
+
+  /* ── RENDER STEP ── */
+  .render-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  .render-card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+
+  .render-thumb { height: 140px; background: var(--bg); position: relative; overflow: hidden; }
+  .render-thumb svg { width: 100%; height: 100%; }
+
+  .render-thumb-overlay {
+    position: absolute; inset: 0;
+    background: rgba(12,105,234,0.08);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.15s;
+  }
+
+  .render-card:hover .render-thumb-overlay { opacity: 1; }
+
+  .download-icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--blue); color: white;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .render-card-meta { padding: 8px 10px; border-top: 1px solid var(--border); }
+  .render-card-name { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+  .render-card-size { font-size: 11px; color: var(--text-muted); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg viewBox="0 0 16 16"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/></svg>
+      </div>
+      <span class="logo-name">Alli Studio</span>
+    </div>
+    <div class="logo-sub">Creative Platform</div>
+  </div>
+
+  <div class="client-pill">
+    <div class="client-avatar">RL</div>
+    <span class="client-name">Ralph Lauren</span>
+    <span class="client-chevron">▾</span>
+  </div>
+
+  <div class="step-nav">
+    <div class="step-nav-label">Create Static Ad</div>
+
+    <!-- Step 1 — done -->
+    <div class="step-nav-item">
+      <div class="step-circle done">✓</div>
+      <div class="step-nav-text">
+        <div class="step-nav-name">Choose Template</div>
+        <div class="step-nav-sub done-sub">Summer Sale Banner</div>
+      </div>
+    </div>
+    <div class="step-connector"></div>
+
+    <!-- Step 2 — done -->
+    <div class="step-nav-item">
+      <div class="step-circle done">✓</div>
+      <div class="step-nav-text">
+        <div class="step-nav-name">Brand Kit</div>
+        <div class="step-nav-sub done-sub">Ralph Lauren · Auto-loaded</div>
+      </div>
+    </div>
+    <div class="step-connector"></div>
+
+    <!-- Step 3 — active -->
+    <div class="step-nav-item active">
+      <div class="step-circle active">3</div>
+      <div class="step-nav-text">
+        <div class="step-nav-name">Fill Slots</div>
+        <div class="step-nav-sub">2 of 3 complete</div>
+      </div>
+    </div>
+    <div class="step-connector"></div>
+
+    <!-- Step 4 — pending -->
+    <div class="step-nav-item">
+      <div class="step-circle pending">4</div>
+      <div class="step-nav-text">
+        <div class="step-nav-name pending">Choose Sizes</div>
+      </div>
+    </div>
+    <div class="step-connector"></div>
+
+    <!-- Step 5 — pending -->
+    <div class="step-nav-item">
+      <div class="step-circle pending">5</div>
+      <div class="step-nav-text">
+        <div class="step-nav-name pending">Render &amp; Export</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span>Ralph Lauren</span>
+      <span class="breadcrumb-sep">/</span>
+      <span>Summer 2026</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Create Static Ad</span>
+    </div>
+    <span style="background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:0.2px;border:1px solid rgba(12,105,234,0.2);">Create new</span>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-step-indicator">Step <strong>3</strong> of 5</div>
+    <button class="btn btn-ghost">Save Draft</button>
+  </header>
+
+  <!-- PAGE BODY -->
+  <div class="page-body">
+
+    <!-- COMPLETED STEP 1 -->
+    <div class="completed-step">
+      <div class="completed-check">✓</div>
+      <div class="completed-step-info">
+        <div class="completed-step-name">Step 1 — Choose Template</div>
+        <div class="completed-step-summary">Summer Sale Banner · 1200 × 628 · Ralph Lauren</div>
+      </div>
+      <div class="completed-step-edit">Edit</div>
+    </div>
+
+    <!-- COMPLETED STEP 2 -->
+    <div class="completed-step">
+      <div class="completed-check">✓</div>
+      <div class="completed-step-info">
+        <div class="completed-step-name">Step 2 — Brand Kit</div>
+        <div class="completed-step-summary">Logo · #1A1A2E · #C9A96E · Raleway Bold · Auto-loaded from Alli</div>
+      </div>
+      <div class="completed-step-edit">Edit</div>
+    </div>
+
+    <!-- ── ACTIVE STEP 3 ── -->
+    <div class="step-header">
+      <div class="step-tag"><div class="step-tag-dot"></div>Step 3 of 5</div>
+      <div class="step-title">Fill Variant Slots</div>
+      <div class="step-desc">Add your headline, call-to-action, and product image. The preview updates as you type. Use AI to generate copy suggestions.</div>
+    </div>
+
+    <div class="step-columns">
+
+      <!-- LEFT: slot fill form -->
+      <div>
+        <div class="form-card">
+
+          <!-- Headline slot -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 3h10M1 6h7M1 9h5"/></svg>
+              Headline
+            </div>
+            <div class="slot-row">
+              <div class="slot-label">
+                <div class="slot-label-text">
+                  <span class="slot-type-chip chip-text">Text</span>
+                  Primary headline
+                </div>
+                <button class="slot-ai-btn">✦ Generate</button>
+              </div>
+              <input class="field-input filled active-field" type="text" value="Summer Sale — Up to 40% Off">
+              <div class="field-char-count">30 / 60 chars</div>
+              <!-- AI suggestion shown -->
+              <div class="ai-suggestion">
+                <span class="ai-suggestion-icon">✦</span>
+                <span class="ai-suggestion-text">"Timeless Style, Summer Savings"</span>
+                <div class="ai-suggestion-actions">
+                  <button class="ai-use-btn">Use this</button>
+                  <button class="ai-dismiss-btn">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA slot -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="10" height="6" rx="1"/><path d="M4 6h4"/></svg>
+              Call to Action
+            </div>
+            <div class="slot-row">
+              <div class="slot-label">
+                <div class="slot-label-text">
+                  <span class="slot-type-chip chip-cta">CTA</span>
+                  Button text
+                </div>
+              </div>
+              <input class="field-input filled" type="text" value="Shop Now">
+              <div class="field-char-count">9 / 25 chars</div>
+            </div>
+          </div>
+
+          <!-- Product image slot -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="10" height="10" rx="1"/><path d="M1 8l3-3 2 2 2-3 3 4"/></svg>
+              Product Image
+            </div>
+            <div class="slot-row">
+              <div class="slot-label">
+                <div class="slot-label-text">
+                  <span class="slot-type-chip chip-image">Image</span>
+                  Hero product photo
+                </div>
+                <button class="slot-ai-btn">↑ Remove BG</button>
+              </div>
+              <!-- Uploaded image state -->
+              <div class="image-upload-area has-image">
+                <div class="img-thumb">
+                  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="64" height="64" fill="#D4A76A"/>
+                    <ellipse cx="32" cy="26" rx="12" ry="16" fill="#8B5E3C" opacity="0.75"/>
+                    <rect x="16" y="42" width="32" height="18" rx="2" fill="#8B5E3C" opacity="0.55"/>
+                  </svg>
+                </div>
+                <div class="img-upload-meta">
+                  <div class="img-upload-name">ralph-lauren-polo-jacket.png</div>
+                  <div class="img-upload-size">2400 × 3000 px · 1.2 MB</div>
+                </div>
+                <div class="img-upload-actions">
+                  <button class="img-action-btn">Replace</button>
+                  <button class="img-action-btn primary">Remove BG</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Background slot -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="10" height="10" rx="1.5"/></svg>
+              Background
+            </div>
+            <div class="slot-row">
+              <div class="slot-label">
+                <div class="slot-label-text">
+                  <span class="slot-type-chip chip-image">Image</span>
+                  Background fill
+                </div>
+                <button class="slot-ai-btn">✦ Generate AI bg</button>
+              </div>
+              <div class="bg-options">
+                <!-- Brand color options -->
+                <div class="bg-option selected" style="background: #1A1A2E;" title="Brand dark"></div>
+                <div class="bg-option" style="background: #C9A96E;" title="Brand gold"></div>
+                <div class="bg-option" style="background: #F5F0E8;" title="Brand cream"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #1A1A2E, #3D3060);" title="Deep navy gradient"></div>
+                <div class="bg-option" style="background: linear-gradient(135deg, #C9A96E, #E8D5B0);" title="Gold gradient"></div>
+                <!-- AI generate -->
+                <div class="bg-option-ai">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5z"/></svg>
+                  AI
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT: live preview + brand kit -->
+      <div>
+
+        <!-- Brand kit panel -->
+        <div class="brand-card">
+          <div class="brand-card-header">
+            <div class="brand-card-title">Brand Kit</div>
+            <div class="alli-sync-badge">
+              <div class="sync-dot"></div>
+              Alli synced
+            </div>
+          </div>
+          <div class="brand-card-body">
+            <div class="brand-logo-row">
+              <div class="brand-logo-img">
+                <svg viewBox="0 0 120 28" xmlns="http://www.w3.org/2000/svg">
+                  <text x="2" y="22" font-family="Georgia,serif" font-size="18" font-weight="700" fill="#C9A96E" letter-spacing="2">RALPH LAUREN</text>
+                </svg>
+              </div>
+              <div class="brand-logo-label">Primary</div>
+            </div>
+            <div class="brand-colors-row">
+              <div class="brand-swatch" style="background:#1A1A2E" title="#1A1A2E"></div>
+              <div class="brand-swatch" style="background:#C9A96E" title="#C9A96E"></div>
+              <div class="brand-swatch" style="background:#F5F0E8" title="#F5F0E8"></div>
+              <div class="brand-swatch" style="background:#8B5E3C" title="#8B5E3C"></div>
+              <div class="brand-swatch" style="background:#FFFFFF; border:1px solid #E2E5EF" title="#FFFFFF"></div>
+            </div>
+            <div class="brand-font-row">
+              <div class="brand-font-preview" style="font-family: Georgia, serif; color: #1A1A2E;">Raleway</div>
+              <div class="brand-font-name">Display · Bold</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="preview-card">
+          <div class="preview-card-header">
+            <div class="preview-card-title">Live Preview</div>
+            <div class="preview-size-tabs">
+              <button class="preview-size-tab active">1:1</button>
+              <button class="preview-size-tab">9:16</button>
+              <button class="preview-size-tab">16:9</button>
+            </div>
+          </div>
+          <div class="preview-stage">
+            <div>
+              <div class="preview-artboard">
+                <svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="240" height="240" fill="#1A1A2E"/>
+                  <rect x="0" y="0" width="240" height="155" fill="#D4A76A" opacity="0.85"/>
+                  <ellipse cx="120" cy="78" rx="52" ry="68" fill="#8B5E3C" opacity="0.65"/>
+                  <rect x="14" y="162" width="140" height="16" rx="2" fill="white"/>
+                  <text x="14" y="175" font-family="Georgia,serif" font-size="13" font-weight="700" fill="white" letter-spacing="-0.2">SUMMER SALE</text>
+                  <text x="14" y="193" font-family="Georgia,serif" font-size="9" fill="#C9A96E" letter-spacing="0.5">UP TO 40% OFF</text>
+                  <rect x="14" y="206" width="70" height="22" rx="2" fill="#C9A96E"/>
+                  <text x="26" y="221" font-family="Georgia,serif" font-size="10" font-weight="700" fill="#1A1A2E" letter-spacing="0.5">SHOP NOW</text>
+                  <!-- RL polo icon -->
+                  <circle cx="198" cy="26" r="14" fill="none" stroke="#C9A96E" stroke-width="1.5" opacity="0.6"/>
+                  <text x="193" y="31" font-family="Georgia,serif" font-size="8" fill="#C9A96E" opacity="0.8">RL</text>
+                </svg>
+              </div>
+              <div class="preview-artboard-label">1080 × 1080 px</div>
+            </div>
+          </div>
+          <div class="preview-meta">
+            <div class="preview-fields">
+              <div class="preview-field">
+                <span class="preview-field-key">Headline</span>
+                <span class="preview-field-val">Summer Sale — Up to 40% Off</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-field-key">CTA</span>
+                <span class="preview-field-val">Shop Now</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-field-key">Image</span>
+                <span class="preview-field-val">polo-jacket.png</span>
+              </div>
+              <div class="preview-field">
+                <span class="preview-field-key">Background</span>
+                <span class="preview-field-val">Brand dark #1A1A2E</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SCREEN BREAK: STEP 4 — Choose Sizes ── -->
+    <div class="screen-divider">
+      <div class="screen-divider-line"></div>
+      <div class="screen-divider-label">Step 4 of 5 — Choose Sizes</div>
+      <div class="screen-divider-line"></div>
+    </div>
+
+    <div class="step-header">
+      <div class="step-tag"><div class="step-tag-dot"></div>Step 4 of 5</div>
+      <div class="step-title">Choose Output Sizes</div>
+      <div class="step-desc">Select which platform sizes to render. All selected sizes are generated in one job from the same slot data.</div>
+    </div>
+
+    <div style="max-width: 680px;">
+      <div class="form-card">
+        <div class="form-section">
+          <div class="form-section-title">Platform Sizes</div>
+          <div class="size-grid">
+
+            <div class="size-option selected">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:40px;height:40px;flex-shrink:0;"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Square 1:1</div>
+                  <div class="size-dims">1080 × 1080 · Meta Feed</div>
+                </div>
+                <div class="size-check">✓</div>
+              </div>
+            </div>
+
+            <div class="size-option selected">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:24px;height:40px;flex-shrink:0;"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Story 9:16</div>
+                  <div class="size-dims">1080 × 1920 · Stories</div>
+                </div>
+                <div class="size-check">✓</div>
+              </div>
+            </div>
+
+            <div class="size-option selected">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:56px;height:32px;flex-shrink:0;"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Landscape 16:9</div>
+                  <div class="size-dims">1200 × 628 · Link Ad</div>
+                </div>
+                <div class="size-check">✓</div>
+              </div>
+            </div>
+
+            <div class="size-option">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:30px;height:40px;flex-shrink:0;background:var(--border);"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Portrait 4:5</div>
+                  <div class="size-dims">1080 × 1350 · Instagram</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="size-option">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:28px;height:40px;flex-shrink:0;background:var(--border);"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Pinterest</div>
+                  <div class="size-dims">1000 × 1500</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="size-option">
+              <div style="display:flex;align-items:center;gap:10px;width:100%;">
+                <div class="size-preview-thumb" style="width:56px;height:20px;flex-shrink:0;background:var(--border);"></div>
+                <div style="flex:1;">
+                  <div class="size-name">Display</div>
+                  <div class="size-dims">300 × 250 · Banner</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div style="margin-top:12px; font-size:12px; color:var(--text-muted);">
+            3 sizes selected · <strong style="color:var(--text-primary);">3 renders will be generated</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCREEN BREAK: STEP 5 — Render & Export ── -->
+    <div class="screen-divider">
+      <div class="screen-divider-line"></div>
+      <div class="screen-divider-label">Step 5 of 5 — Render &amp; Export</div>
+      <div class="screen-divider-line"></div>
+    </div>
+
+    <div class="step-header">
+      <div class="step-tag" style="background:var(--success-light);color:var(--success);"><div class="step-tag-dot" style="background:var(--success);"></div>Step 5 of 5 · Complete</div>
+      <div class="step-title">Rendered &amp; Ready to Export</div>
+      <div class="step-desc">3 variants rendered across 3 platform sizes. Download individually or export as a ZIP. Ready for trafficking.</div>
+    </div>
+
+    <div style="max-width: 680px; margin-bottom:24px;">
+      <div class="render-grid">
+
+        <!-- 1:1 rendered -->
+        <div class="render-card">
+          <div class="render-thumb">
+            <svg viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg">
+              <rect width="220" height="140" fill="#1A1A2E"/>
+              <rect x="0" y="0" width="220" height="90" fill="#D4A76A" opacity="0.85"/>
+              <ellipse cx="110" cy="46" rx="44" ry="58" fill="#8B5E3C" opacity="0.65"/>
+              <rect x="10" y="98" width="110" height="12" rx="1" fill="white" opacity="0.95"/>
+              <rect x="10" y="116" width="56" height="16" rx="1" fill="#C9A96E"/>
+            </svg>
+            <div class="render-thumb-overlay">
+              <div class="download-icon-btn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><path d="M8 2v9M4 8l4 4 4-4"/><path d="M2 14h12"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="render-card-meta">
+            <div class="render-card-name">summer-sale-1x1.png</div>
+            <div class="render-card-size">1080 × 1080 · Meta Feed</div>
+          </div>
+        </div>
+
+        <!-- 9:16 rendered -->
+        <div class="render-card">
+          <div class="render-thumb">
+            <svg viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg">
+              <rect width="220" height="140" fill="#1A1A2E"/>
+              <rect x="60" y="0" width="100" height="140" fill="#D4A76A" opacity="0.3"/>
+              <ellipse cx="110" cy="52" rx="30" ry="48" fill="#8B5E3C" opacity="0.6"/>
+              <rect x="20" y="100" width="86" height="10" rx="1" fill="white" opacity="0.9"/>
+              <rect x="20" y="116" width="44" height="14" rx="1" fill="#C9A96E"/>
+            </svg>
+            <div class="render-thumb-overlay">
+              <div class="download-icon-btn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><path d="M8 2v9M4 8l4 4 4-4"/><path d="M2 14h12"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="render-card-meta">
+            <div class="render-card-name">summer-sale-9x16.png</div>
+            <div class="render-card-size">1080 × 1920 · Stories</div>
+          </div>
+        </div>
+
+        <!-- 16:9 rendered -->
+        <div class="render-card">
+          <div class="render-thumb">
+            <svg viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg">
+              <rect width="220" height="140" fill="#1A1A2E"/>
+              <rect x="100" y="0" width="120" height="140" fill="#D4A76A" opacity="0.8"/>
+              <ellipse cx="160" cy="70" rx="40" ry="56" fill="#8B5E3C" opacity="0.6"/>
+              <rect x="10" y="50" width="80" height="14" rx="1" fill="white" opacity="0.95"/>
+              <rect x="10" y="70" width="56" height="8" rx="1" fill="#C9A96E" opacity="0.7"/>
+              <rect x="10" y="84" width="46" height="18" rx="1" fill="#C9A96E"/>
+            </svg>
+            <div class="render-thumb-overlay">
+              <div class="download-icon-btn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><path d="M8 2v9M4 8l4 4 4-4"/><path d="M2 14h12"/></svg>
+              </div>
+            </div>
+          </div>
+          <div class="render-card-meta">
+            <div class="render-card-name">summer-sale-16x9.png</div>
+            <div class="render-card-size">1200 × 628 · Link Ad</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Export actions -->
+      <div style="display:flex;gap:10px;margin-top:16px;align-items:center;">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center;">
+          <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M2.5 7.5l4 4 4-4"/><path d="M1 12h11"/></svg>
+          Download All (ZIP)
+        </button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;">
+          <svg viewBox="0 0 13 13" fill="currentColor"><path d="M1 3h4v4H1zM8 3h4v4H8zM1 9h4v4H1zM8 9h4v4H8z"/></svg>
+          Send to Batch Editor
+        </button>
+      </div>
+
+      <div style="margin-top: 12px; padding: 10px 14px; background: var(--success-light); border: 1px solid #A7F3D0; border-radius: 6px; font-size:12px; color:#065F46; display:flex; align-items:center; gap:8px;">
+        <span>✓</span>
+        <span>3 assets saved to <strong>Ralph Lauren / Summer 2026</strong> in Alli Studio. Ready for trafficking.</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="bottom-nav-info">
+      <div class="slot-progress">
+        <div class="slot-progress-bar-bg">
+          <div class="slot-progress-bar-fill"></div>
+        </div>
+        <span class="slot-progress-label">2 of 3 slots filled</span>
+      </div>
+    </div>
+    <button class="btn btn-ghost">← Back</button>
+    <button class="btn btn-primary">Continue to Sizes →</button>
+  </div>
+
+</div>
+
+</body>
+</html>
