@@ -126,7 +126,13 @@ export function WizardShell<S extends StepData = StepData>({
     [stepData, mergeStepData, navigateToStep, clientSlug, creativeId]
   );
 
-  const goToIndex = useCallback(
+  /**
+   * Forward step transition. Fires onLeave (outgoing) + onEnter (incoming).
+   * If either throws, the navigation is aborted and the user stays put —
+   * matches prod behavior where a failed onEnter (e.g. analyzeCreativeIntent
+   * server error) keeps the user on the current step so they can retry.
+   */
+  const advanceToIndex = useCallback(
     async (nextIndex: number) => {
       const outgoing = manifest.steps[currentStepIndex];
       const incoming = manifest.steps[nextIndex];
@@ -138,11 +144,33 @@ export function WizardShell<S extends StepData = StepData>({
         if (outgoing?.onLeave) await outgoing.onLeave(ctx);
         if (incoming.onEnter) await incoming.onEnter(ctx);
         navigateToStep(incoming.id, true);
+      } catch (err) {
+        console.warn(
+          `WizardShell: advance from "${outgoing?.id}" to "${incoming.id}" aborted —`,
+          err
+        );
       } finally {
         setIsLoading(false);
       }
     },
     [manifest.steps, currentStepIndex, buildContext, navigateToStep]
+  );
+
+  /**
+   * Backward / jump-to-completed-step transition. Skips onLeave + onEnter
+   * to mirror the monolith's Previous Step button (UseCaseWizardPage.tsx
+   * lines 4280-4296), which is a free move that just rewinds the URL +
+   * step state without re-running side effects. Without this, a failing
+   * onEnter on the destination step (e.g. an Alli API call) would silently
+   * block the user from going back.
+   */
+  const rewindToIndex = useCallback(
+    (nextIndex: number) => {
+      const incoming = manifest.steps[nextIndex];
+      if (!incoming) return;
+      navigateToStep(incoming.id, true);
+    },
+    [manifest.steps, navigateToStep]
   );
 
   // Live validation result drives both the disabled state of Continue and
@@ -176,21 +204,21 @@ export function WizardShell<S extends StepData = StepData>({
     }
 
     if (targetIndex >= manifest.steps.length) return;
-    await goToIndex(targetIndex);
+    await advanceToIndex(targetIndex);
   }, [
     currentStep,
     validation,
     currentStepIndex,
     buildContext,
     manifest.steps,
-    goToIndex,
+    advanceToIndex,
   ]);
 
-  const goBack = useCallback(async () => {
+  const goBack = useCallback(() => {
     setValidationError(null);
     if (currentStepIndex <= 0) return;
-    await goToIndex(currentStepIndex - 1);
-  }, [currentStepIndex, goToIndex]);
+    rewindToIndex(currentStepIndex - 1);
+  }, [currentStepIndex, rewindToIndex]);
 
   const renderProps = useMemo(() => buildContext(), [buildContext]);
 
@@ -266,7 +294,7 @@ export function WizardShell<S extends StepData = StepData>({
                   type="button"
                   onClick={() => {
                     if (index <= currentStepIndex && !isLoading) {
-                      void goToIndex(index);
+                      rewindToIndex(index);
                     }
                   }}
                   className={cn(
@@ -357,7 +385,7 @@ export function WizardShell<S extends StepData = StepData>({
           <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={() => void goBack()}
+              onClick={goBack}
               disabled={currentStepIndex === 0 || isLoading}
               className={cn(
                 'rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all',
