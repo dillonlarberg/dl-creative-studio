@@ -77,6 +77,13 @@ export interface TemplateBuilderStepData {
   logoVariant?: LogoVariant;
   headlineSize?: number;
   priceSize?: number;
+  accentColor?: string;
+  activeFont?: string;
+  backgroundColor?: string;
+  overrideHeadline?: string;
+  showLogo?: boolean;
+  showPrice?: boolean;
+  showCTA?: boolean;
 
   // --- export step ---
   selectedRatios?: string[];
