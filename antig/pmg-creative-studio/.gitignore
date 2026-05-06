@@ -31,3 +31,9 @@ dist-ssr
 
 # Local scratch
 user-info.html
+
+# Playwright artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

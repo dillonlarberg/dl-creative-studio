@@ -402,6 +402,10 @@ const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
         { id: 'generate', name: 'Generate All' },
         { id: 'download', name: 'Download' },
     ],
+    // batch-variants is a registry-only app (preview status, AdLabs-shell-only)
+    // and never routes through the legacy /create/:useCaseId monolith path.
+    // The empty entry exists solely to satisfy the Record<AppId, ...> type.
+    'batch-variants': [],
 };
 
 const MODEL_MAPPING: Record<string, string> = {

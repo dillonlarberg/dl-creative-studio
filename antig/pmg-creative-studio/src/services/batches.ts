@@ -59,4 +59,14 @@ export const batchService = {
         const querySnapshot = await getDocs(collection(db, paths.batchResults(clientSlug, appId, batchId)));
         return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as BatchResult));
     },
+
+    /**
+     * Step 4 of AdLabs v1: read all batches under one app for the dashboard's
+     * Active Batch Jobs section. Caller filters to {pending, processing} and
+     * sorts by createdAt DESC.
+     */
+    async listActiveBatchesForClient(clientSlug: ClientSlug, appId: AppId): Promise<BatchRecord[]> {
+        const snap = await getDocs(collection(db, paths.batches(clientSlug, appId)));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() } as BatchRecord));
+    },
 };
