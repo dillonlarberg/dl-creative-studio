@@ -36,12 +36,7 @@ interface ComingSoonEntry {
 }
 
 const COMING_SOON_SHELF: ComingSoonEntry[] = [
-  {
-    id: 'resize-image',
-    title: 'Resize Image',
-    description:
-      'Lift approved creative into Brand Asset House and AI-expand for new dimensions.',
-  },
+  // Resize Image was promoted to a registered app skeleton (Annie).
   {
     id: 'edit-tweak',
     title: 'Edit & Tweak',
