@@ -4,6 +4,22 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { paths } from '../platform/firebase/paths';
 import type { ClientSlug } from '../platform/firebase/paths';
 
+/**
+ * HOTFIX: brand-standards data still lives at the legacy top-level
+ * `clientAssetHouse/{slug}` collection. PR #7 moved the reader/writer to
+ * `clients/{slug}` (the path-scoped client doc) but did not migrate the
+ * existing data, so the dashboard surfaces "Couldn't load brand standards"
+ * for every client.
+ *
+ * Until the migration ships (tracked separately), this service points at
+ * the legacy path so existing brand-standards data keeps working. When the
+ * migration runs and switches the canonical location to `clients/{slug}`,
+ * flip this back to `paths.client(slug)`.
+ */
+const LEGACY_ASSET_HOUSE_COLLECTION = 'clientAssetHouse';
+const legacyAssetHousePath = (slug: ClientSlug): string =>
+  `${LEGACY_ASSET_HOUSE_COLLECTION}/${slug}`;
+
 export interface AssetHouseItem {
     id: string;
     url: string;
@@ -49,7 +65,7 @@ export const clientAssetHouseService = {
     },
 
     async getAssetHouse(clientSlug: ClientSlug): Promise<ClientAssetHouse | null> {
-        const docRef = doc(db, paths.client(clientSlug));
+        const docRef = doc(db, legacyAssetHousePath(clientSlug));
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -64,7 +80,7 @@ export const clientAssetHouseService = {
     },
 
     async saveAssetHouse(clientSlug: ClientSlug, data: Partial<ClientAssetHouse>): Promise<void> {
-        const docRef = doc(db, paths.client(clientSlug));
+        const docRef = doc(db, legacyAssetHousePath(clientSlug));
         const existing = await this.getAssetHouse(clientSlug);
 
         const payload = {

@@ -53,6 +53,21 @@ export interface WizardStep<S extends StepData = StepData> {
   onEnter?: (ctx: StepContext<S>) => void | Promise<void>;
   onLeave?: (ctx: StepContext<S>) => void | Promise<void>;
   next?: (ctx: StepContext<S>) => string | undefined;
+  /**
+   * Async navigation hook. Used by lifted apps (e.g. video-cutdown) whose
+   * Continue button must kick off long-running server work (Gemini analysis,
+   * FFmpeg stitching) before deciding the next step. The shell awaits
+   * `submit` while showing pending state, then routes to `nextStepId` (or
+   * falls through to advance-by-index if undefined).
+   *
+   * Contract: if `submit` rejects, the user stays on the current step and
+   * the error surfaces via step-local state. The shell does NOT navigate
+   * and does NOT mutate any persisted state on rejection. Step components
+   * are responsible for deferring writes until `submit` resolves.
+   *
+   * If both `submit` and `next` are defined, `submit` wins.
+   */
+  submit?: (ctx: StepContext<S>) => Promise<{ nextStepId?: string }>;
 }
 
 export interface AppManifest<S extends StepData = StepData> {
@@ -64,4 +79,18 @@ export interface AppManifest<S extends StepData = StepData> {
   steps: WizardStep<S>[];
   onMount?: (ctx: AppContext) => void | Promise<void>;
   initialStepData: () => S;
+  /**
+   * Lifecycle status. 'live' apps render the full wizard chrome (default).
+   * 'preview' apps render a "Coming soon" stub view via WizardShell — no
+   * Continue button, no checklist, no step persistence. Used by Step 1 of
+   * the AdLabs v1 plan to register Batch Variants as a clickable card on
+   * the dashboard before the lift work ships.
+   */
+  status?: 'live' | 'preview';
+  /**
+   * When true, the dashboard tile renders disabled until the client's
+   * brand-standards (Asset House) gate is satisfied. Replaces the legacy
+   * `UseCase.requiresBrandStandards` field for registry-driven apps.
+   */
+  requiresBrandStandards?: boolean;
 }

@@ -24,6 +24,42 @@ const navigation = [
     { name: 'Client Asset House', href: '/client-asset-house', icon: BookOpenIcon },
 ];
 
+/**
+ * Extract a clientSlug from the pathname for routes that carry one in the URL.
+ * Recognized shapes (Step 0 of AdLabs v1 plan):
+ *   - /adlabs/:clientSlug/...
+ *   - /:clientSlug/template-builder/... (legacy per-app mount)
+ *   - /:clientSlug/<future-app-basePath>/... (post-Step-1)
+ *
+ * Returns null when no clientSlug is present (e.g. /, /select-client, /login,
+ * /create, /create/:useCaseId, /client-asset-house). Reserved top-level paths
+ * are excluded explicitly so they don't get treated as slugs.
+ */
+const RESERVED_TOP_LEVEL = new Set([
+    '',
+    'login',
+    'select-client',
+    'create',
+    'client-asset-house',
+    'adlabs',
+]);
+
+export function extractClientSlugFromPath(pathname: string): string | null {
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length < 2) return null;
+    const [first, second] = segments;
+    if (first === 'adlabs') {
+        // /adlabs/:clientSlug/...
+        return second && !RESERVED_TOP_LEVEL.has(second) ? second : null;
+    }
+    if (RESERVED_TOP_LEVEL.has(first)) return null;
+    // Legacy /:clientSlug/<app>/... — only accept when the second segment is
+    // a known app basePath. Hardcoded to template-builder for now; expand as
+    // apps land.
+    if (second === 'template-builder') return first;
+    return null;
+}
+
 function nameFromEmail(email?: string): string {
     if (!email || typeof email !== 'string') return '';
     const local = email.split('@')[0];
@@ -80,13 +116,43 @@ export default function AppLayout() {
         : '';
 
     useEffect(() => {
+        // Step 0 of AdLabs v1 plan: reconcile URL :clientSlug with localStorage.
+        // If the URL carries a clientSlug (e.g. /adlabs/ralph_lauren/... or
+        // /ralph_lauren/template-builder/...), prefer it over localStorage and
+        // write it back so a hard refresh on a deep route doesn't bounce the
+        // user to /select-client. URL param wins; if both missing, redirect.
+        const urlSlug = extractClientSlugFromPath(location.pathname);
         const clientStr = localStorage.getItem('selectedClient');
+
+        if (urlSlug) {
+            // Resolve client from URL. If localStorage already matches, just
+            // hydrate. If it doesn't match, fetch the canonical client record
+            // from the slug; until that lands, write a stub so the guard passes.
+            try {
+                const stored = clientStr ? JSON.parse(clientStr) : null;
+                if (stored?.slug === urlSlug) {
+                    setSelectedClient(stored);
+                    loadClientFonts(stored.slug);
+                } else {
+                    const stub: Client = { slug: urlSlug, name: urlSlug } as Client;
+                    localStorage.setItem('selectedClient', JSON.stringify(stub));
+                    setSelectedClient(stub);
+                    loadClientFonts(urlSlug);
+                }
+            } catch {
+                const stub: Client = { slug: urlSlug, name: urlSlug } as Client;
+                localStorage.setItem('selectedClient', JSON.stringify(stub));
+                setSelectedClient(stub);
+                loadClientFonts(urlSlug);
+            }
+            return;
+        }
+
         if (!clientStr && location.pathname !== '/select-client' && location.pathname !== '/login') {
             navigate('/select-client');
         } else if (clientStr) {
             const client = JSON.parse(clientStr);
             setSelectedClient(client);
-            // Load fonts for the client
             loadClientFonts(client.slug);
         }
     }, [location.pathname, navigate]);
