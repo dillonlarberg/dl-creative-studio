@@ -13,15 +13,16 @@ import type { AppManifest, StepData } from '../../apps/types';
  *   3. Subsequent `mergeStepData` calls debounce-persist the merged stepData
  *      back to Firestore.
  *
- * Mirrors the localStorage key pattern + lazy-create flow that
- * UseCaseWizardPage.tsx (lines 1111, 1124, 1141, 1161, 1175) used in the
- * monolith, so the new wizard inherits the existing UX for free.
+ * Creative records now live at clients/{slug}/apps/{appId}/creatives/{id}.
+ * manifest.id is the appId — it is always in scope here, so all three
+ * service calls (create / get / update) can resolve the full path without
+ * any additional storage in localStorage beyond the creativeId itself.
  */
 
 export const PERSIST_DEBOUNCE_MS = 300;
 
 const storageKey = (slug: string, manifestId: string) =>
-  `creative_${slug}_${manifestId}`;
+  `wiz_${slug}_${manifestId}`;
 
 interface UsePersistedStepDataOptions<S extends StepData> {
   manifest: AppManifest<S>;
@@ -103,17 +104,15 @@ export function usePersistedStepData<S extends StepData>({
           return;
         }
 
-        const record = await creativeService.getCreative(stored);
+        // manifest.id is the appId — resolves the full tenanted path
+        const record = await creativeService.getCreative(clientSlug, manifest.id, stored);
         if (cancelled) return;
 
         if (record && record.status !== 'completed') {
           setCreativeId(record.id);
           setStepData({ ...manifest.initialStepData(), ...(record.stepData as S) });
           if (resumeId && typeof window !== 'undefined') {
-            window.localStorage.setItem(
-              storageKey(clientSlug, manifest.id),
-              record.id
-            );
+            window.localStorage.setItem(storageKey(clientSlug, manifest.id), record.id);
           }
         } else {
           if (typeof window !== 'undefined') {
@@ -160,13 +159,13 @@ export function usePersistedStepData<S extends StepData>({
   const flushPersist = useCallback(async () => {
     try {
       const id = await ensureCreativeId();
-      await creativeService.updateCreative(id, {
+      await creativeService.updateCreative(clientSlug, manifest.id, id, {
         stepData: latestStepDataRef.current,
       });
     } catch (err) {
       console.error('usePersistedStepData persist failed:', err);
     }
-  }, [ensureCreativeId]);
+  }, [clientSlug, ensureCreativeId, manifest.id]);
 
   const mergeStepData = useCallback(
     (patch: Partial<S>) => {

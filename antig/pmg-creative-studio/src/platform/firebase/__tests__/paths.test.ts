@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { paths, type AppId } from '../paths';
+import { paths, isAppId, type AppId } from '../paths';
 
 describe('paths', () => {
   describe('client', () => {
@@ -52,6 +52,79 @@ describe('paths', () => {
       expect(paths.storage.app('ralph_lauren', 'edit-image', 'uploads/abc.png')).toBe(
         'clients/ralph_lauren/apps/edit-image/uploads/abc.png'
       );
+    });
+  });
+
+  describe('template paths', () => {
+    it('returns the templates collection path (hardcoded to template-builder)', () => {
+      expect(paths.templates('ralph_lauren')).toBe(
+        'clients/ralph_lauren/apps/template-builder/templates'
+      );
+    });
+
+    it('returns a single template doc path', () => {
+      expect(paths.template('ralph_lauren', 't1')).toBe(
+        'clients/ralph_lauren/apps/template-builder/templates/t1'
+      );
+    });
+  });
+
+  describe('batch paths', () => {
+    it('returns the batches collection path', () => {
+      expect(paths.batches('ralph_lauren', 'feed-processing')).toBe(
+        'clients/ralph_lauren/apps/feed-processing/batches'
+      );
+    });
+
+    it('returns a single batch doc path', () => {
+      expect(paths.batch('ralph_lauren', 'feed-processing', 'b1')).toBe(
+        'clients/ralph_lauren/apps/feed-processing/batches/b1'
+      );
+    });
+
+    it('returns the batch results collection path', () => {
+      expect(paths.batchResults('ralph_lauren', 'feed-processing', 'b1')).toBe(
+        'clients/ralph_lauren/apps/feed-processing/batches/b1/results'
+      );
+    });
+  });
+
+  describe('isAppId', () => {
+    const validIds: AppId[] = [
+      'resize-image', 'edit-image', 'new-image', 'edit-video', 'new-video',
+      'video-cutdown', 'static-creative', 'template-builder', 'feed-processing',
+    ];
+
+    it.each(validIds)('returns true for valid AppId "%s"', (id: AppId) => {
+      expect(isAppId(id)).toBe(true);
+    });
+
+    it('returns false for the pre-Track1 renamed value "image-resize"', () => {
+      expect(isAppId('image-resize')).toBe(false);
+    });
+
+    it('returns false for an arbitrary unknown string', () => {
+      expect(isAppId('not-an-app')).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(isAppId('')).toBe(false);
+    });
+
+    it('returns false for null', () => {
+      expect(isAppId(null)).toBe(false);
+    });
+
+    it('returns false for undefined', () => {
+      expect(isAppId(undefined)).toBe(false);
+    });
+
+    it('returns false for a number', () => {
+      expect(isAppId(42)).toBe(false);
+    });
+
+    it('returns false for an object', () => {
+      expect(isAppId({})).toBe(false);
     });
   });
 

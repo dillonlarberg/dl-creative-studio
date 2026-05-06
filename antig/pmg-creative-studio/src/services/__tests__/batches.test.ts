@@ -1,113 +1,105 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { batchService, type BatchRecord } from '../batches';
+import { batchService } from '../batches';
 
-/**
- * Step 2.5 of AdLabs v1 plan — batches storage path tracers.
- *
- * Asserts that every write goes to the path-scoped tree
- * (`clients/{slug}/apps/{appId}/batches/...`) and never to the legacy
- * top-level `batches` collection. We mock `firebase/firestore` so we can
- * inspect the path strings the service computes.
- */
-
-const calls: { fn: string; path: string }[] = [];
-
-vi.mock('../../firebase', () => ({
-  db: { __mock: 'db' },
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((db, path) => ({ path })),
+  doc: vi.fn((db, path) => ({ path })),
+  addDoc: vi.fn(async () => ({ id: 'b1' })),
+  getDoc: vi.fn(async () => ({ exists: () => false })),
+  updateDoc: vi.fn(async () => undefined),
+  setDoc: vi.fn(async () => undefined),
+  getDocs: vi.fn(async () => ({ docs: [] })),
+  serverTimestamp: vi.fn(() => ({ _type: 'timestamp' })),
 }));
 
-vi.mock('firebase/firestore', () => {
-  return {
-    collection: (_db: unknown, path: string) => {
-      calls.push({ fn: 'collection', path });
-      return { __collection: path };
-    },
-    doc: (...args: unknown[]) => {
-      // doc(db, path) or doc(collectionRef)
-      if (args.length >= 2 && typeof args[1] === 'string') {
-        calls.push({ fn: 'doc', path: args[1] as string });
-        return { __doc: args[1] };
-      }
-      const ref = args[0] as { __collection?: string };
-      const path = ref?.__collection
-        ? `${ref.__collection}/<auto>`
-        : '<auto>';
-      calls.push({ fn: 'doc', path });
-      return { __doc: path };
-    },
-    addDoc: async (ref: { __collection: string }, data: unknown) => {
-      calls.push({ fn: 'addDoc', path: ref.__collection });
-      void data;
-      return { id: 'auto-batch-id' };
-    },
-    updateDoc: async (ref: { __doc: string }) => {
-      calls.push({ fn: 'updateDoc', path: ref.__doc });
-    },
-    setDoc: async (ref: { __doc: string }) => {
-      calls.push({ fn: 'setDoc', path: ref.__doc });
-    },
-    getDoc: async () => ({ exists: () => false, id: 'x', data: () => ({}) }),
-    getDocs: async () => ({ docs: [] }),
-    serverTimestamp: () => '<ts>',
-  };
-});
+vi.mock('../../firebase', () => ({ db: {} }));
+
+import { collection, doc, addDoc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 beforeEach(() => {
-  calls.length = 0;
+  vi.clearAllMocks();
 });
 
-describe('batchService path scoping (Step 2.5 tracer)', () => {
-  it('Tracer 1: createBatch writes under clients/{slug}/apps/{appId}/batches', async () => {
-    await batchService.createBatch('template-builder', {
-      clientSlug: 'ralph_lauren',
-      templateId: 't1',
-      feedId: 'f1',
-      feedName: 'Feed',
-      status: 'pending',
-      totalVariations: 10,
-      completedVariations: 0,
-      ratio: '1:1',
-    } as Omit<BatchRecord, 'id' | 'appId' | 'createdAt' | 'updatedAt'>);
+const batchData = {
+  templateId: 't1',
+  feedId: 'f1',
+  feedName: 'Feed 1',
+  status: 'pending' as const,
+  totalVariations: 10,
+  completedVariations: 0,
+  ratio: '1:1',
+};
 
-    const writes = calls.filter((c) => c.fn === 'addDoc');
-    expect(writes).toHaveLength(1);
-    expect(writes[0].path).toBe(
-      'clients/ralph_lauren/apps/template-builder/batches'
-    );
-    // Critical: NO call should target the legacy top-level path.
-    expect(calls.some((c) => c.path === 'batches')).toBe(false);
-  });
-
-  it('Tracer 2: updateBatchStatus targets the scoped doc path', async () => {
-    await batchService.updateBatchStatus(
-      'ralph_lauren',
-      'template-builder',
-      'b-001',
-      'processing'
-    );
-
-    const updates = calls.filter((c) => c.fn === 'updateDoc');
-    expect(updates).toHaveLength(1);
-    expect(updates[0].path).toBe(
-      'clients/ralph_lauren/apps/template-builder/batches/b-001'
-    );
-  });
-
-  it('Tracer 3: addResult writes under the batch sub-collection in the scoped tree', async () => {
-    await batchService.addResult('ralph_lauren', 'template-builder', 'b-001', {
-      url: 'https://example.com/x.png',
-      feedRowIndex: 0,
+describe('batchService', () => {
+  describe('createBatch', () => {
+    it('writes to the correct tenant-isolated batches path', async () => {
+      vi.mocked(addDoc).mockResolvedValue({ id: 'b1' } as any);
+      await batchService.createBatch('acme', 'template-builder', batchData);
+      expect(vi.mocked(collection)).toHaveBeenCalledWith(
+        expect.anything(),
+        'clients/acme/apps/template-builder/batches'
+      );
     });
 
-    const sets = calls.filter((c) => c.fn === 'setDoc');
-    expect(sets).toHaveLength(1);
-    expect(sets[0].path).toContain(
-      'clients/ralph_lauren/apps/template-builder/batches/b-001/results'
-    );
-    // Legacy fence: never any path starting with bare "batches/".
-    for (const c of calls) {
-      expect(c.path.startsWith('batches/')).toBe(false);
-      expect(c.path).not.toBe('batches');
-    }
+    it('returns the new batch id', async () => {
+      vi.mocked(addDoc).mockResolvedValue({ id: 'b1' } as any);
+      const id = await batchService.createBatch('acme', 'template-builder', batchData);
+      expect(id).toBe('b1');
+    });
+  });
+
+  describe('getBatch', () => {
+    it('reads from the correct tenant-isolated batch doc path', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as any);
+      await batchService.getBatch('acme', 'template-builder', 'b1');
+      expect(vi.mocked(doc)).toHaveBeenCalledWith(
+        expect.anything(),
+        'clients/acme/apps/template-builder/batches/b1'
+      );
+    });
+
+    it('returns null when batch does not exist', async () => {
+      vi.mocked(getDoc).mockResolvedValue({ exists: () => false } as any);
+      const result = await batchService.getBatch('acme', 'template-builder', 'b1');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('addResult', () => {
+    it('writes to the correct batch results subcollection path', async () => {
+      vi.mocked(doc).mockReturnValue({ path: 'results/r1' } as any);
+      await batchService.addResult('acme', 'template-builder', 'b1', {
+        url: 'https://example.com/out.png',
+        feedRowIndex: 0,
+      });
+      expect(vi.mocked(collection)).toHaveBeenCalledWith(
+        expect.anything(),
+        'clients/acme/apps/template-builder/batches/b1/results'
+      );
+      expect(vi.mocked(setDoc)).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateBatchStatus', () => {
+    it('updates the correct batch doc', async () => {
+      await batchService.updateBatchStatus('acme', 'template-builder', 'b1', 'completed', 10);
+      expect(vi.mocked(doc)).toHaveBeenCalledWith(
+        expect.anything(),
+        'clients/acme/apps/template-builder/batches/b1'
+      );
+      expect(vi.mocked(updateDoc)).toHaveBeenCalled();
+    });
+  });
+
+  describe('path isolation', () => {
+    it('acme and ralph_lauren batch collections are distinct paths', async () => {
+      vi.mocked(addDoc).mockResolvedValue({ id: 'x' } as any);
+      await batchService.createBatch('acme', 'template-builder', batchData);
+      const acmePath = vi.mocked(collection).mock.calls[0][1];
+      vi.clearAllMocks();
+      await batchService.createBatch('ralph_lauren', 'template-builder', batchData);
+      const rlPath = vi.mocked(collection).mock.calls[0][1];
+      expect(acmePath).not.toBe(rlPath);
+    });
   });
 });

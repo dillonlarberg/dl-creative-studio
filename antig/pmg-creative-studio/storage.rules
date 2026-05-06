@@ -21,6 +21,16 @@ service firebase.storage {
              ];
     }
 
+    // Per-client membership check via custom claims set by the
+    // syncClientClaims callable function. Returns false for all users
+    // until that callable is deployed and invoked after Alli login.
+    function isClientMember(clientSlug) {
+      return request.auth.token.get('clients', {}).get(clientSlug, false) == true;
+    }
+
+    // PROTOTYPE: allowlist-only until syncClientClaims callable is deployed.
+    // Production target (uncomment and remove the line below once callable is live):
+    //   allow read, write: if isAlliStudioUser() && isClientMember(clientSlug);
     match /clients/{clientSlug}/{allPaths=**} {
       allow read, write: if isAlliStudioUser();
     }

@@ -5,6 +5,8 @@ import { CheckIcon, ArrowLeftIcon, ArrowPathIcon, SparklesIcon, TrashIcon, Photo
 import { Dialog, Transition, TransitionChild, DialogPanel, DialogTitle } from '@headlessui/react';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import type { UseCaseId, CreativeAsset } from '../../types';
+import type { AppId } from '../../platform/firebase/paths';
+import { isAppId } from '../../platform/firebase/paths';
 import { clientAssetHouseService } from '../../services/clientAssetHouse';
 import type { ClientAssetHouse } from '../../services/clientAssetHouse';
 import { creativeService } from '../../services/creative';
@@ -16,7 +18,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
-import type { AppId } from '../../platform/firebase/paths';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
 
@@ -337,7 +338,7 @@ const BASELINE_ASSETS = {
 
 // Wizard step definitions per use case
 const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
-    'image-resize': [
+    'resize-image': [
         { id: 'upload', name: 'Select Image' },
         { id: 'sizes', name: 'Choose Sizes' },
         { id: 'preview', name: 'Preview' },
@@ -401,6 +402,10 @@ const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
         { id: 'generate', name: 'Generate All' },
         { id: 'download', name: 'Download' },
     ],
+    // batch-variants is a registry-only app (preview status, AdLabs-shell-only)
+    // and never routes through the legacy /create/:useCaseId monolith path.
+    // The empty entry exists solely to satisfy the Record<AppId, ...> type.
+    'batch-variants': [],
 };
 
 const MODEL_MAPPING: Record<string, string> = {
@@ -409,6 +414,9 @@ const MODEL_MAPPING: Record<string, string> = {
 
 export default function UseCaseWizardPage() {
     const { useCaseId } = useParams<{ useCaseId: string }>();
+    // Validate the URL param against the known AppId union so service calls
+    // never receive an arbitrary string from the browser URL.
+    const appId: AppId | undefined = isAppId(useCaseId) ? useCaseId : undefined;
     const useCase = USE_CASES.find((uc) => uc.id === useCaseId);
     const [currentStep, setCurrentStep] = useState(0);
     const [assetHouse, setAssetHouse] = useState<ClientAssetHouse | null>(null);
@@ -469,7 +477,7 @@ export default function UseCaseWizardPage() {
     const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
 
     // Move steps definition up so handleNext can use it
-    const steps = WIZARD_STEPS[useCaseId as UseCaseId] || [];
+    const steps = appId != null ? (WIZARD_STEPS[appId] || []) : [];
 
     useEffect(() => {
         if (client.slug) {
@@ -640,12 +648,7 @@ export default function UseCaseWizardPage() {
 
         setIsProcessing(true);
         try {
-            // Step 2.5: legacy monolith uses useCaseId as the appId. Cast is
-            // safe because useCaseId values are sourced from USE_CASES constants
-            // which mirror the AppId union.
-            const appId = useCaseId as AppId;
-            const batchId = await batchService.createBatch(appId, {
-                clientSlug: client.slug,
+            const batchId = await batchService.createBatch(client.slug, appId!, {
                 templateId: 'active-session',
                 feedId: selectedFeed?.id || 'manual',
                 feedName: selectedFeed?.name || 'Uploaded Feed',
@@ -655,17 +658,19 @@ export default function UseCaseWizardPage() {
                 ratio: stepData.ratio || '1:1'
             });
 
-            await batchService.updateBatchStatus(client.slug, appId, batchId, 'processing');
+            // Simulate the processing phase
+            await batchService.updateBatchStatus(client.slug, appId!, batchId, 'processing');
 
+            // Mocking results adding for troubleshooting demo
             for (let i = 0; i < Math.min(3, feedSampleData.length); i++) {
-                await batchService.addResult(client.slug, appId, batchId, {
+                await batchService.addResult(client.slug, appId!, batchId, {
                     url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
                     feedRowIndex: i,
                     metadata: { product: feedSampleData[i]?.[feedMappings.headline] || 'Product Variation' }
                 });
             }
 
-            await batchService.updateBatchStatus(client.slug, appId, batchId, 'completed', feedSampleData.length || 45);
+            await batchService.updateBatchStatus(client.slug, appId!, batchId, 'completed', feedSampleData.length || 45);
             alert(`Batch Deployment Orchestrated Successfully!\n\nUsage tracked under Batch ID: ${batchId}`);
         } catch (err) {
             console.error('Batch failed:', err);
@@ -1062,7 +1067,7 @@ export default function UseCaseWizardPage() {
             setStepData(prev => ({ ...prev, ...newAIReccoData }));
 
             // Persistent save
-            await creativeService.updateCreative(id, {
+            await creativeService.updateCreative(client.slug, appId!, id, {
                 stepData: {
                     ...existingStepData,
                     'ai-reccos': newAIReccoData
@@ -1070,7 +1075,7 @@ export default function UseCaseWizardPage() {
             });
 
             // Refresh global creative object
-            const fresh = await creativeService.getCreative(id);
+            const fresh = await creativeService.getCreative(client.slug, appId!, id);
             if (fresh) setCreative(fresh);
         } catch (err) {
             console.error('[AI-Analysis] Gemini failure:', err);
@@ -1081,11 +1086,11 @@ export default function UseCaseWizardPage() {
     };
 
     const fetchHistory = async (): Promise<CreativeRecord[]> => {
-        if (!client.slug || !useCaseId) return [];
+        if (!client.slug || !useCaseId || !appId) return [];
         console.log(`[History] Fetching for slug: "${client.slug}", useCase: "${useCaseId}"`);
         try {
-            const items = await creativeService.getClientCreatives(client.slug);
-            const relevant = items.filter(i => i.useCaseId === useCaseId);
+            const items = await creativeService.getClientCreatives(client.slug, appId!);
+            const relevant = items.filter(i => i.appId === useCaseId);
             console.log(`[History] Found ${items.length} total docs, ${relevant.length} relevant to ${useCaseId}`);
             setHistory(relevant);
             return relevant;
@@ -1114,7 +1119,7 @@ export default function UseCaseWizardPage() {
                 const storedId = localStorage.getItem(`creative_${client.slug}_${useCaseId}`);
                 let resumed = false;
                 if (storedId) {
-                    const record = await creativeService.getCreative(storedId);
+                    const record = await creativeService.getCreative(client.slug, appId!, storedId);
                     if (record && record.status !== 'completed') {
                         setCreativeId(storedId);
                         setCreative(record);
@@ -1152,12 +1157,12 @@ export default function UseCaseWizardPage() {
         }
     };
     const startNewProject = async () => {
-        if (!useCaseId) return;
+        if (!appId) return;
         setIsLoading(true);
         try {
-            const id = await creativeService.createCreative(client.slug, useCaseId);
+            const id = await creativeService.createCreative(client.slug, appId!);
             setCreativeId(id);
-            const record = await creativeService.getCreative(id);
+            const record = await creativeService.getCreative(client.slug, appId!, id);
             if (record) {
                 setCreative(record);
             }
@@ -1202,7 +1207,7 @@ export default function UseCaseWizardPage() {
             console.log('[handleNext] No creativeId found, creating one...');
             setIsLoading(true);
             try {
-                activeCreativeId = await creativeService.createCreative(client.slug, useCaseId!);
+                activeCreativeId = await creativeService.createCreative(client.slug, appId!);
                 setCreativeId(activeCreativeId);
             } catch (err) {
                 console.error('[handleNext] Error creating creative:', err);
@@ -1256,13 +1261,13 @@ export default function UseCaseWizardPage() {
             const currentStepData = { ...stepData };
             const updatedStepData = { ...creative?.stepData, [steps[currentStep].id]: currentStepData };
 
-            await creativeService.updateCreative(activeCreativeId!, {
+            await creativeService.updateCreative(client.slug, appId!, activeCreativeId!, {
                 currentStep: nextStep,
                 stepData: updatedStepData
             });
 
             // Refresh local creative state
-            const fresh = await creativeService.getCreative(activeCreativeId!);
+            const fresh = await creativeService.getCreative(client.slug, appId!, activeCreativeId!);
             if (fresh) setCreative(fresh);
 
             setCurrentStep(nextStep);
@@ -1358,13 +1363,13 @@ export default function UseCaseWizardPage() {
                         };
 
                         // Update database with the processed results and advance to the download step
-                        await creativeService.updateCreative(activeCreativeId!, {
+                        await creativeService.updateCreative(client.slug, appId!, activeCreativeId!, {
                             currentStep: nextStep + 1,
                             status: 'completed',
                             stepData: finalStepData
                         });
 
-                        const finalRecord = await creativeService.getCreative(activeCreativeId!);
+                        const finalRecord = await creativeService.getCreative(client.slug, appId!, activeCreativeId!);
                         if (finalRecord) setCreative(finalRecord);
 
                         // Refresh history so it shows up in the "Board History" section immediately
@@ -1387,8 +1392,8 @@ export default function UseCaseWizardPage() {
             // If finishing, trigger simulation (standard flows)
             if (nextStep === steps.length - 1 && useCaseId !== 'video-cutdown') {
                 setIsProcessing(true);
-                await creativeService.simulateGeneration(activeCreativeId!);
-                const updated = await creativeService.getCreative(activeCreativeId!);
+                await creativeService.simulateGeneration(client.slug, appId!, activeCreativeId!);
+                const updated = await creativeService.getCreative(client.slug, appId!, activeCreativeId!);
                 setCreative(updated);
                 setIsProcessing(false);
             }
@@ -1401,7 +1406,7 @@ export default function UseCaseWizardPage() {
 
     const isReady = clientAssetHouseService.checkBrandStandards(assetHouse);
 
-    if (!useCase || !useCaseId) {
+    if (!useCase || !appId) {
         return (
             <div className="text-center py-12">
                 <p className="text-blue-gray-600">Use case not found.</p>
@@ -1738,7 +1743,7 @@ export default function UseCaseWizardPage() {
                                                                                     };
                                                                                     setStepData(newStepData);
                                                                                     if (creativeId) {
-                                                                                        await creativeService.updateCreative(creativeId, {
+                                                                                        await creativeService.updateCreative(client.slug, appId!, creativeId, {
                                                                                             stepData: { ...creative?.stepData, upload: newStepData }
                                                                                         });
                                                                                     }
@@ -1867,7 +1872,7 @@ export default function UseCaseWizardPage() {
                                                                         const newStepData = { ...stepData, videoName: file.name, videoUrl: url, source: 'local' };
                                                                         setStepData(newStepData);
                                                                         if (creativeId) {
-                                                                            await creativeService.updateCreative(creativeId, {
+                                                                            await creativeService.updateCreative(client.slug, appId!, creativeId, {
                                                                                 stepData: { ...creative?.stepData, upload: newStepData }
                                                                             });
                                                                         }

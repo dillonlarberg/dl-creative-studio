@@ -1,17 +1,9 @@
 // Types for the Creative Studio
 
-export type UseCaseId =
-    | 'image-resize'
-    | 'edit-image'
-    | 'new-image'
-    | 'edit-video'
-    | 'new-video'
-    | 'video-cutdown'
-    | 'static-creative'
-    | 'template-builder'
-    | 'feed-processing';
+import type { AppId } from '../platform/firebase/paths';
+export type UseCaseId = AppId;
 
-export type EntryPath = 'create-new' | 'optimize-existing';
+export type EntryPath = 'create-new' | 'edit-existing';
 
 export type AIProvider = 'openai' | 'google' | 'stability';
 

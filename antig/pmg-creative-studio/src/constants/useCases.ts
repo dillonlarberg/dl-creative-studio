@@ -2,11 +2,11 @@ import type { UseCase } from '../types';
 
 export const USE_CASES: UseCase[] = [
     {
-        id: 'image-resize',
+        id: 'resize-image',
         title: 'Resize Image',
         description: 'Resize and reformat existing images for different ad placements and platforms.',
         icon: 'ArrowsPointingOutIcon',
-        entryPaths: ['create-new', 'optimize-existing'],
+        entryPaths: ['create-new', 'edit-existing'],
         outputFormats: ['jpeg', 'png'],
     },
     {
@@ -14,7 +14,7 @@ export const USE_CASES: UseCase[] = [
         title: 'Edit Existing Image',
         description: 'Modify existing campaign images using AI — update backgrounds, colors, elements, and more.',
         icon: 'PaintBrushIcon',
-        entryPaths: ['create-new', 'optimize-existing'],
+        entryPaths: ['create-new', 'edit-existing'],
         outputFormats: ['jpeg', 'png'],
     },
     {
@@ -31,7 +31,7 @@ export const USE_CASES: UseCase[] = [
         title: 'Edit Existing Video',
         description: 'Trim, resize, add overlays, or adjust existing video creative.',
         icon: 'FilmIcon',
-        entryPaths: ['create-new', 'optimize-existing'],
+        entryPaths: ['create-new', 'edit-existing'],
         outputFormats: ['mp4'],
     },
     {
@@ -48,7 +48,7 @@ export const USE_CASES: UseCase[] = [
         title: 'Video Cutdown',
         description: 'Upload a video and get AI-recommended cutdowns (15s, 30s, etc.) with automated stitching.',
         icon: 'ScissorsIcon',
-        entryPaths: ['create-new', 'optimize-existing'],
+        entryPaths: ['create-new', 'edit-existing'],
         outputFormats: ['mp4'],
     },
     {
