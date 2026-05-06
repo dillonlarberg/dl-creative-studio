@@ -31,9 +31,8 @@ test.describe('Step 1 — DashboardPage', () => {
     await page.goto('/adlabs/ralph_lauren/');
 
     await expect(page.getByTestId('adlabs-dashboard')).toBeVisible();
-    await expect(page.getByTestId('adlabs-thesis-banner')).toHaveText(
-      /Dynamic templates for dynamic feeds/
-    );
+    // Thesis banner + greeting were removed during platform-parity restyle.
+    // The dashboard now opens straight into the Apps module card.
 
     // Apps grid: 3 cards in default flag state (resize-image is a skeleton
     // owned by Annie; template-builder live; batch-variants preview-stub).

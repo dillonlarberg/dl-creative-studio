@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
-import { SparklesIcon } from '@heroicons/react/24/outline';
-import WaveAnimation from '../components/WaveAnimation';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
@@ -24,66 +22,46 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="brand-gradient relative flex min-h-screen flex-col justify-center overflow-hidden py-12 sm:px-6 lg:px-8 font-sans">
-            {/* Background Waves */}
-            <div className="absolute inset-x-0 bottom-0 z-0 opacity-50">
-                <WaveAnimation height="300px" waveNumber={3} />
-            </div>
-
-            <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
-                        <SparklesIcon className="h-8 w-8 text-white" />
+        <div className="brand-gradient relative min-h-screen bg-[#EEF1F7] font-sans">
+            <div className="flex min-h-screen items-center justify-center px-6 py-12">
+                <div className="w-full max-w-sm">
+                    <div className="mb-6 flex justify-center">
+                        <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-10 w-auto" />
                     </div>
-                </div>
-                <h2 className="mt-6 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-                    Alli Studio
-                </h2>
-                <p className="mt-2 text-center text-sm text-blue-gray-500">
-                    Sign in with your Alli credentials to start creating.
-                </p>
-            </div>
 
-            <div className="relative z-10 mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
-                <div className="bg-white/80 backdrop-blur-md px-6 py-12 shadow-elevated sm:rounded-2xl sm:px-12 border border-white/20">
-                    <div className="space-y-6">
+                    <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+                        <div className="flex flex-col gap-1">
+                            <h1 className="text-base font-medium text-gray-900">Sign in</h1>
+                            <p className="text-[13px] text-gray-500">Use your Alli credentials to continue.</p>
+                        </div>
+
                         <button
                             onClick={handleLogin}
                             disabled={loading}
-                            className="flex w-full items-center justify-center gap-3 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-50"
                         >
                             {loading ? (
-                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                            ) : (
-                                <SparklesIcon className="h-5 w-5" />
-                            )}
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            ) : null}
                             Sign in with Alli
                         </button>
 
                         {error && (
-                            <div className="rounded-md bg-red-50 p-4">
-                                <p className="text-sm text-red-700">{error}</p>
+                            <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3">
+                                <p className="text-[13px] text-red-700">{error}</p>
                             </div>
                         )}
-                    </div>
 
-                    <div className="mt-10">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                <div className="w-full border-t border-gray-200" />
-                            </div>
-                            <div className="relative flex justify-center text-sm font-medium leading-6">
-                                <span className="bg-white px-6 text-blue-gray-400">Secure SSO via OIDC</span>
-                            </div>
+                        <div className="mt-6 border-t border-gray-100 pt-4">
+                            <p className="text-center text-xs text-gray-400">Secure SSO via OIDC</p>
                         </div>
                     </div>
-                </div>
 
-                <p className="mt-10 text-center text-sm text-blue-gray-500">
-                    Not a PMG employee? Contact IT for access.
-                </p>
+                    <p className="mt-6 text-center text-xs text-gray-500">
+                        Not a PMG employee? Contact IT for access.
+                    </p>
+                </div>
             </div>
         </div>
     );
 }
-

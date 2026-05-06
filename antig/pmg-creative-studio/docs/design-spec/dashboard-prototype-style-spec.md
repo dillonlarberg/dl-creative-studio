@@ -226,3 +226,64 @@ Unchanged (already correct): `.perf-name` (600), `.platform-client-name` (600), 
 - **Removed page-header block:** dropped the `Good Afternoon, Annie!` greeting and `3 batch jobs in flight · 847 live variants for Ralph Lauren` lede entirely. The dashboard now opens straight into the Snapshot module card. The date-range selector and `New Batch Job` button were preserved and right-aligned in a new `.page-actions` row above the first module.
 - Removed `.page-header`, `.page-title`, `.page-subtitle` CSS rules; replaced with `.page-actions { display: flex; justify-content: flex-end; gap: 10px; }`.
 
+---
+
+## Round 4 — Apply prototype to live dev app
+
+**Subject:** ported the prototype's design system into the actual React app on the `dev` branch. Backend untouched.
+
+### Files changed
+
+- `src/components/AppLayout.tsx` — full rewrite of layout chrome
+- `src/components/Breadcrumbs.tsx` — no longer rendered (removed import + `<Breadcrumbs />` placement)
+- `src/pages/ClientSelectPage.tsx` — module-card pattern, platform-styled search + list rows
+- `src/pages/LoginPage.tsx` — centered single module-card with PMG logo at top
+- `src/pages/DashboardPage.tsx` — removed thesis banner + greeting, wrapped sections in module-cards, replaced ALL-CAPS tracked-out section labels with platform `text-base font-medium` titles
+- `public/PMG_Alli_AllBlack_Logo.png` — copied from repo root so Vite serves it
+- `tests/e2e/step1-dashboard.spec.ts` — dropped assertion on the deleted `adlabs-thesis-banner` testid
+
+### AppLayout structure
+
+| Slot | Behavior |
+|---|---|
+| **Header banner** (fixed, h-14, white) | PMG logo (h-7) in 64px slot above the rail · 1px×32px divider · client name (15/500) · "Change" outline button (opens existing client drawer) · right cluster: help + notifications + avatar |
+| **Avatar dropdown** (Headless UI `Menu`) | Header row with userName + email · "Switch client" item (opens drawer) · "Log out" item (calls `authService.logout`) |
+| **Sidebar rail** (fixed, w-16, hover-expands to w-56) | 7 platform nav items: Dashboards, Data, Strategy & Planning, Actions, Audiences, **AdLabs (active)**, Products. Disabled items use `text-gray-300 cursor-not-allowed`. Tooltips removed (replaced by hover-expand label fade-in). |
+| **Sidebar footer** | Settings entry with chevron; on rail hover, expands inline to reveal "Client Asset House" sub-link to `/client-asset-house` |
+| **DEV ribbon** | `import.meta.env.DEV`-gated, repositioned to absolute top-left of header (rotated 45°, off-screen overflow). Pre-main-cutover marker preserved. |
+
+The user identity + logout are no longer in a sidebar footer — they live in the header avatar dropdown.
+
+### Token-faithfulness
+
+All Tailwind classes draw from the canonical `src/index.css` `@theme` block:
+
+- Borders: `border-gray-200`
+- Surfaces: `bg-white` (cards), `bg-[#EEF1F7]` (page bg — also the `--color-blue-gray-50`-adjacent platform value)
+- Active nav: `bg-blue-50 text-blue-600`
+- Shadows: `shadow-card` (cards), `shadow-elevated` (avatar menu)
+- Typography: `text-base font-medium` (module title), `text-[13px] text-gray-500` (subtitle), `text-[15px] font-medium text-gray-900` (app card title)
+
+### Sidebar interaction (key new behavior)
+
+The rail is `w-16` (64px) at rest. The `<aside>` carries a `group` Tailwind class so children can react with `group-hover:`. On hover the aside transitions to `w-56` (224px) over 200ms. Inside each row:
+
+- **Icon** — always visible (h-5 w-5)
+- **Label** — `opacity-0` at rest, `group-hover:opacity-100` with 150ms transition
+- **Settings chevron** — also fades in only on hover; clicking is unnecessary because the children render inline below the row using `hidden group-hover:flex`
+
+This matches the platform's hover-reveal pattern shown in image #15. Implementation is pure CSS — no JS state, no animation libraries, no keyboard or accessibility ceremony beyond what the tags already give you.
+
+### Routing & data unchanged
+
+- `/`, `/select-client`, `/login`, `/client-asset-house`, `/adlabs/:clientSlug`, `/adlabs/:clientSlug/:appBasePath/...` all wired to the same components as before.
+- `useClientBootstrap`, `extractClientSlugFromPath`, `loadClientFonts`, `useActiveBatches`, `getRegistry`, all `services/*` calls — no edits.
+- `localStorage` selectedClient flow preserved.
+- Firebase / Functions backend — never touched.
+
+### Tests
+
+- `npx tsc --noEmit` clean
+- `npx vitest run` — 20 files, 166/166 tests pass
+- One e2e assertion (`adlabs-thesis-banner`) removed because the banner itself is gone; replaced with a comment explaining the platform-parity restyle
+
