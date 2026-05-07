@@ -3,9 +3,7 @@ import { cn } from '../utils/cn';
 import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
 import {
-    SparklesIcon,
     ArrowRightStartOnRectangleIcon,
-    BookOpenIcon,
     XMarkIcon,
     MagnifyingGlassIcon,
     ArrowPathIcon,

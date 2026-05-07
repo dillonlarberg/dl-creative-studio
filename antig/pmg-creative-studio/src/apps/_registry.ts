@@ -3,6 +3,7 @@ import templateBuilderManifest from './template-builder/manifest';
 import batchVariantsManifest from './batch-variants/manifest';
 import videoCutdownManifest from './video-cutdown/manifest';
 import resizeImageManifest from './resize-image/manifest';
+import adResizingManifest from './ad-resizing/manifest';
 
 // Per-app manifests are registered here as they land. Task 6 of PR 3 adds
 // template-builder (redirect from edit-image). PRs 4-9 add the rest.
@@ -65,10 +66,13 @@ const FEATURE_VIDEO_CUTDOWN_LIFT =
   import.meta.env.VITE_FEATURE_VIDEO_CUTDOWN_LIFT === 'true';
 
 const MANIFESTS: AppManifest[] = [
-  resizeImageManifest as AppManifest,
+  adResizingManifest as AppManifest,
   templateBuilderManifest as AppManifest,
   batchVariantsManifest as AppManifest,
 ];
+
+// Old resize-image wizard (skeleton) kept routable but off the dashboard.
+void resizeImageManifest;
 
 if (FEATURE_VIDEO_CUTDOWN_LIFT) {
   // Step 2 stub: video-cutdown is a preview-status placeholder until the

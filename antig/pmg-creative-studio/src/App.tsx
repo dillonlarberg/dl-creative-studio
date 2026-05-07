@@ -15,6 +15,7 @@ import { WizardShell } from './platform/wizard/WizardShell';
 import batchVariantsManifest from './apps/batch-variants/manifest';
 import videoCutdownManifest from './apps/video-cutdown/manifest';
 import ResizeImageAppRoot from './apps/resize-image/AppRoot';
+import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 
 /**
  * Root redirect: send the user to the AdLabs dashboard for whichever client is
@@ -117,6 +118,14 @@ export default function App() {
             element={
               <ClientProvider>
                 <ResizeImageAppRoot />
+              </ClientProvider>
+            }
+          />
+          <Route
+            path="/adlabs/:clientSlug/ad-resizing/*"
+            element={
+              <ClientProvider>
+                <AdResizingAppRoot />
               </ClientProvider>
             }
           />
