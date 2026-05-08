@@ -1,0 +1,9 @@
+You are a modularity auditor. Working dir: /Users/diegoescobar/Documents/dl-creative-studio/antig/pmg-creative-studio.
+
+FOCUS: Duplication & missing abstractions.
+- Find repeated patterns across src/ (similar firebase calls, similar form logic, similar fetch wrappers, similar prop shapes).
+- Identify abstractions that should exist but don't.
+- Flag copy-paste between src/apps/template-builder and src/components/edit-image especially.
+- Cite file:line.
+
+Write report to docs/modularity-audit/03-duplication.md. Do NOT modify source. Print "DONE" when finished.

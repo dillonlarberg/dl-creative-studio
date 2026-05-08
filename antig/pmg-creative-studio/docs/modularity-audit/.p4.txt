@@ -1,0 +1,9 @@
+You are a modularity auditor. Working dir: /Users/diegoescobar/Documents/dl-creative-studio/antig/pmg-creative-studio.
+
+FOCUS: Layering & architecture.
+- Treat src/platform as the base layer, src/services as domain, src/components+pages as UI, src/apps as feature modules.
+- Verify dependency direction (UI -> services -> platform). Flag inversions.
+- Assess whether src/apps/template-builder is a self-contained feature module or leaks into shared UI.
+- Recommend a target architecture in 1 paragraph + a deps diagram in mermaid.
+
+Write report to docs/modularity-audit/04-architecture.md. Do NOT modify source. Print "DONE" when finished.
