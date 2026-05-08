@@ -84,7 +84,6 @@ function addCard(data, sourceName) {
   node.querySelector(".img-source").src = data.sourceUrl;
   node.querySelector(".img-mask").src = data.p2MaskUrl;
   node.querySelector(".img-raw").src = data.p2RawUrl;
-  node.querySelector(".img-composited").src = data.p2CompositedUrl;
   node.querySelector(".img-final").src = data.p2FinalUrl;
   node.querySelector(".p1-json").textContent = JSON.stringify(data.p1, null, 2);
 

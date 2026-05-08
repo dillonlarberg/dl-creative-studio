@@ -12,7 +12,7 @@ export interface Phase2Input {
 }
 
 export interface Phase2Output {
-  imageBuffer: Buffer; // raw model output (canvas dims, before post-composite)
+  imageBuffer: Buffer; // raw model output at canvas dims
   paddedCanvas: PaddedCanvas;
 }
 

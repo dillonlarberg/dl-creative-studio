@@ -9,7 +9,6 @@ import { runPhase2 } from "./phase2.js";
 import { runPipeline } from "./pipeline.js";
 import { TARGET_PRESETS, legalGenDims } from "./config.js";
 import { prepPaddedCanvas } from "./canvasPrep.js";
-import { strictPostComposite } from "./postComposite.js";
 import type { P1Output } from "./schema.js";
 
 async function makeTestPng(w = 64, h = 64, color = { r: 200, g: 100, b: 50 }): Promise<Buffer> {
@@ -240,69 +239,6 @@ describe("prepPaddedCanvas", () => {
   });
 });
 
-describe("strictPostComposite", () => {
-  it("source region of output is bytewise equal to scaled source", async () => {
-    const sourcePng = await makeTestPng(64, 64, { r: 220, g: 30, b: 30 });
-    const target = TARGET_PRESETS["9x16"];
-    const padded = await prepPaddedCanvas(sourcePng, { w: 64, h: 64 }, target);
-
-    // Build a "model output" PNG that's a totally different solid color so
-    // we can prove the source region got pasted over it.
-    const modelOut = await sharp({
-      create: {
-        width: padded.width,
-        height: padded.height,
-        channels: 3,
-        background: { r: 10, g: 10, b: 200 },
-      },
-    })
-      .png()
-      .toBuffer();
-
-    const composited = await strictPostComposite(modelOut, padded);
-
-    // Extract RGB source regions from both images. Alpha can legitimately
-    // differ after compositing; the preservation guarantee is source pixels.
-    const compRgb = await sharp(composited)
-      .extract({
-        left: padded.offsetX,
-        top: padded.offsetY,
-        width: padded.scaledW,
-        height: padded.scaledH,
-      })
-      .removeAlpha()
-      .raw()
-      .toBuffer();
-
-    const sourceRgb = await sharp(padded.imageBuffer)
-      .extract({
-        left: padded.offsetX,
-        top: padded.offsetY,
-        width: padded.scaledW,
-        height: padded.scaledH,
-      })
-      .removeAlpha()
-      .raw()
-      .toBuffer();
-
-    expect(compRgb.length).toBe(sourceRgb.length);
-    expect(Buffer.compare(compRgb, sourceRgb)).toBe(0);
-
-    // Sanity: a pixel OUTSIDE the source region should NOT be source-colored;
-    // it should be the model-output blue.
-    const farY = Math.max(0, padded.offsetY - 5);
-    const farX = Math.max(0, padded.offsetX - 5);
-    if (farY < padded.offsetY || farX < padded.offsetX) {
-      const outside = await sharp(composited)
-        .extract({ left: farX, top: farY, width: 1, height: 1 })
-        .raw()
-        .toBuffer({ resolveWithObject: true });
-      // Should be ~blue (model output color).
-      expect(outside.data[2]).toBeGreaterThan(100);
-    }
-  });
-});
-
 describe("runPipeline (happy path)", () => {
   let tmpDir: string;
   let originalCwd: string;
@@ -357,7 +293,6 @@ describe("runPipeline (happy path)", () => {
     await fs.access(result.p2CanvasPath);
     await fs.access(result.p2MaskPath);
     await fs.access(result.p2RawPath);
-    await fs.access(result.p2CompositedPath);
     await fs.access(result.p2FinalPath);
 
     // Final dims match exact target.

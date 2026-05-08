@@ -20,7 +20,7 @@ export interface PaddedCanvas {
   // For prompt construction.
   emptyRegions: string;
   // Pixel-level offsets/dims of the scaled source on the canvas.
-  // Needed by post-composite to extract + paste back at the correct location.
+  // Useful for debugging mask placement and source coverage.
   scaledW: number;
   scaledH: number;
   offsetX: number;

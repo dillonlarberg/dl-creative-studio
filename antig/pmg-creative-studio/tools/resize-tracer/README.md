@@ -1,6 +1,6 @@
 # resize-tracer (v0)
 
-Local debug rig for the image-resize pipeline. Phase 1: Gemini 2.5 Pro vision analysis. Phase 2: OpenAI gpt-image-2 mask-based edit + strict post-composite (paste source pixels back over the preserve region) + sharp resize to exact target dims.
+Local debug rig for the image-resize pipeline. Phase 1: Gemini 2.5 Pro vision analysis. Phase 2: OpenAI gpt-image-2 mask-based edit + sharp resize check to exact target dims.
 
 Plan: `docs/superpowers/plans/2026-05-07-resize-tracer-v0.md`.
 
@@ -34,7 +34,7 @@ npm run tracer
 # open http://127.0.0.1:3000/tracer.html
 ```
 
-Pick a fixture, pick a target, click Run. The page shows Source / Mask / Raw P2 / Composited / Final — five panels — plus the P1 JSON (collapsible).
+Pick a fixture, pick a target, click Run. The page shows Source / Mask / Raw P2 / Final resize check — four panels — plus the P1 JSON (collapsible).
 
 ## Critique workflow
 
@@ -70,8 +70,7 @@ Every run writes to `out/<runId>/`:
 - `p2-canvas.png` — padded source PNG (model input)
 - `p2-mask.png` — binary mask PNG (model input; opaque = preserve)
 - `p2-raw.png` — raw gpt-image-2 output at canvas dims
-- `p2-composited.png` — strict post-composite (source pixels pasted back over preserve region)
-- `result.png` — sharp cover-fit resize to exact target dims
+- `result.png` — sharp cover-fit resize of raw P2 to exact target dims
 
 `<runId>` format: `${ISO-with-ms-dashes}-${4-char-random}-${fixture}-${targetLabel}`.
 
@@ -103,7 +102,7 @@ src/
   server.ts           # Express, binds 127.0.0.1:3000
   pipeline.ts         # runPipeline() — pure async, the contract
   phase1.ts           # Gemini 2.5 Pro via @google/genai
-  phase2.ts           # Nano Banana via @google/genai
+  phase2.ts           # OpenAI gpt-image-2 image edit
   resize.ts           # sharp post-resize
   promptTemplate.ts   # P1Output -> P2 prompt string
   schema.ts           # zod schemas (P1Output, Critique)
@@ -115,7 +114,7 @@ public/
   tracer.js
   tracer.css
 scripts/
-  verify-p2.ts        # API surface smoke test
+  verify-p2-openai.ts # API surface smoke test
 fixtures/             # gitignored
 out/                  # gitignored
 critiques.jsonl       # gitignored

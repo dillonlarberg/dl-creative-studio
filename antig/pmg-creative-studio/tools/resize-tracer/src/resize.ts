@@ -1,8 +1,7 @@
 import sharp from "sharp";
 
-// Nano Banana returns ~1024px native; we crop/resize to exact target dims.
-// Strategy: cover (crop center) to preserve a centered subject. Extreme
-// aspect ratios may crop edges — accepted tradeoff for v0.
+// Final exact-dimension check. The generated canvas should already be close
+// to the target aspect; this normalizes the output to the requested preset.
 export async function resizeToTarget(
   raw: Buffer,
   w: number,

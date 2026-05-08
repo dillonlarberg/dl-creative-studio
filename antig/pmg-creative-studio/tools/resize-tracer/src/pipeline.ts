@@ -5,7 +5,6 @@ import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { runPhase1 } from "./phase1.js";
 import { runPhase2 } from "./phase2.js";
-import { strictPostComposite } from "./postComposite.js";
 import { resizeToTarget } from "./resize.js";
 import type { TargetSpec } from "./config.js";
 import { OPENAI_P2_MODEL } from "./config.js";
@@ -32,7 +31,6 @@ export interface PipelineResult {
   p2CanvasPath: string;     // padded source PNG (input to model)
   p2MaskPath: string;       // mask PNG (input to model)
   p2RawPath: string;        // raw model output, canvas dims
-  p2CompositedPath: string; // post-composite (source pixels pasted back), canvas dims
   p2FinalPath: string;      // final cover-fit resize to exact target dims
   timings: { p1Ms: number; p2Ms: number };
   p2Model: string;
@@ -91,23 +89,16 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   const p2RawPath = path.join(runDir, "p2-raw.png");
   await fs.writeFile(p2RawPath, rawP2);
 
-  // ── Phase 2.4: STRICT post-composite ──
-  // Paste the original source pixels back over the model output's preserve
-  // region. Guarantees pixel-perfect subject/copy preservation.
-  const composited = await strictPostComposite(rawP2, paddedCanvas);
-  const p2CompositedPath = path.join(runDir, "p2-composited.png");
-  await fs.writeFile(p2CompositedPath, composited);
-
-  // ── Phase 2.5: deterministic resize/crop to exact target dims ──
-  const compMeta = await sharp(composited).metadata();
+  // ── Final check: deterministic resize/crop to exact target dims ──
+  const rawMeta = await sharp(rawP2).metadata();
   const upsample =
-    (compMeta.width ?? 0) < input.targetSpec.w ||
-    (compMeta.height ?? 0) < input.targetSpec.h;
+    (rawMeta.width ?? 0) < input.targetSpec.w ||
+    (rawMeta.height ?? 0) < input.targetSpec.h;
   console.log(
-    `[resize] ${compMeta.width}×${compMeta.height} → ${input.targetSpec.w}×${input.targetSpec.h} ` +
+    `[resize] ${rawMeta.width}×${rawMeta.height} → ${input.targetSpec.w}×${input.targetSpec.h} ` +
       `(cover-fit center${upsample ? ", upsample" : ", downsample"})`,
   );
-  const finalBuf = await resizeToTarget(composited, input.targetSpec.w, input.targetSpec.h);
+  const finalBuf = await resizeToTarget(rawP2, input.targetSpec.w, input.targetSpec.h);
   const p2FinalPath = path.join(runDir, "result.png");
   await fs.writeFile(p2FinalPath, finalBuf);
 
@@ -125,7 +116,6 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     p2CanvasPath,
     p2MaskPath,
     p2RawPath,
-    p2CompositedPath,
     p2FinalPath,
     timings: { p1Ms, p2Ms },
     p2Model: OPENAI_P2_MODEL,

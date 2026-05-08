@@ -98,7 +98,6 @@ app.post("/api/run", upload.single("file"), async (req, res) => {
       p2CanvasUrl: `/out/${runId}/p2-canvas.png`,
       p2MaskUrl: `/out/${runId}/p2-mask.png`,
       p2RawUrl: `/out/${runId}/p2-raw.png`,
-      p2CompositedUrl: `/out/${runId}/p2-composited.png`,
       p2FinalUrl: `/out/${runId}/result.png`,
       timings: result.timings,
       p2Model: result.p2Model,
