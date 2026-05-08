@@ -8,13 +8,16 @@ interface GeneratedTileProps {
   output: GeneratedOutput;
   onView: () => void;
   onRetry?: () => void;
+  selected?: boolean;
+  anySelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 function aspectStyle(width: number, height: number): React.CSSProperties {
   return { aspectRatio: `${width} / ${height}` };
 }
 
-export default function GeneratedTile({ output, onView, onRetry }: GeneratedTileProps) {
+export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect }: GeneratedTileProps) {
   const { dimension, status, imageUrl } = output;
   const isPending = status === 'pending';
   const isComplete = status === 'complete';
@@ -22,12 +25,38 @@ export default function GeneratedTile({ output, onView, onRetry }: GeneratedTile
   const filename = `${dimension.label.replace(':', 'x')}-${dimension.width}x${dimension.height}`;
 
   return (
-    <div className="group relative flex flex-col rounded-lg border border-gray-200 bg-white shadow-sm">
-      {/* Thumbnail — overflow-hidden scoped to this div only so the Download dropdown can escape */}
+    <div className={cn(
+      'group relative flex flex-col rounded-lg border bg-white shadow-sm transition-all',
+      selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200',
+    )}>
+      {/* Thumbnail */}
       <div
         className="relative w-full overflow-hidden rounded-t-lg bg-gray-100"
         style={aspectStyle(dimension.width, dimension.height)}
       >
+        {/* Select checkbox — top-left; visible on hover, always visible when selected or any tile is selected */}
+        {isComplete && onToggleSelect && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            aria-label={selected ? 'Deselect' : 'Select'}
+            className={cn(
+              'absolute left-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded border-2 transition-all duration-100',
+              'opacity-0 group-hover:opacity-100',
+              (selected || anySelected) && 'opacity-100',
+              selected
+                ? 'border-blue-600 bg-blue-600'
+                : 'border-white bg-white/80 hover:border-blue-400',
+            )}
+          >
+            {selected && (
+              <svg viewBox="0 0 12 12" fill="none" className="h-full w-full p-0.5">
+                <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </button>
+        )}
+
         {isPending && (
           <>
             <div className="shimmer-tile absolute inset-0" />
@@ -43,7 +72,7 @@ export default function GeneratedTile({ output, onView, onRetry }: GeneratedTile
               alt={`${dimension.label} output`}
               className="h-full w-full object-cover"
             />
-            {/* Hover overlay — View only; Download lives in metadata strip to avoid clipping */}
+            {/* Hover overlay — View only */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
               <button
                 type="button"
@@ -72,7 +101,7 @@ export default function GeneratedTile({ output, onView, onRetry }: GeneratedTile
         )}
       </div>
 
-      {/* Metadata — Download button appears here on hover so it isn't clipped */}
+      {/* Metadata — Download appears on hover, fading the Ready badge */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-gray-800" title={`${dimension.label} · ${dimension.width}×${dimension.height}`}>{dimension.label}</p>
@@ -81,7 +110,6 @@ export default function GeneratedTile({ output, onView, onRetry }: GeneratedTile
         <div className="shrink-0">
           {isComplete && imageUrl ? (
             <>
-              {/* Status badge fades out on hover, Download fades in */}
               <span className="block text-[10px] font-medium text-green-600 transition-opacity group-hover:opacity-0">
                 Ready
               </span>

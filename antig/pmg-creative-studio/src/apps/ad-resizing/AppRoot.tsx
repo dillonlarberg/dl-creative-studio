@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, XMarkIcon, PencilSquareIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, XMarkIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
 import { getDeduplicatedDimensions } from './data/channels';
 import type { MockCreative, GenerationJob, GeneratedOutput } from './types';
@@ -52,11 +52,15 @@ export default function AdResizingAppRoot() {
 
   const [genFilterChannel, setGenFilterChannel] = useState<string>('all');
   const [genSort, setGenSort] = useState<GenSortOption>('default');
+  const [selectedOutputIds, setSelectedOutputIds] = useState<Set<string>>(new Set());
 
   const [feedCreatives, setFeedCreatives] = useState<MockCreative[] | null>(null);
   const [connectedFeedLabel, setConnectedFeedLabel] = useState<string | null>(null);
 
   const activeJob = jobs.find(j => j.id === activeJobId) ?? null;
+
+  // Clear tile selection whenever the active job changes
+  useEffect(() => { setSelectedOutputIds(new Set()); }, [activeJobId]);
 
   function handleFeedConnect(feed: SelectedFeed, _imageColumn: string, creatives: MockCreative[]) {
     setFeedCreatives(creatives);
@@ -264,6 +268,26 @@ export default function AdResizingAppRoot() {
     simulateOutputCompletion(activeJobId, outputId, output.dimension.id, output.dimension.width, output.dimension.height, `recrop-${outputId}-${Date.now()}`);
   }, [activeJobId, jobs]);
 
+  const handleToggleOutputSelection = useCallback((outputId: string) => {
+    setSelectedOutputIds(prev => {
+      const next = new Set(prev);
+      if (next.has(outputId)) next.delete(outputId); else next.add(outputId);
+      return next;
+    });
+  }, []);
+
+  function handleDownloadSelected(format: DownloadFormat) {
+    if (!activeJob) return;
+    activeJob.outputs
+      .filter(o => selectedOutputIds.has(o.id) && o.imageUrl)
+      .forEach((o, i) => {
+        setTimeout(() => {
+          const filename = `${o.dimension.label.replace(':', 'x')}-${o.dimension.width}x${o.dimension.height}`;
+          downloadImage(o.imageUrl!, filename, format);
+        }, i * 150);
+      });
+  }
+
   const completedOutputs = activeJob?.outputs.filter(o => o.status === 'complete') ?? [];
   const allComplete = activeJob !== null && activeJob.outputs.every(o => o.status === 'complete');
 
@@ -335,7 +359,7 @@ export default function AdResizingAppRoot() {
       </div>
 
       {/* Content */}
-      <div className="flex min-h-[60vh] gap-0">
+      <div className="flex items-start gap-0">
 
         {/* ── BROWSE STAGE ── */}
         {stage === 'browse' && (
@@ -429,22 +453,24 @@ export default function AdResizingAppRoot() {
               </div>
 
               {selectedCreative && (
-                <ResizeConfigPanel
-                  creative={selectedCreative}
-                  selectedChannels={selectedChannels}
-                  selectedDimensions={selectedDimensions}
-                  onToggleChannel={handleToggleChannel}
-                  onToggleDimension={handleToggleDimension}
-                  onSetChannels={handleSetChannels}
-                  onRun={handleRun}
-                  addMode={addingToJob}
-                  onClose={() => {
-                    setSelectedCreative(null);
-                    setSelectedChannels([]);
-                    setSelectedDimensions(new Set());
-                    if (addingToJob) { setAddingToJob(false); setStage('results'); }
-                  }}
-                />
+                <div className="sticky top-14 self-start h-[calc(100vh-3.5rem)]">
+                  <ResizeConfigPanel
+                    creative={selectedCreative}
+                    selectedChannels={selectedChannels}
+                    selectedDimensions={selectedDimensions}
+                    onToggleChannel={handleToggleChannel}
+                    onToggleDimension={handleToggleDimension}
+                    onSetChannels={handleSetChannels}
+                    onRun={handleRun}
+                    addMode={addingToJob}
+                    onClose={() => {
+                      setSelectedCreative(null);
+                      setSelectedChannels([]);
+                      setSelectedDimensions(new Set());
+                      if (addingToJob) { setAddingToJob(false); setStage('results'); }
+                    }}
+                  />
+                </div>
               )}
             </>
           )
@@ -589,6 +615,36 @@ export default function AdResizingAppRoot() {
                       filteredCount={filteredOutputs.length}
                     />
 
+                    {/* Selection action bar */}
+                    {selectedOutputIds.size > 0 && (
+                      <div className="mb-3 flex items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-3.5 py-2.5">
+                        <span className="text-[13px] font-medium text-blue-800">
+                          {selectedOutputIds.size} selected
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOutputIds(new Set())}
+                          className="text-[12px] text-blue-500 hover:text-blue-700"
+                        >
+                          Clear
+                        </button>
+                        <div className="ml-auto flex items-center gap-1.5">
+                          <span className="mr-1 text-[11px] text-blue-400">Download as:</span>
+                          {(['png', 'jpg', 'webp'] as const).map(fmt => (
+                            <button
+                              key={fmt}
+                              type="button"
+                              onClick={() => handleDownloadSelected(fmt)}
+                              className="flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700"
+                            >
+                              <ArrowDownTrayIcon className="h-3 w-3" />
+                              {fmt.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Generated grid */}
                     {filteredOutputs.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -612,6 +668,9 @@ export default function AdResizingAppRoot() {
                               setSingleView({ index: completedFiltered.findIndex(o => o.id === output.id) });
                             }}
                             onRetry={() => handleRetry(output.id)}
+                            selected={selectedOutputIds.has(output.id)}
+                            anySelected={selectedOutputIds.size > 0}
+                            onToggleSelect={() => handleToggleOutputSelection(output.id)}
                           />
                         ))}
                       </div>
