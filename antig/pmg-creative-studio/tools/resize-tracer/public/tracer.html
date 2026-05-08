@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resize Tracer (v0)</title>
+    <link rel="stylesheet" href="/tracer.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>Resize Tracer <span class="tag">v0</span></h1>
+      <span class="muted">P1 (Gemini 2.5 Pro) -> P2 (OpenAI gpt-image-2 + mask) -> strict composite -> sharp</span>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>Sources</h2>
+        <ul id="source-list" class="source-list"></ul>
+      </aside>
+
+      <main class="main">
+        <section class="run-panel">
+          <h2>Run</h2>
+          <form id="run-form" class="run-form">
+            <label>
+              Source image
+              <input type="file" id="file" name="file" accept="image/jpeg,image/png" required />
+            </label>
+            <label>
+              Target
+              <select id="target" name="targetLabel" required>
+                <option value="" disabled selected>Pick a target...</option>
+              </select>
+            </label>
+            <button type="submit" id="run-btn" disabled>Run pipeline</button>
+            <span class="status" id="run-status"></span>
+          </form>
+        </section>
+
+        <section class="results">
+          <h2>Results</h2>
+          <div id="cards"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="card-template">
+      <article class="card">
+        <header class="card-header">
+          <span class="src"></span>
+          <span class="target"></span>
+          <span class="timings"></span>
+          <span class="run-id muted"></span>
+        </header>
+        <div class="grid">
+          <figure>
+            <figcaption>Source</figcaption>
+            <img class="img-source" alt="source" />
+          </figure>
+          <figure>
+            <figcaption>Mask (white = preserve)</figcaption>
+            <img class="img-mask" alt="mask sent to model" />
+          </figure>
+          <figure>
+            <figcaption>Raw P2 (model output)</figcaption>
+            <img class="img-raw" alt="raw P2" />
+          </figure>
+          <figure>
+            <figcaption>Composited (source pasted back)</figcaption>
+            <img class="img-composited" alt="composited" />
+          </figure>
+          <figure>
+            <figcaption>Final (resized)</figcaption>
+            <img class="img-final" alt="final" />
+          </figure>
+        </div>
+        <details class="p1">
+          <summary>P1 JSON</summary>
+          <pre class="p1-json"></pre>
+        </details>
+        <form class="critique-form">
+          <fieldset>
+            <legend>Verdict</legend>
+            <label><input type="radio" name="verdict" value="pass" required /> Pass</label>
+            <label><input type="radio" name="verdict" value="retry" /> Retry-worthy</label>
+            <label><input type="radio" name="verdict" value="fail" /> Fail</label>
+          </fieldset>
+          <fieldset>
+            <legend>Subject preserved</legend>
+            <label><input type="radio" name="subjectPreserved" value="yes" required /> yes</label>
+            <label><input type="radio" name="subjectPreserved" value="partial" /> partial</label>
+            <label><input type="radio" name="subjectPreserved" value="no" /> no</label>
+          </fieldset>
+          <fieldset>
+            <legend>Copy intact</legend>
+            <label><input type="radio" name="copyIntact" value="yes" required /> yes</label>
+            <label><input type="radio" name="copyIntact" value="partial" /> partial</label>
+            <label><input type="radio" name="copyIntact" value="no" /> no</label>
+            <label><input type="radio" name="copyIntact" value="n/a" /> n/a</label>
+          </fieldset>
+          <fieldset>
+            <legend>Style match (1-5)</legend>
+            <label><input type="radio" name="styleMatch" value="1" required /> 1</label>
+            <label><input type="radio" name="styleMatch" value="2" /> 2</label>
+            <label><input type="radio" name="styleMatch" value="3" /> 3</label>
+            <label><input type="radio" name="styleMatch" value="4" /> 4</label>
+            <label><input type="radio" name="styleMatch" value="5" /> 5</label>
+          </fieldset>
+          <fieldset class="chips">
+            <legend>Failure tags</legend>
+            <label><input type="checkbox" name="failureTags" value="subject-cropped" /> subject-cropped</label>
+            <label><input type="checkbox" name="failureTags" value="text-distorted" /> text-distorted</label>
+            <label><input type="checkbox" name="failureTags" value="wrong-grade" /> wrong-grade</label>
+            <label><input type="checkbox" name="failureTags" value="lighting-mismatch" /> lighting-mismatch</label>
+            <label><input type="checkbox" name="failureTags" value="duplicated-element" /> duplicated-element</label>
+          </fieldset>
+          <label>
+            Notes
+            <textarea name="notes" rows="3" placeholder="free text..."></textarea>
+          </label>
+          <div class="critique-row">
+            <button type="submit" class="save-btn">Save critique</button>
+            <span class="save-status"></span>
+          </div>
+        </form>
+      </article>
+    </template>
+
+    <script src="/tracer.js" type="module"></script>
+  </body>
+</html>

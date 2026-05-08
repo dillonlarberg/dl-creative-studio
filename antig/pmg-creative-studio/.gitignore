@@ -37,3 +37,9 @@ user-info.html
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# resize-tracer (belt-and-suspenders — tracer has its own .gitignore too)
+tools/resize-tracer/fixtures/
+tools/resize-tracer/out/
+tools/resize-tracer/critiques.jsonl
+tools/resize-tracer/.env

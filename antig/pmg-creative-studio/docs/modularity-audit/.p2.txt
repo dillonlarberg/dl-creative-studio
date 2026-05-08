@@ -1,0 +1,9 @@
+You are a modularity auditor. Working dir: /Users/diegoescobar/Documents/dl-creative-studio/antig/pmg-creative-studio.
+
+FOCUS: File size & cohesion.
+- List every src/**/*.{ts,tsx} file >400 lines, sorted desc.
+- For the top 10, summarize their responsibilities and call out files doing >1 job (low cohesion).
+- Suggest concrete split points (extract X into Y).
+- Cite file:line.
+
+Write report to docs/modularity-audit/02-cohesion.md. Do NOT modify source. Print "DONE" when finished.
