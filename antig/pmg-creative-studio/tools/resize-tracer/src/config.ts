@@ -76,11 +76,13 @@ export const TARGET_PRESETS: Record<TargetLabel, TargetSpec> = {
   "signage-1080x1920":  { label: "signage-1080x1920",  display: "1080×1920 — portrait signage",        channel: "Digital Signage", w: 1080, h: 1920 },
 };
 
-// Working-resolution constraints for gpt-image-2:
-//   - dimensions divisible by 16
-//   - aspect ratio in [1:3, 3:1]
-//   - long edge ≥ 1024 (so the model has resolution to work with;
-//     sharp downsamples afterward to the exact target dims)
+// Working-resolution constraints for gpt-image-2 (per OpenAI docs):
+//   - both edges multiples of 16
+//   - long:short aspect ≤ 3:1
+//   - max edge ≤ 3840
+//   - total pixels in [655,360, 8,294,400]
+// We additionally floor the long edge at 1024 so in-band aspects keep
+// a roomy baseline; sharp downsamples to exact target dims afterward.
 const GEN_MIN_LONG_EDGE = 1024;
 const GEN_DIM_MULTIPLE = 16;
 const GEN_MIN_ASPECT = 1 / 3;
@@ -104,6 +106,10 @@ function roundToMultiple(n: number, m: number): number {
  *    are already inside that range, so the clamp is a no-op for them.
  */
 export function legalGenDims(target: { w: number; h: number }): { w: number; h: number } {
+  if (target.w <= 0 || target.h <= 0) {
+    throw new Error(`legalGenDims: invalid target ${target.w}×${target.h}`);
+  }
+
   const aspect = Math.min(GEN_MAX_ASPECT, Math.max(GEN_MIN_ASPECT, target.w / target.h));
 
   // Pick a working long edge ≥ 1024 (so a 300x250 source still gets a 1024+ canvas).
@@ -137,9 +143,23 @@ export function legalGenDims(target: { w: number; h: number }): { w: number; h: 
   // Rounding to multiples of 16 can nudge the ratio just past 3:1
   // (e.g. clamped 1:3 → 336×1024 = 3.047:1, rejected by gpt-image-2).
   // If we land outside the legal aspect band, bump the short edge up
-  // by GEN_DIM_MULTIPLE until the ratio is back inside.
-  while (w / h > GEN_MAX_ASPECT) h += GEN_DIM_MULTIPLE;
-  while (h / w > GEN_MAX_ASPECT) w += GEN_DIM_MULTIPLE;
+  // by GEN_DIM_MULTIPLE until the ratio is back inside. Capped at a
+  // few iterations as a runaway-loop guard — legalGenDims's own clamp
+  // means we should never need more than 1–2 bumps.
+  for (let i = 0; i < 4 && w / h > GEN_MAX_ASPECT; i++) h += GEN_DIM_MULTIPLE;
+  for (let i = 0; i < 4 && h / w > GEN_MAX_ASPECT; i++) w += GEN_DIM_MULTIPLE;
+
+  // Pixel-budget floor: gpt-image-2 rejects total pixels < 655,360.
+  // Skinny aspects (e.g. 480×1440 ≈ 691k) clear it; very small
+  // in-band targets (e.g. 1024×512 = 524k) do not. Scale both dims
+  // up uniformly until the floor is met, preserving aspect, then
+  // re-snap to multiples of 16 (rounding up so we don't drop below).
+  const MIN_PIXELS = 655_360;
+  if (w * h < MIN_PIXELS) {
+    const scale = Math.sqrt(MIN_PIXELS / (w * h));
+    w = Math.ceil((w * scale) / GEN_DIM_MULTIPLE) * GEN_DIM_MULTIPLE;
+    h = Math.ceil((h * scale) / GEN_DIM_MULTIPLE) * GEN_DIM_MULTIPLE;
+  }
 
   return { w, h };
 }

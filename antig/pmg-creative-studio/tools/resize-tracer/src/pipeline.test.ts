@@ -98,6 +98,29 @@ describe("legalGenDims", () => {
       expect(d.h / d.w).toBeLessThanOrEqual(3);
     }
   });
+
+  it("clears gpt-image-2's 655,360 minimum pixel budget for every preset", () => {
+    const targets = [
+      { w: 160, h: 600 },   // skinny vertical
+      { w: 728, h: 90 },    // skinny horizontal
+      { w: 320, h: 50 },    // extreme horizontal
+      { w: 300, h: 250 },   // small in-band
+      { w: 1080, h: 1920 }, // social vertical
+      { w: 1920, h: 1080 }, // landscape
+    ];
+    for (const t of targets) {
+      const d = legalGenDims(t);
+      expect(d.w * d.h).toBeGreaterThanOrEqual(655_360);
+      expect(d.w % 16).toBe(0);
+      expect(d.h % 16).toBe(0);
+    }
+  });
+
+  it("throws on zero or negative target dims (runaway-loop guard)", () => {
+    expect(() => legalGenDims({ w: 0, h: 100 })).toThrow();
+    expect(() => legalGenDims({ w: 100, h: 0 })).toThrow();
+    expect(() => legalGenDims({ w: -10, h: 100 })).toThrow();
+  });
 });
 
 describe("runPhase1", () => {
