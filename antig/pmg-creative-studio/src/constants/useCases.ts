@@ -137,3 +137,4 @@ export const SOCIAL_WIREFRAMES = [
     // techno_vibe_b: #logo_1 #image_3 #left-bar #tag
     { id: 'original_15b', name: 'Sidebar + Hero Image', file: 'techno_vibe_b.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Tag/Callout'] },
 ];
+

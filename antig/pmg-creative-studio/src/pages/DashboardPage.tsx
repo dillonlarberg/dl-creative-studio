@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import type { ComponentType, SVGProps } from 'react';
 import {
   ExclamationTriangleIcon,
   Squares2X2Icon,
   ClockIcon,
   ArrowRightIcon,
+  ArrowsPointingOutIcon,
+  RectangleGroupIcon,
+  CpuChipIcon,
+  FilmIcon,
 } from '@heroicons/react/24/outline';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { useCurrentUser } from '../auth/useCurrentUser';
@@ -279,6 +284,13 @@ export default function DashboardPage() {
   );
 }
 
+const APP_META: Record<string, { icon: ComponentType<SVGProps<SVGSVGElement>>; formats: string[] }> = {
+  'ad-resizing': { icon: ArrowsPointingOutIcon, formats: ['JPEG', 'PNG'] },
+  'template-builder': { icon: RectangleGroupIcon, formats: ['HTML', 'JPEG'] },
+  'batch-variants': { icon: CpuChipIcon, formats: ['JPEG'] },
+  'video-cutdown': { icon: FilmIcon, formats: ['MP4'] },
+};
+
 interface AppCardProps {
   manifest: AppManifest;
   href: string;
@@ -286,6 +298,10 @@ interface AppCardProps {
 }
 
 function AppCard({ manifest, href, disabled }: AppCardProps) {
+  const meta = APP_META[manifest.id];
+  const Icon = meta?.icon ?? Squares2X2Icon;
+  const formats = meta?.formats ?? [];
+
   const dataAttrs = {
     'data-testid': `app-card-${manifest.id}`,
     'data-disabled': disabled ? 'true' : 'false',
@@ -293,7 +309,13 @@ function AppCard({ manifest, href, disabled }: AppCardProps) {
   };
 
   const baseClass =
-    'group relative flex h-full flex-col gap-2 rounded-lg border border-gray-200 bg-white p-5 transition-colors';
+    'group relative flex h-full flex-col rounded-lg border border-gray-200 bg-white p-4 transition-colors';
+
+  const iconEl = (
+    <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg ${disabled ? 'bg-gray-100' : 'bg-blue-50 group-hover:bg-blue-100'} transition-colors`}>
+      <Icon className={`h-5 w-5 ${disabled ? 'text-gray-400' : 'text-blue-600'}`} />
+    </div>
+  );
 
   if (disabled) {
     return (
@@ -301,12 +323,20 @@ function AppCard({ manifest, href, disabled }: AppCardProps) {
         {...dataAttrs}
         className={`${baseClass} cursor-not-allowed bg-gray-50`}
       >
-        <p className="text-[15px] font-medium text-gray-900">{manifest.title}</p>
+        {iconEl}
+        <p className="text-[14px] font-semibold text-gray-700">{manifest.title}</p>
         {manifest.description && (
-          <p className="text-[13px] text-gray-500">{manifest.description}</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-gray-400">{manifest.description}</p>
         )}
-        <p className="mt-auto pt-2 text-xs font-medium text-amber-700">
-          Standards required
+        {formats.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {formats.map(f => (
+              <span key={f} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">{f}</span>
+            ))}
+          </div>
+        )}
+        <p className="mt-auto pt-3 text-[11px] font-medium text-amber-600">
+          Brand standards required
         </p>
       </div>
     );
@@ -316,15 +346,23 @@ function AppCard({ manifest, href, disabled }: AppCardProps) {
     <Link
       to={href}
       {...dataAttrs}
-      className={`${baseClass} hover:border-blue-300 hover:bg-blue-50/30`}
+      className={`${baseClass} hover:border-blue-200 hover:bg-blue-50/20`}
     >
-      <p className="text-[15px] font-medium text-gray-900">{manifest.title}</p>
+      {iconEl}
+      <p className="text-[14px] font-semibold text-gray-900">{manifest.title}</p>
       {manifest.description && (
-        <p className="text-[13px] text-gray-500">{manifest.description}</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-gray-500">{manifest.description}</p>
       )}
-      <span className="mt-auto inline-flex items-center gap-1 pt-2 text-[13px] font-medium text-blue-600 group-hover:text-blue-700">
+      {formats.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {formats.map(f => (
+            <span key={f} className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">{f}</span>
+          ))}
+        </div>
+      )}
+      <span className="mt-auto inline-flex items-center gap-1 pt-3 text-[12px] font-semibold text-blue-600 group-hover:text-blue-700">
         {manifest.status === 'preview' ? 'Preview' : 'Open'}
-        <ArrowRightIcon className="h-3.5 w-3.5" />
+        <ArrowRightIcon className="h-3 w-3" />
       </span>
     </Link>
   );

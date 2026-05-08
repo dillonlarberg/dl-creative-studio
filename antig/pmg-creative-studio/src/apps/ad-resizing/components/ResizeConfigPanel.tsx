@@ -30,6 +30,7 @@ interface ResizeConfigPanelProps {
   onSetChannels: (channelIds: string[]) => void;
   onRun: () => void;
   onClose: () => void;
+  addMode?: boolean;
 }
 
 export default function ResizeConfigPanel({
@@ -41,6 +42,7 @@ export default function ResizeConfigPanel({
   onSetChannels,
   onRun,
   onClose,
+  addMode = false,
 }: ResizeConfigPanelProps) {
   const availableDimensions: Dimension[] = getDeduplicatedDimensions(selectedChannels);
   const canRun = selectedChannels.length > 0 && selectedDimensions.size > 0;
@@ -83,7 +85,7 @@ export default function ResizeConfigPanel({
 
         {/* Channel selection */}
         <div className="border-b border-gray-200 px-5 py-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Target Channels</p>
             <button
               type="button"
@@ -93,6 +95,7 @@ export default function ResizeConfigPanel({
               {allChannelsSelected ? 'Deselect all' : 'Select all'}
             </button>
           </div>
+          <p className="mb-3 text-[11px] text-gray-400">Choose where this ad will run — sizes load per platform.</p>
           <div className="flex flex-col gap-2">
             {CHANNELS.map((channel) => {
               const active = selectedChannels.includes(channel.id);
@@ -102,18 +105,23 @@ export default function ResizeConfigPanel({
                   type="button"
                   onClick={() => onToggleChannel(channel.id)}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+                    'flex flex-col rounded-lg border px-3 py-2.5 text-left transition-colors',
                     active
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
                       : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50/40'
                   )}
                 >
-                  {(() => { const Icon = CHANNEL_ICONS[channel.id]; return Icon ? <Icon className="h-4 w-4 shrink-0 text-gray-400" /> : null; })()}
-                  <span className="flex-1 text-[13px] font-medium">{channel.label}</span>
-                  <span className="text-[11px] text-gray-400">{channel.dimensions.length} sizes</span>
-                  {active && (
-                    <span className="h-4 w-4 shrink-0 rounded-full bg-blue-600 text-center text-[9px] leading-4 text-white">✓</span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {(() => { const Icon = CHANNEL_ICONS[channel.id]; return Icon ? <Icon className="h-4 w-4 shrink-0 text-gray-400" /> : null; })()}
+                    <span className="flex-1 text-[13px] font-medium">{channel.label}</span>
+                    {active
+                      ? <span className="h-4 w-4 shrink-0 rounded-full bg-blue-600 text-center text-[9px] leading-4 text-white">✓</span>
+                      : <span className="text-[11px] text-gray-400">{channel.dimensions.length} sizes</span>
+                    }
+                  </div>
+                  <p className="mt-1 pl-7 text-[10px] text-gray-400">
+                    {channel.dimensions.map(d => d.label).join(' · ')}
+                  </p>
                 </button>
               );
             })}
@@ -123,7 +131,7 @@ export default function ResizeConfigPanel({
         {/* Dimension selection */}
         <div className="px-5 py-4">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Output Sizes</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Sizes to Generate</p>
             {availableDimensions.length > 0 && (
               <span className="text-[11px] text-gray-400">
                 {selectedDimensions.size}/{availableDimensions.length} selected
@@ -132,9 +140,12 @@ export default function ResizeConfigPanel({
           </div>
 
           {selectedChannels.length === 0 ? (
-            <p className="py-4 text-center text-[12px] text-gray-400">
-              Select a channel to see available sizes.
-            </p>
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center">
+              <p className="text-[12px] font-medium text-gray-500">No channel selected</p>
+              <p className="mt-0.5 text-[11px] text-gray-400">
+                Pick a channel above — sizes are platform-specific, so they appear once you choose where you're running this ad.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {availableDimensions.map((dim) => {
@@ -189,8 +200,8 @@ export default function ResizeConfigPanel({
         >
           <BoltIcon className="h-4 w-4" />
           {canRun
-            ? `Run — ${selectedDimensions.size} size${selectedDimensions.size === 1 ? '' : 's'}`
-            : 'Select channels to run'}
+            ? `${addMode ? 'Add' : 'Generate'} ${selectedDimensions.size} size${selectedDimensions.size === 1 ? '' : 's'}`
+            : 'Select a channel to continue'}
         </button>
       </div>
     </div>
