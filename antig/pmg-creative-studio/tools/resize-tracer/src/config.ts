@@ -134,5 +134,12 @@ export function legalGenDims(target: { w: number; h: number }): { w: number; h: 
     }
   }
 
+  // Rounding to multiples of 16 can nudge the ratio just past 3:1
+  // (e.g. clamped 1:3 → 336×1024 = 3.047:1, rejected by gpt-image-2).
+  // If we land outside the legal aspect band, bump the short edge up
+  // by GEN_DIM_MULTIPLE until the ratio is back inside.
+  while (w / h > GEN_MAX_ASPECT) h += GEN_DIM_MULTIPLE;
+  while (h / w > GEN_MAX_ASPECT) w += GEN_DIM_MULTIPLE;
+
   return { w, h };
 }

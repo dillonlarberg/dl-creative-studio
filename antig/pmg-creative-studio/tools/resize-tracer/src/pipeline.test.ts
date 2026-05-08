@@ -82,6 +82,22 @@ describe("legalGenDims", () => {
     const aspect = d.w / d.h;
     expect(aspect).toBeGreaterThanOrEqual(1 / 3 - 0.05);
   });
+
+  it("never produces dims that exceed gpt-image-2's 3:1 / 1:3 hard limit", () => {
+    // Targets that previously rounded to 336×1024 (3.047:1) and were rejected.
+    const skinnies = [
+      { w: 160, h: 600 },
+      { w: 728, h: 90 },
+      { w: 320, h: 50 },
+      { w: 100, h: 1000 },
+      { w: 1000, h: 100 },
+    ];
+    for (const t of skinnies) {
+      const d = legalGenDims(t);
+      expect(d.w / d.h).toBeLessThanOrEqual(3);
+      expect(d.h / d.w).toBeLessThanOrEqual(3);
+    }
+  });
 });
 
 describe("runPhase1", () => {
