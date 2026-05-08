@@ -13,6 +13,7 @@ interface FilterSortBarProps {
   onFormatChange: (v: FormatFilter) => void;
   onFileTypeChange: (v: FileTypeFilter) => void;
   onSortChange: (v: SortOption) => void;
+  onClearFilters: () => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -107,6 +108,7 @@ export default function FilterSortBar({
   onFormatChange,
   onFileTypeChange,
   onSortChange,
+  onClearFilters,
   totalCount,
   filteredCount,
 }: FilterSortBarProps) {
@@ -127,9 +129,18 @@ export default function FilterSortBar({
           onChange={onFileTypeChange}
         />
         {isFiltered && (
-          <span className="text-[12px] text-gray-400">
-            {filteredCount} of {totalCount}
-          </span>
+          <>
+            <span className="text-[12px] text-gray-400">
+              {filteredCount === 0 ? 'No matches' : `${filteredCount} of ${totalCount}`}
+            </span>
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="text-[12px] font-medium text-blue-600 hover:text-blue-700"
+            >
+              Clear
+            </button>
+          </>
         )}
       </div>
 

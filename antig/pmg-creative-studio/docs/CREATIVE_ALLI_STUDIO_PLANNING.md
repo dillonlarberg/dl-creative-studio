@@ -467,6 +467,33 @@ The gallery built in Option A becomes Step 2. Nothing gets thrown away — steps
 
 **When to make this move:** When users need to select from multiple source types (DAM vs. feed vs. upload) or when batch multi-select across sessions becomes a requirement.
 
+### Multi-job model — batch history and navigation
+
+**Implemented as of 2026-05-08 (prototype).**
+
+Each time the user runs a generation, a new `GenerationJob` is pushed into a `jobs` array. `activeJobId` tracks which batch is in view. No job is ever destroyed by navigating away — only a deliberate "clear all" action (not yet built) would remove them.
+
+**Behavior:**
+- **+ Resize another creative** — goes to browse, creates a new job on generate, adds it to the list
+- **+ Add more sizes** — goes to browse in add mode, appends outputs to the active job
+- **Change feed** — disconnects the source library, all existing jobs are untouched
+- **Job tab click** — switches `activeJobId`, resets channel/sort filters for the new view
+
+**Job tabs UI (current implementation):** A horizontal strip of pill-shaped tabs above the results area, shown only when `jobs.length > 1`. Each tab shows: source creative thumbnail (circle crop) + truncated name + output count + spinner if still generating.
+
+**UX alternatives considered for the job list / history view:**
+
+| Option | Description | When it fits |
+|---|---|---|
+| **Header tabs (current)** | Horizontal pill tabs above the results grid. Low chrome, immediately scannable for small N. | Prototype / early MVP. Gets crowded past ~5 jobs. |
+| **Left sidebar job list** | Narrow panel showing all batches (thumbnail + name + count). Click to load. | When jobs become a primary navigation concept; scales to large N. |
+| **"Recent batches" accordion** | Collapsed strip above the active grid; expand to see prior batches inline. | If prior batches are rarely revisited but occasionally useful. |
+| **Separate "My batches" page** | Full page listing all jobs, each linkable. Active job stays in results view. | When jobs need to persist across sessions (requires server-side storage). |
+
+**When to revisit:** If users run more than ~5 batches in a session, header tabs overflow and the sidebar becomes the right call. The data model (`jobs[]` + `activeJobId`) supports any of these layouts without changes.
+
+---
+
 ### Inheritance model (Variants tab)
 Original creative → N resized variants. The Variants tab label was chosen deliberately to support a future folder/grouped view:
 
@@ -478,3 +505,55 @@ Fall Campaign — Hero (1920×1080)
 ```
 
 When multiple jobs have run, group by source creative. This is a display-layer change only — the data model already supports it (`job.sourceCreative` + `job.outputs`).
+
+### Feed display name mapping
+
+Raw feed system names from the Alli API (e.g. `client_feed_historical`, `product_feed_v2_staging`) are machine-generated identifiers — not human-readable. A transform layer is needed between the API response and UI rendering.
+
+**Where display names are needed:**
+- Feed list in the Connect a Data Source screen (FeedConnectScreen)
+- The connected-feed indicator pill in the browse stage header
+- Results banners referencing the source feed
+- Any export metadata or audit trail that shows feed provenance
+
+**Transform layer design:**
+- Input: raw system name string from `fetchDataSources` API response
+- Output: display name string for UI
+- Location: a utility function (e.g. `formatFeedName`) applied at the data-fetch boundary, before feed data is stored in state — not at render time
+- Approach: naming convention parser first (split on `_`, title-case, strip common suffixes like `_raw`, `_v2`, `_staging`, `_historical`), with a manual override map for known exceptions
+
+**Example mapping:**
+
+| System name | Auto-parsed | Override |
+|---|---|---|
+| `client_feed_historical` | "Client Feed Historical" | "Historical Client Feed" |
+| `product_feed_v2_staging` | "Product Feed" | strip version + env suffix |
+| `hero_image_url` | — | column-level label, not feed-level |
+
+**Open question:** Does `fetchDataSources` ever return a human-readable `label` or `display_name` field alongside the system name? If so, prefer that and use the parser only as a fallback. Check the API response shape before building the parser.
+
+---
+
+### Browse source split: upload vs. feed (Phase 2 UX)
+
+The current browse stage assumes all source creatives come from a connected feed. In practice, users will have two distinct pipelines:
+
+**Pipeline A — Feed-sourced (current):** Connect a client feed → browse image columns → select creative → resize config → variants
+
+**Pipeline B — Direct upload:** Drop or upload a file from disk → immediately enter resize config → variants (no feed required)
+
+These are meaningfully different workflows:
+- Feed images are tied to feed rows (product/campaign context, existing metadata)
+- Uploaded files are ad-hoc (standalone assets, no feed context, no column mapping)
+
+**When users need both:** A media buyer wants to resize a hero image from the client product feed (Pipeline A) and also resize a one-off file from their desktop (Pipeline B) without connecting a feed first.
+
+**UX options:**
+
+1. **Tabbed source selector** — two tabs in the browse header: "From feed" | "Upload a file". Each tab shows its own experience.
+2. **Step 0 choice screen** — an explicit first step with two large option cards: "Connect a feed" vs. "Upload a file". Selected path determines the rest of the flow.
+3. **Unified browse with upload affordance** — feed gallery is the default; a prominent "Upload instead" button in the header skips the gallery and drops directly into resize config. Upload is a second-class action, not a separate flow.
+
+**Recommendation for Phase 2:** Option 3. It keeps the majority case (feed) frictionless and makes upload available without requiring a parallel flow. If uploads become a primary use case (e.g. agency uploads client-supplied PSDs), promote to Option 2.
+
+**Note:** The existing Phase 2 step "Step 1: Select source (feed / DAM upload / manual upload)" already anticipated this split — this section adds the UX design detail and confirms the two-pipeline framing.

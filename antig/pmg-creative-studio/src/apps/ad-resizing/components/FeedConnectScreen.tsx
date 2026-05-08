@@ -36,13 +36,13 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
   const [search, setSearch] = useState('');
   const [pickingFeed, setPickingFeed] = useState<VerifiedFeed | null>(null);
 
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
+  // Run ID guards against StrictMode double-invoke: each runScan() gets a unique ID,
+  // and async callbacks only write state if they belong to the current run.
+  const runId = useRef(0);
 
   function runScan() {
+    const myId = ++runId.current;
+
     setScanning(true);
     setScanError(null);
     setVerifiedFeeds([]);
@@ -51,7 +51,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
     setCurrentlyChecking('');
 
     fetchDataSources({ clientSlug }).then(async result => {
-      if (!mounted.current) return;
+      if (runId.current !== myId) return;
       if (result.error) { setScanning(false); setScanError(result.error); return; }
 
       const allFeeds = result.feeds;
@@ -59,11 +59,11 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
 
       await Promise.allSettled(
         allFeeds.map(async feed => {
-          if (!mounted.current) return;
+          if (runId.current !== myId) return;
           setCurrentlyChecking(feed.name);
 
           const sample = await fetchFeedSample({ clientSlug, feed });
-          if (!mounted.current) return;
+          if (runId.current !== myId) return;
 
           setScannedCount(c => c + 1);
           const cols = detectImageColumns(sample.sampleData);
@@ -80,7 +80,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
         })
       );
 
-      if (mounted.current) setScanning(false);
+      if (runId.current === myId) setScanning(false);
     });
   }
 

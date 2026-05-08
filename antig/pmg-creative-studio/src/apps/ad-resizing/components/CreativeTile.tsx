@@ -51,7 +51,7 @@ export default function CreativeTile({ creative, selected, onSelect }: CreativeT
 
       {/* Metadata */}
       <div className="px-3 py-2.5">
-        <p className="truncate text-[13px] font-medium text-gray-900">{creative.name}</p>
+        <p className="truncate text-[13px] font-medium text-gray-900" title={creative.name}>{creative.name}</p>
         <div className="mt-0.5 flex items-center justify-between">
           <span className="text-[11px] text-gray-400">
             {creative.width}×{creative.height}

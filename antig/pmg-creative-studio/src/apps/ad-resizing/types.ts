@@ -40,5 +40,3 @@ export interface GenerationJob {
   outputs: GeneratedOutput[];
   startedAt: number;
 }
-
-export type AppTab = 'all-creatives' | 'ai-generated';
