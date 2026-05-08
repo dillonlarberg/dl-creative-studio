@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import OpenAI, { toFile } from "openai";
 import sharp from "sharp";
-import { OPENAI_P2_MODEL, legalGenDims, TARGET_PRESETS } from "../src/config.js";
+import { DEFAULT_P2_QUALITY, OPENAI_P2_MODEL, legalGenDims, TARGET_PRESETS } from "../src/config.js";
 import { prepPaddedCanvas } from "../src/canvasPrep.js";
 
 async function main(): Promise<void> {
@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   console.log(`[verify-p2-openai] source: ${sourceSpec.w}×${sourceSpec.h}`);
 
   // Smoke target: 9:16 social.
-  const targetSpec = TARGET_PRESETS["9x16"];
+  const targetSpec = TARGET_PRESETS["social-9x16"];
   const dims = legalGenDims(targetSpec);
   console.log(`[verify-p2-openai] canvas dims: ${dims.w}×${dims.h}`);
 
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
       prompt:
         "Extend the existing scene into the masked (transparent) regions. Match the existing lighting, color palette, and depth of field.",
       size: `${padded.width}x${padded.height}`,
-      quality: "high",
+      quality: DEFAULT_P2_QUALITY,
       n: 1,
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

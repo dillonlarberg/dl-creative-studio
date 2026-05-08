@@ -1,5 +1,5 @@
 import OpenAI, { toFile } from "openai";
-import { OPENAI_P2_MODEL } from "./config.js";
+import { DEFAULT_P2_QUALITY, OPENAI_P2_MODEL, type P2Quality } from "./config.js";
 import { prepPaddedCanvas, type PaddedCanvas } from "./canvasPrep.js";
 import { buildP2PromptForOpenAi, type Spec } from "./promptTemplate.js";
 import type { P1Output } from "./schema.js";
@@ -9,6 +9,7 @@ export interface Phase2Input {
   source: Buffer;
   sourceSpec: Spec;
   targetSpec: Spec;
+  quality?: P2Quality;
 }
 
 export interface Phase2Output {
@@ -42,8 +43,9 @@ export async function runPhase2(
   );
 
   const prompt = buildP2PromptForOpenAi(input.p1, padded);
+  const quality = input.quality ?? DEFAULT_P2_QUALITY;
   console.log(
-    `[P2] calling ${OPENAI_P2_MODEL} → ${padded.width}×${padded.height} (prompt=${prompt.length} chars)`,
+    `[P2] calling ${OPENAI_P2_MODEL} (${quality}) → ${padded.width}×${padded.height} (prompt=${prompt.length} chars)`,
   );
 
   const t0 = Date.now();
@@ -58,7 +60,7 @@ export async function runPhase2(
       mask: await toFile(padded.maskBuffer, "mask.png", { type: "image/png" }),
       prompt,
       size: `${padded.width}x${padded.height}`,
-      quality: "high",
+      quality,
       n: 1,
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

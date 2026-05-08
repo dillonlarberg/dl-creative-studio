@@ -2,6 +2,7 @@
 
 const fileInput = document.getElementById("file");
 const targetSelect = document.getElementById("target");
+const qualitySelect = document.getElementById("quality");
 const runBtn = document.getElementById("run-btn");
 const runForm = document.getElementById("run-form");
 const runStatus = document.getElementById("run-status");
@@ -53,6 +54,7 @@ runForm.addEventListener("submit", async (ev) => {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("targetLabel", targetSelect.value);
+  fd.append("quality", qualitySelect.value || "medium");
 
   try {
     const resp = await fetch("/api/run", { method: "POST", body: fd });
@@ -78,6 +80,7 @@ function addCard(data, sourceName) {
 
   node.querySelector(".src").textContent = sourceName;
   node.querySelector(".target").textContent = data.targetDisplay || data.targetLabel;
+  node.querySelector(".quality").textContent = `quality ${data.p2Quality || "medium"}`;
   node.querySelector(".timings").textContent = `P1 ${data.timings.p1Ms}ms / P2 ${data.timings.p2Ms}ms`;
   node.querySelector(".run-id").textContent = data.runId;
 
@@ -138,6 +141,7 @@ function wireCritiqueForm(card, data, sourceName) {
       source: sourceName,
       targetSpec: data.targetLabel,
       p2Model: data.p2Model,
+      p2Quality: data.p2Quality || "medium",
       p2OutputPath: data.p2OutputPath,
       timings: data.timings,
       critique: {

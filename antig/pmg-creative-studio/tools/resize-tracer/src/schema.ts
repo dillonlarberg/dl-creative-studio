@@ -33,6 +33,7 @@ export const CritiqueSchema = z.object({
   source: z.string(),
   targetSpec: z.string(),
   p2Model: z.string(),
+  p2Quality: z.enum(["medium", "high"]).optional(),
   p2OutputPath: z.string(),
   timings: z.object({
     p1Ms: z.number(),

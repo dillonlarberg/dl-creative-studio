@@ -32,6 +32,13 @@
                 <option value="" disabled selected>Pick a target...</option>
               </select>
             </label>
+            <label>
+              Quality
+              <select id="quality" name="quality">
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
             <button type="submit" id="run-btn" disabled>Run pipeline</button>
             <span class="status" id="run-status"></span>
           </form>
@@ -49,6 +56,7 @@
         <header class="card-header">
           <span class="src"></span>
           <span class="target"></span>
+          <span class="quality"></span>
           <span class="timings"></span>
           <span class="run-id muted"></span>
         </header>

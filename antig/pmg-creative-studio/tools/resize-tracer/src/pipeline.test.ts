@@ -133,7 +133,11 @@ describe("runPhase2 (OpenAI gpt-image-2)", () => {
   it("returns imageBuffer + paddedCanvas on b64_json", async () => {
     const png = await makeTestPng();
     const fakePngB64 = (await makeTestPng(128, 128)).toString("base64");
-    const openai = makeOpenAi(async () => ({ data: [{ b64_json: fakePngB64 }] }));
+    let request: unknown = null;
+    const openai = makeOpenAi(async (req) => {
+      request = req;
+      return { data: [{ b64_json: fakePngB64 }] };
+    });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out = await runPhase2(openai as any, {
       p1: validP1,
@@ -147,6 +151,26 @@ describe("runPhase2 (OpenAI gpt-image-2)", () => {
     expect(Buffer.isBuffer(out.paddedCanvas.maskBuffer)).toBe(true);
     expect(out.paddedCanvas.width).toBeGreaterThan(0);
     expect(out.paddedCanvas.height).toBeGreaterThan(0);
+    expect((request as { quality?: string }).quality).toBe("medium");
+  });
+
+  it("passes high quality through to OpenAI when requested", async () => {
+    const png = await makeTestPng();
+    const fakePngB64 = (await makeTestPng(128, 128)).toString("base64");
+    let request: unknown = null;
+    const openai = makeOpenAi(async (req) => {
+      request = req;
+      return { data: [{ b64_json: fakePngB64 }] };
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await runPhase2(openai as any, {
+      p1: validP1,
+      source: png,
+      sourceSpec: { w: 64, h: 64 },
+      targetSpec: { w: 1080, h: 1920 },
+      quality: "high",
+    });
+    expect((request as { quality?: string }).quality).toBe("high");
   });
 
   it("throws when response has no b64_json", async () => {
@@ -199,7 +223,7 @@ describe("runPhase2 (OpenAI gpt-image-2)", () => {
 describe("prepPaddedCanvas", () => {
   it("produces image and mask at legalGenDims", async () => {
     const png = await makeTestPng(64, 64);
-    const target = TARGET_PRESETS["9x16"];
+    const target = TARGET_PRESETS["social-9x16"];
     const padded = await prepPaddedCanvas(png, { w: 64, h: 64 }, target);
     const expected = legalGenDims(target);
     expect(padded.width).toBe(expected.w);
@@ -217,7 +241,7 @@ describe("prepPaddedCanvas", () => {
 
   it("mask is opaque-white over source region, transparent elsewhere", async () => {
     const png = await makeTestPng(64, 64);
-    const target = TARGET_PRESETS["9x16"];
+    const target = TARGET_PRESETS["social-9x16"];
     const padded = await prepPaddedCanvas(png, { w: 64, h: 64 }, target);
     const { data: maskRaw, info } = await sharp(padded.maskBuffer)
       .raw()
@@ -257,7 +281,7 @@ describe("runPipeline (happy path)", () => {
 
   it("writes all artifacts and returns paths + timings", async () => {
     const png = await makeTestPng(64, 64);
-    const target = TARGET_PRESETS["9x16"];
+    const target = TARGET_PRESETS["social-9x16"];
     const dims = legalGenDims(target);
     const fakeModelOut = (
       await sharp({
@@ -285,6 +309,7 @@ describe("runPipeline (happy path)", () => {
     expect(result.runId).toBe("test-run-001");
     expect(result.timings.p1Ms).toBeGreaterThanOrEqual(0);
     expect(result.timings.p2Ms).toBeGreaterThanOrEqual(0);
+    expect(result.p2Quality).toBe("medium");
     expect(result.p1.subjectDescription).toBe("test subject");
 
     // All artifacts on disk.

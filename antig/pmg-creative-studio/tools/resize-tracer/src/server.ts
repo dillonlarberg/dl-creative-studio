@@ -6,7 +6,7 @@ import path from "node:path";
 import { promises as fs } from "node:fs";
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { TARGET_PRESETS, type TargetLabel } from "./config.js";
+import { parseP2Quality, TARGET_PRESETS, type TargetLabel } from "./config.js";
 import { runPipeline, OUT_ROOT } from "./pipeline.js";
 import { makeRunId } from "./runId.js";
 import { CritiqueSchema } from "./schema.js";
@@ -72,6 +72,7 @@ app.post("/api/run", upload.single("file"), async (req, res) => {
     if (!openaiKey) {
       return res.status(500).json({ error: "OPENAI_API_KEY not set" });
     }
+    const quality = parseP2Quality(req.body.quality);
 
     const fixtureBasename = path
       .basename(file.originalname, path.extname(file.originalname))
@@ -86,6 +87,7 @@ app.post("/api/run", upload.single("file"), async (req, res) => {
       sourceMime: file.mimetype === "image/png" ? "image/png" : "image/jpeg",
       sourceFilename: file.originalname,
       targetSpec,
+      quality,
     });
 
     return res.json({
@@ -101,6 +103,7 @@ app.post("/api/run", upload.single("file"), async (req, res) => {
       p2FinalUrl: `/out/${runId}/result.png`,
       timings: result.timings,
       p2Model: result.p2Model,
+      p2Quality: result.p2Quality,
       p2OutputPath: path.relative(process.cwd(), result.p2FinalPath),
     });
   } catch (err) {

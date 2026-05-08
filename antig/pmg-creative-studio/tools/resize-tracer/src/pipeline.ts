@@ -6,8 +6,8 @@ import OpenAI from "openai";
 import { runPhase1 } from "./phase1.js";
 import { runPhase2 } from "./phase2.js";
 import { resizeToTarget } from "./resize.js";
-import type { TargetSpec } from "./config.js";
-import { OPENAI_P2_MODEL } from "./config.js";
+import type { P2Quality, TargetSpec } from "./config.js";
+import { DEFAULT_P2_QUALITY, OPENAI_P2_MODEL } from "./config.js";
 import type { P1Output } from "./schema.js";
 
 export const OUT_ROOT = path.resolve(process.cwd(), "out");
@@ -20,6 +20,7 @@ export interface PipelineInput {
   sourceMime: string;
   sourceFilename: string;
   targetSpec: TargetSpec;
+  quality?: P2Quality;
 }
 
 export interface PipelineResult {
@@ -34,6 +35,7 @@ export interface PipelineResult {
   p2FinalPath: string;      // final cover-fit resize to exact target dims
   timings: { p1Ms: number; p2Ms: number };
   p2Model: string;
+  p2Quality: P2Quality;
 }
 
 async function detectSourceSpec(buf: Buffer): Promise<{ w: number; h: number }> {
@@ -79,6 +81,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     source: input.source,
     sourceSpec,
     targetSpec: input.targetSpec,
+    quality: input.quality,
   });
   const p2Ms = Date.now() - p2Start;
 
@@ -119,5 +122,6 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     p2FinalPath,
     timings: { p1Ms, p2Ms },
     p2Model: OPENAI_P2_MODEL,
+    p2Quality: input.quality ?? DEFAULT_P2_QUALITY,
   };
 }

@@ -34,7 +34,7 @@ npm run tracer
 # open http://127.0.0.1:3000/tracer.html
 ```
 
-Pick a fixture, pick a target, click Run. The page shows Source / Mask / Raw P2 / Final resize check — four panels — plus the P1 JSON (collapsible).
+Pick a fixture, pick a target, choose quality, click Run. Quality defaults to `medium`; switch to `high` for slower, more expensive final checks. The page shows Source / Mask / Raw P2 / Final resize check — four panels — plus the P1 JSON (collapsible).
 
 ## Critique workflow
 
@@ -48,7 +48,8 @@ Each result card has a critique form. Fill out verdict / radio rows / failure ta
   "timestamp": "2026-05-07T15:42:08Z",
   "source": "creative-01.jpg",
   "targetSpec": "9x16",
-  "p2Model": "gemini-2.5-flash-image",
+  "p2Model": "gpt-image-2",
+  "p2Quality": "medium",
   "p2OutputPath": "out/<runId>/result.png",
   "timings": { "p1Ms": 1840, "p2Ms": 7520 },
   "critique": {
