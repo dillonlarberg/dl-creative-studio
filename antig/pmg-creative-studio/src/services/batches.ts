@@ -10,12 +10,29 @@ export interface BatchRecord {
     templateId: string;
     feedId: string;
     feedName: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    // 'partial' is used by ad-resizing when at least one output succeeded but
+    // at least one failed permanently. Template-builder treats it the same as
+    // 'completed' / 'failed' for its UI (DashboardPage's ACTIVE_STATUSES only
+    // surfaces 'pending'|'processing', so 'partial' just falls off the
+    // Active Batch Jobs widget — verified for PR-A).
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial';
     totalVariations: number;
     completedVariations: number;
     ratio: string;
     createdAt: any;
     updatedAt: any;
+
+    // Optional ad-resizing-specific fields. Populated by the runOutpaintBatch
+    // callable; ignored by template-builder.
+    errorCount?: number;
+    sourceCreative?: {
+        creativeId: string;
+        originalUrl: string;
+        storageRef: string;
+        width: number;
+        height: number;
+        mime: string;
+    };
 }
 
 export interface BatchResult {

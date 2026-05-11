@@ -7,6 +7,7 @@ admin.initializeApp();
 export * from "./alliProxy";
 export * from "./ai";
 export * from "./video";
+export * from "./resize";
 
 export const helloWorld = functions.https.onRequest((request, response) => {
 

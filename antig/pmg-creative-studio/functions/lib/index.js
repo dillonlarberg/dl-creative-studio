@@ -44,6 +44,7 @@ admin.initializeApp();
 __exportStar(require("./alliProxy"), exports);
 __exportStar(require("./ai"), exports);
 __exportStar(require("./video"), exports);
+__exportStar(require("./resize"), exports);
 exports.helloWorld = functions.https.onRequest((request, response) => {
     functions.logger.info("Hello logs!", { structuredData: true });
     response.send("PMG Creative Studio Backend is running!");

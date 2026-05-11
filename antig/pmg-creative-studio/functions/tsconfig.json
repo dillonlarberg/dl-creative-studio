@@ -7,10 +7,15 @@
         "sourceMap": true,
         "strict": true,
         "target": "es2021",
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "skipLibCheck": true
     },
     "compileOnSave": true,
     "include": [
         "src"
+    ],
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/__tests__/**"
     ]
 }
