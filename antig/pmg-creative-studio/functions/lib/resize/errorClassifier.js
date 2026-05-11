@@ -67,6 +67,15 @@ const RULES = [
         category: "permanent",
         match: (e) => e.name === "ZodError" || (/P1 returned no text|JSON|schema/i.test(e.message) && /attempt 2|retry/i.test(e.message)),
     },
+    {
+        // Gemini / OpenAI return 400 INVALID_ARGUMENT with an API_KEY_INVALID
+        // detail when the bound secret value is rejected. Won't self-heal until
+        // the secret is rotated, so route to permanent — a Retry button on this
+        // would burn cycles against a broken credential.
+        reason: "api_key_invalid",
+        category: "permanent",
+        match: (e) => /API[_ ]key not valid|API_KEY_INVALID|invalid[_ ]api[_ ]key|authentication[_ ]error/i.test(e.message),
+    },
     // ── Quota exhaustion (must precede generic 429) ─────────────────
     // Gemini / OpenAI return 429 with a quota-specific body when the hard
     // billing/RPM ceiling is hit. Retry storms here are wasteful and won't

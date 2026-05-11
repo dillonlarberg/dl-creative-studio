@@ -47,6 +47,22 @@ describe("classifyError — permanent bucket", () => {
     e.name = "ZodError";
     expect(classifyError(e).category).toBe("permanent");
   });
+
+  it("classifies Gemini API_KEY_INVALID as permanent", () => {
+    const e = new Error(
+      '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}',
+    );
+    const r = classifyError(e);
+    expect(r.category).toBe("permanent");
+    expect(r.reason).toBe("api_key_invalid");
+  });
+
+  it("classifies OpenAI authentication_error as permanent", () => {
+    const e = Object.assign(new Error("Incorrect API key provided — authentication_error"), {
+      status: 401,
+    });
+    expect(classifyError(e).reason).toBe("api_key_invalid");
+  });
 });
 
 describe("classifyError — quota (permanent, precedes 429 rate-limit)", () => {
