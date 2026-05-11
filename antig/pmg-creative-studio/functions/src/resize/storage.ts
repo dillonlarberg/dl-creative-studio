@@ -20,7 +20,6 @@ import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions";
-import { Agent as UndiciAgent } from "undici";
 import { assertSafeSourceUrl } from "./ssrf";
 
 const APP_ID = "ad-resizing";
@@ -90,28 +89,37 @@ function intermediatePath(
 }
 
 /**
- * Fetch a URL whose DNS resolution is pinned to a single resolved IP. Closes
- * the rebinding TOCTOU between `assertSafeSourceUrl` and the actual fetch:
- * the undici dispatcher's `connect.lookup` callback returns the pre-resolved
- * IP without consulting the resolver a second time.
+ * Fetch the source URL.
+ *
+ * TODO(ssrf-pin): re-introduce DNS pinning via an undici dispatcher whose
+ * `connect.lookup` returns the IP that `assertSafeSourceUrl` already
+ * validated. The previous implementation triggered "fetch failed" on
+ * production CDNs (likely TLS-SNI / Host mismatch) so we ship plain fetch
+ * for now. The pre-fetch SSRF address check still runs, so the residual
+ * risk is only a ~microsecond DNS-rebind window between resolve and fetch
+ * — acceptable for a prototype, not for production.
  */
-async function fetchPinned(url: URL, resolvedIp: string, family: 4 | 6): Promise<Response> {
-  const dispatcher = new UndiciAgent({
-    connect: {
-      // `lookup` matches Node's dns.lookup signature; we satisfy it from
-      // memory using the IP `assertSafeSourceUrl` already validated.
-      lookup: (
-        _hostname: string,
-        _opts: unknown,
-        cb: (err: NodeJS.ErrnoException | null, address: string, family: number) => void,
-      ) => {
-        cb(null, resolvedIp, family);
-      },
-    },
-  });
-  // Node 18+ fetch accepts an undici dispatcher via the `dispatcher` field.
-  // The DOM `RequestInit` type doesn't expose it, hence the cast.
-  return fetch(url.toString(), { dispatcher } as unknown as RequestInit);
+async function fetchSource(url: URL): Promise<Response> {
+  return fetch(url.toString());
+}
+
+/** Drill into nested `err.cause` chains (Node fetch hides the real reason there). */
+function describeFetchError(err: unknown): string {
+  const visited = new Set<unknown>();
+  const parts: string[] = [];
+  let current: unknown = err;
+  while (current && !visited.has(current)) {
+    visited.add(current);
+    if (current instanceof Error) {
+      parts.push(current.name + ': ' + current.message);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      current = (current as any).cause;
+    } else {
+      parts.push(String(current));
+      current = null;
+    }
+  }
+  return parts.join(' → ');
 }
 
 // ── Public API ──────────────────────────────────────────────────────
@@ -146,16 +154,21 @@ export async function stageSourceIfMissing(args: {
     };
   }
 
-  // ── Cache miss: SSRF → pinned fetch → probe → upload ──
-  const { url, resolvedIp, family } = await assertSafeSourceUrl(args.originalUrl);
+  // ── Cache miss: SSRF → fetch → probe → upload ──
+  const { url } = await assertSafeSourceUrl(args.originalUrl);
 
   const advertisedLength = Number(0); // populated after response
   let resp: Response;
   try {
-    resp = await fetchPinned(url, resolvedIp, family);
+    resp = await fetchSource(url);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`source fetch failed: ${msg}`);
+    const detail = describeFetchError(err);
+    logger.warn('stageSourceIfMissing: fetch threw', {
+      url: url.toString(),
+      host: url.hostname,
+      detail,
+    });
+    throw new Error(`source fetch failed: ${detail}`);
   }
   if (!resp.ok) {
     // Surface the upstream status so errorClassifier can route 404 / 5xx.

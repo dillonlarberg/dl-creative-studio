@@ -29,7 +29,6 @@ const node_crypto_1 = require("node:crypto");
 const sharp_1 = __importDefault(require("sharp"));
 const storage_1 = require("firebase-admin/storage");
 const firebase_functions_1 = require("firebase-functions");
-const undici_1 = require("undici");
 const ssrf_1 = require("./ssrf");
 const APP_ID = "ad-resizing";
 /** Hard upper bound for fetched source bytes. ~50 MB clears all known feed CDN sizes. */
@@ -62,24 +61,37 @@ function intermediatePath(clientSlug, batchId, outputId, kind) {
     return `clients/${clientSlug}/apps/${APP_ID}/intermediates/${batchId}/${outputId}/${kind}.png`;
 }
 /**
- * Fetch a URL whose DNS resolution is pinned to a single resolved IP. Closes
- * the rebinding TOCTOU between `assertSafeSourceUrl` and the actual fetch:
- * the undici dispatcher's `connect.lookup` callback returns the pre-resolved
- * IP without consulting the resolver a second time.
+ * Fetch the source URL.
+ *
+ * TODO(ssrf-pin): re-introduce DNS pinning via an undici dispatcher whose
+ * `connect.lookup` returns the IP that `assertSafeSourceUrl` already
+ * validated. The previous implementation triggered "fetch failed" on
+ * production CDNs (likely TLS-SNI / Host mismatch) so we ship plain fetch
+ * for now. The pre-fetch SSRF address check still runs, so the residual
+ * risk is only a ~microsecond DNS-rebind window between resolve and fetch
+ * — acceptable for a prototype, not for production.
  */
-async function fetchPinned(url, resolvedIp, family) {
-    const dispatcher = new undici_1.Agent({
-        connect: {
-            // `lookup` matches Node's dns.lookup signature; we satisfy it from
-            // memory using the IP `assertSafeSourceUrl` already validated.
-            lookup: (_hostname, _opts, cb) => {
-                cb(null, resolvedIp, family);
-            },
-        },
-    });
-    // Node 18+ fetch accepts an undici dispatcher via the `dispatcher` field.
-    // The DOM `RequestInit` type doesn't expose it, hence the cast.
-    return fetch(url.toString(), { dispatcher });
+async function fetchSource(url) {
+    return fetch(url.toString());
+}
+/** Drill into nested `err.cause` chains (Node fetch hides the real reason there). */
+function describeFetchError(err) {
+    const visited = new Set();
+    const parts = [];
+    let current = err;
+    while (current && !visited.has(current)) {
+        visited.add(current);
+        if (current instanceof Error) {
+            parts.push(current.name + ': ' + current.message);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            current = current.cause;
+        }
+        else {
+            parts.push(String(current));
+            current = null;
+        }
+    }
+    return parts.join(' → ');
 }
 // ── Public API ──────────────────────────────────────────────────────
 /**
@@ -107,16 +119,21 @@ async function stageSourceIfMissing(args) {
             buffer,
         };
     }
-    // ── Cache miss: SSRF → pinned fetch → probe → upload ──
-    const { url, resolvedIp, family } = await (0, ssrf_1.assertSafeSourceUrl)(args.originalUrl);
+    // ── Cache miss: SSRF → fetch → probe → upload ──
+    const { url } = await (0, ssrf_1.assertSafeSourceUrl)(args.originalUrl);
     const advertisedLength = Number(0); // populated after response
     let resp;
     try {
-        resp = await fetchPinned(url, resolvedIp, family);
+        resp = await fetchSource(url);
     }
     catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`source fetch failed: ${msg}`);
+        const detail = describeFetchError(err);
+        firebase_functions_1.logger.warn('stageSourceIfMissing: fetch threw', {
+            url: url.toString(),
+            host: url.hostname,
+            detail,
+        });
+        throw new Error(`source fetch failed: ${detail}`);
     }
     if (!resp.ok) {
         // Surface the upstream status so errorClassifier can route 404 / 5xx.
