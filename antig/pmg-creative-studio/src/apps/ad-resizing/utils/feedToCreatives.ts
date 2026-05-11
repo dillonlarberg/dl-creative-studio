@@ -1,4 +1,5 @@
-import type { MockCreative } from '../types';
+import type { Creative } from '../types';
+import { sha256Prefix } from './sha256';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
@@ -43,19 +44,25 @@ function deriveLabel(row: Record<string, unknown>, imageColumn: string): string 
   return 'Untitled Creative';
 }
 
-export function feedToCreatives(
+export async function feedToCreatives(
   sampleData: Array<Record<string, unknown>>,
   feedName: string,
   imageColumn: string,
-): MockCreative[] {
-  return sampleData
-    .filter(row => String(row[imageColumn] ?? '').startsWith('http'))
-    .map((row, i) => {
+): Promise<Creative[]> {
+  const filtered = sampleData.filter(row => String(row[imageColumn] ?? '').startsWith('http'));
+  return Promise.all(
+    filtered.map(async (row) => {
       const imageUrl = String(row[imageColumn]);
+      // URL-stable id (codex F10): matches the cache key the Cloud Function
+      // derives from the same originalUrl, so re-staging is a no-op.
+      const id = await sha256Prefix(imageUrl);
       return {
-        id: `feed-${i}-${imageColumn}`,
+        id,
         name: deriveLabel(row, imageColumn),
         thumbnailUrl: imageUrl,
+        originalUrl: imageUrl,
+        // Initial guesstimate; CreativeTile probes the real natural dimensions
+        // on <img> load and patches these via onDimensionsResolved (PR-D).
         width: 1080,
         height: 1080,
         fileType: detectFileType(imageUrl),
@@ -63,5 +70,6 @@ export function feedToCreatives(
         source: feedName,
         tags: [],
       };
-    });
+    }),
+  );
 }

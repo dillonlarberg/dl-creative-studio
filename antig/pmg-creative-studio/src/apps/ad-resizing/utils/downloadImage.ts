@@ -6,6 +6,11 @@ const MIME: Record<DownloadFormat, string> = {
   webp: 'image/webp',
 };
 
+/**
+ * Re-encode an image at `imageUrl` and trigger a browser download in the
+ * requested format. Throws on load/blob failures so callers can surface a
+ * toast/alert (the AppRoot handlers wrap this in try/catch per plan §Q12).
+ */
 export async function downloadImage(
   imageUrl: string,
   filename: string,
@@ -13,18 +18,23 @@ export async function downloadImage(
 ): Promise<void> {
   const img = new Image();
   img.crossOrigin = 'anonymous';
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = reject;
-    img.src = imageUrl;
-  });
+  try {
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error(`Failed to load image for download (${imageUrl})`));
+      img.src = imageUrl;
+    });
+  } catch (err) {
+    throw err instanceof Error ? err : new Error(String(err));
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-  // JPG doesn't support transparency — fill white before drawing
+  // JPG doesn't support transparency — fill white before drawing.
   if (format === 'jpg') {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -32,13 +42,23 @@ export async function downloadImage(
   ctx.drawImage(img, 0, 0);
 
   const quality = format === 'jpg' ? 0.92 : format === 'webp' ? 0.9 : undefined;
-  canvas.toBlob(blob => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.${format}`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }, MIME[format], quality);
+  await new Promise<void>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error('Canvas toBlob returned null'));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.${format}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        resolve();
+      },
+      MIME[format],
+      quality,
+    );
+  });
 }

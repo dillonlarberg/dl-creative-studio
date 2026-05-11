@@ -86,25 +86,19 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
 
   useEffect(() => { runScan(); }, [clientSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function handleSelectFeed(verified: VerifiedFeed) {
+  async function handleSelectFeed(verified: VerifiedFeed) {
     if (verified.imageColumns.length === 1) {
-      onConnect(
-        verified.feed,
-        verified.imageColumns[0],
-        feedToCreatives(verified.sampleData, verified.feed.name, verified.imageColumns[0]),
-      );
+      const creatives = await feedToCreatives(verified.sampleData, verified.feed.name, verified.imageColumns[0]);
+      onConnect(verified.feed, verified.imageColumns[0], creatives);
       return;
     }
     setPickingFeed(verified);
   }
 
-  function handleSelectColumn(col: string) {
+  async function handleSelectColumn(col: string) {
     if (!pickingFeed) return;
-    onConnect(
-      pickingFeed.feed,
-      col,
-      feedToCreatives(pickingFeed.sampleData, pickingFeed.feed.name, col),
-    );
+    const creatives = await feedToCreatives(pickingFeed.sampleData, pickingFeed.feed.name, col);
+    onConnect(pickingFeed.feed, col, creatives);
   }
 
   /* ── Error ── */
