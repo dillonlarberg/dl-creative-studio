@@ -15,13 +15,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_P2_QUALITY = exports.P1_MODEL = exports.OPENAI_P2_MODEL = exports.legalGenDims = void 0;
-// Public exports for the resize package. Callable (`runOutpaintBatch`) lands
-// in PR-C; for now only pipeline helpers are exposed so unit tests can import
-// them and so `functions/src/index.ts` can `export * from './resize'`.
+// Public exports for the resize package. `runOutpaintBatch` is the only
+// onCall registered with Firebase; the rest are pipeline/storage helpers
+// re-exported for callers and unit tests.
 __exportStar(require("./pipeline"), exports);
 __exportStar(require("./errorClassifier"), exports);
 __exportStar(require("./ssrf"), exports);
 __exportStar(require("./storage"), exports);
+__exportStar(require("./runOutpaintBatch"), exports);
 var config_1 = require("./config");
 Object.defineProperty(exports, "legalGenDims", { enumerable: true, get: function () { return config_1.legalGenDims; } });
 Object.defineProperty(exports, "OPENAI_P2_MODEL", { enumerable: true, get: function () { return config_1.OPENAI_P2_MODEL; } });
