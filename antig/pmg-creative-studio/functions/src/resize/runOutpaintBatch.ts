@@ -39,8 +39,16 @@ import { classifyError } from "./errorClassifier";
 import type { P1Output } from "./schema";
 import type { TargetSpec, P2Quality } from "./config";
 
-const GEMINI_KEY = defineSecret("GEMINI_API_KEY");
-const OPENAI_KEY = defineSecret("OPENAI_API_KEY");
+// Per-resize-feature secrets so this callable can rotate independently
+// of the legacy GEMINI_API_KEY shared with functions/src/ai.ts. To rotate:
+//   firebase functions:secrets:set RESIZE_GEMINI_API_KEY \
+//       --project automated-creative-e10d7
+//   firebase functions:secrets:set RESIZE_OPENAI_API_KEY \
+//       --project automated-creative-e10d7
+//   firebase deploy --only functions:runOutpaintBatch \
+//       --project automated-creative-e10d7
+const GEMINI_KEY = defineSecret("RESIZE_GEMINI_API_KEY");
+const OPENAI_KEY = defineSecret("RESIZE_OPENAI_API_KEY");
 
 const APP_ID = "ad-resizing";
 const CLIENT_SLUG_RE = /^[a-z0-9_-]+$/;
