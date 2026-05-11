@@ -213,6 +213,20 @@ export default function AppLayout() {
         localStorage.setItem('selectedClient', JSON.stringify(client));
         setSelectedClient(client);
         setIsDrawerOpen(false);
+
+        // If the URL embeds a client slug (e.g. /adlabs/ralph_lauren/...),
+        // swap it so the boot effect at the next render doesn't overwrite
+        // the freshly-stored localStorage selection with the stale URL slug.
+        const urlSlug = extractClientSlugFromPath(location.pathname);
+        if (urlSlug && urlSlug !== client.slug) {
+            const parts = location.pathname.split('/');
+            const slugIdx = parts.indexOf(urlSlug);
+            if (slugIdx > 0) {
+                parts[slugIdx] = client.slug;
+                navigate(parts.join('/') + location.search + location.hash);
+                return;
+            }
+        }
         navigate(0);
     };
 
