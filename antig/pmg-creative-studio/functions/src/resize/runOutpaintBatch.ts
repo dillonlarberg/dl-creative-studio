@@ -49,6 +49,34 @@ const MAX_DIM = 3840;
 const MAX_RETRY_PROMPT = 500;
 const P2_FANOUT = 4;
 
+/**
+ * Structured event log. Every entry shares a consistent envelope so Cloud
+ * Logging can build log-based metrics + alerts on `jsonPayload.event` without
+ * scraping free-form messages.
+ *
+ * Stages:
+ *   batch_received   — input passed validation, orchestrator starting
+ *   source_staged    — source bytes are in Storage + probed
+ *   p1_done          — Phase-1 returned (or threw + got classified)
+ *   output_complete  — single output succeeded (P2 + upload + Firestore)
+ *   output_error     — single output errored (with category + reason)
+ *   batch_finalised  — BatchRecord wrote terminal status
+ */
+function emitEvent(
+  event:
+    | "batch_received"
+    | "source_staged"
+    | "p1_done"
+    | "p1_error"
+    | "output_complete"
+    | "output_error"
+    | "batch_finalised"
+    | "batch_failed",
+  fields: Record<string, unknown>,
+): void {
+  logger.info("resize_event", { event, ...fields });
+}
+
 interface OutputRequest {
   outputId: string;
   dimension: { width: number; height: number; label?: string; channel?: string };
@@ -334,13 +362,29 @@ async function runOne(
       },
       { merge: true },
     );
+    emitEvent("output_complete", {
+      batchId: input.batchId,
+      outputId: o.outputId,
+      width: o.dimension.width,
+      height: o.dimension.height,
+      label: o.dimension.label,
+      channel: o.dimension.channel,
+      p2Ms: p2.p2Ms,
+      p2Model: p2.p2Model,
+      p2Quality: p2.p2Quality,
+    });
     return { outputId: o.outputId, ok: true };
   } catch (err) {
     const classified = classifyError(err);
-    logger.warn("runOutpaintBatch: output failed", {
+    emitEvent("output_error", {
+      batchId: input.batchId,
       outputId: o.outputId,
-      reason: classified.reason,
+      width: o.dimension.width,
+      height: o.dimension.height,
+      label: o.dimension.label,
+      channel: o.dimension.channel,
       category: classified.category,
+      reason: classified.reason,
       message: classified.message,
     });
     await ref.set(
@@ -390,8 +434,23 @@ async function finaliseBatch(
 export async function runOutpaintBatchCore(
   input: RunOutpaintBatchInput,
 ): Promise<RunOutpaintBatchResult> {
+  const batchStart = Date.now();
+  emitEvent("batch_received", {
+    batchId: input.batchId,
+    clientSlug: input.clientSlug,
+    creativeId: input.creativeId,
+    outputs: input.outputs.length,
+    hasRetryPrompt: input.retryPrompt !== undefined,
+    quality: input.quality ?? "medium",
+  });
+
   // ── Step 2: idempotency probe
   if (await checkIdempotency(input)) {
+    emitEvent("batch_finalised", {
+      batchId: input.batchId,
+      status: "noop",
+      totalMs: Date.now() - batchStart,
+    });
     return { batchId: input.batchId, status: "noop", completedCount: 1, errorCount: 0 };
   }
 
@@ -405,6 +464,14 @@ export async function runOutpaintBatchCore(
   if (!staged.width || !staged.height) {
     throw new Error(`sharp_decode_failed: could not probe ${input.originalUrl}`);
   }
+  emitEvent("source_staged", {
+    batchId: input.batchId,
+    sourceKey: staged.sourceKey,
+    width: staged.width,
+    height: staged.height,
+    mime: staged.mime,
+    storageRef: staged.storageRef,
+  });
 
   // ── Steps 4-5: BatchRecord upsert + per-output pending seed
   await upsertBatchProcessing(input, staged);
@@ -415,14 +482,33 @@ export async function runOutpaintBatchCore(
     w: input.outputs[0]!.dimension.width,
     h: input.outputs[0]!.dimension.height,
   };
-  const { p1, p1Ms } = await runPhase1Once(
-    getGenAi(),
-    staged.buffer,
-    staged.mime,
-    { w: staged.width, h: staged.height },
-    representativeTarget,
-    input.retryPrompt,
-  );
+  let p1Result;
+  try {
+    p1Result = await runPhase1Once(
+      getGenAi(),
+      staged.buffer,
+      staged.mime,
+      { w: staged.width, h: staged.height },
+      representativeTarget,
+      input.retryPrompt,
+    );
+  } catch (err) {
+    const classified = classifyError(err);
+    emitEvent("p1_error", {
+      batchId: input.batchId,
+      category: classified.category,
+      reason: classified.reason,
+      message: classified.message,
+    });
+    throw err;
+  }
+  emitEvent("p1_done", {
+    batchId: input.batchId,
+    p1Ms: p1Result.p1Ms,
+    subjectLocation: p1Result.p1.subjectLocation,
+    copyRegions: p1Result.p1.copyRegions.length,
+    styleCues: p1Result.p1.styleCues.length,
+  });
 
   // ── Step 7: p-limit(4) fan-out
   const limit = pLimit(P2_FANOUT);
@@ -438,15 +524,23 @@ export async function runOutpaintBatchCore(
             height: staged.height,
           },
           o,
-          p1,
-          p1Ms,
+          p1Result.p1,
+          p1Result.p1Ms,
         ),
       ),
     ),
   );
 
   // ── Step 9: finalise batch status
-  return finaliseBatch(input, outcomes);
+  const result = await finaliseBatch(input, outcomes);
+  emitEvent("batch_finalised", {
+    batchId: input.batchId,
+    status: result.status,
+    completedCount: result.completedCount,
+    errorCount: result.errorCount,
+    totalMs: Date.now() - batchStart,
+  });
+  return result;
 }
 
 // Re-export for tests of `detectSourceSpec` use cases.
@@ -462,6 +556,10 @@ export const runOutpaintBatch = onCall(
     concurrency: 1,
     maxInstances: 10,
     region: "us-central1",
+    // App Check verifies the request originates from our registered web app
+    // (reCAPTCHA Enterprise / debug token in dev). Stops a leaked Firebase ID
+    // token from being weaponised by a curl script.
+    enforceAppCheck: true,
   },
   async (req: CallableRequest<unknown>): Promise<RunOutpaintBatchResult> => {
     assertAlliStudioUser(req);
@@ -471,7 +569,7 @@ export const runOutpaintBatch = onCall(
     } catch (err) {
       if (err instanceof HttpsError) throw err;
       const classified = classifyError(err);
-      logger.error("runOutpaintBatch: batch-level failure", {
+      emitEvent("batch_failed", {
         batchId: input.batchId,
         reason: classified.reason,
         message: classified.message,

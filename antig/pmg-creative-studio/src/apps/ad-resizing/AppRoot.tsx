@@ -79,6 +79,10 @@ export default function AdResizingAppRoot() {
   const [feedCreatives, setFeedCreatives] = useState<Creative[] | null>(null);
   const [connectedFeedLabel, setConnectedFeedLabel] = useState<string | null>(null);
 
+  // Last callable error surfaced to the user as a dismissible banner. Cleared
+  // on next successful action OR via the X button.
+  const [runError, setRunError] = useState<string | null>(null);
+
   // Honor ?batchId=… on mount: switch to results stage when arriving via deep link.
   // The actual job summary will hydrate once the user visits the corresponding tab;
   // for a cold deep-link with no jobs[] entry yet we still surface the live outputs.
@@ -94,9 +98,13 @@ export default function AdResizingAppRoot() {
   const liveBatch = useBatchOutputs(clientSlug ?? null, activeJobId);
 
   // Persist the live outputs into the matching jobs[] entry so tab strips keep
-  // accurate counts after switching away.
+  // accurate counts after switching away. We do NOT clobber the snapshot while
+  // liveBatch.outputs is empty — the initial subscription render races ahead of
+  // the callable's per-output Firestore seed, and the local pending shells set
+  // in `handleRun` are the only source of truth during that window.
   useEffect(() => {
     if (!activeJobId) return;
+    if (liveBatch.outputs.length === 0) return;
     setJobs((prev) =>
       prev.map((j) =>
         j.id === activeJobId ? { ...j, outputsSnapshot: liveBatch.outputs } : j,
@@ -340,9 +348,11 @@ export default function AdResizingAppRoot() {
         outputIds,
       });
     } catch (err) {
-      // BatchRecord.status is updated to 'failed' server-side; the live
-      // subscription will surface the per-output error states for the tiles.
+      // BatchRecord.status is updated to 'failed' server-side when possible;
+      // the live subscription surfaces per-output error states for the tiles.
+      // Surface a banner so the user isn't left waiting on a silent failure.
       console.error('runOutpaintBatch failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
     }
   }, [selectedCreative, selectedChannels, selectedDimensions, addingToJob, activeJobId, jobs, clientSlug, runner, connectedFeedLabel]);
 
@@ -359,6 +369,7 @@ export default function AdResizingAppRoot() {
       });
     } catch (err) {
       console.error('retryOutput failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
     }
   }, [activeJobId, activeJob, runner]);
 
@@ -376,6 +387,7 @@ export default function AdResizingAppRoot() {
       });
     } catch (err) {
       console.error('reiterateOutput failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
     }
   }, [activeJobId, activeJob, runner]);
 
@@ -452,6 +464,24 @@ export default function AdResizingAppRoot() {
       </div>
 
       <StepIndicator activeStep={activeStep} resultsDone={allComplete} browseDone={stage === 'results'} />
+
+      {/* Callable error banner — surfaces auth/IAM/server failures the live
+          subscription can't show because the batch never got seeded. */}
+      {runError && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-red-800">Generation request failed</p>
+            <p className="mt-0.5 break-words text-[12px] text-red-700">{runError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRunError(null)}
+            className="shrink-0 text-[12px] font-medium text-red-700 hover:text-red-900"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex items-start gap-0">
