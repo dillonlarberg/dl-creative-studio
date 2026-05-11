@@ -4,6 +4,7 @@
 export * from "./pipeline";
 export * from "./errorClassifier";
 export * from "./ssrf";
+export * from "./storage";
 export type { P1Output } from "./schema";
 export type { TargetSpec, P2Quality, Channel } from "./config";
 export { legalGenDims, OPENAI_P2_MODEL, P1_MODEL, DEFAULT_P2_QUALITY } from "./config";

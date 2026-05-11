@@ -21,6 +21,7 @@ exports.DEFAULT_P2_QUALITY = exports.P1_MODEL = exports.OPENAI_P2_MODEL = export
 __exportStar(require("./pipeline"), exports);
 __exportStar(require("./errorClassifier"), exports);
 __exportStar(require("./ssrf"), exports);
+__exportStar(require("./storage"), exports);
 var config_1 = require("./config");
 Object.defineProperty(exports, "legalGenDims", { enumerable: true, get: function () { return config_1.legalGenDims; } });
 Object.defineProperty(exports, "OPENAI_P2_MODEL", { enumerable: true, get: function () { return config_1.OPENAI_P2_MODEL; } });
