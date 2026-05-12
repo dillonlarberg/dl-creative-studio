@@ -100,7 +100,7 @@ describe('fetchFeedSample', () => {
   });
 
   it('filters out video rows on creative_insights_data_export (keeps image and thumbnail)', async () => {
-    vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
+    const executeQuerySpy = vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
       results: [
         { ad_id: '1', creative_type: 'image' },
         { ad_id: '2', creative_type: 'thumbnail' },
@@ -119,5 +119,9 @@ describe('fetchFeedSample', () => {
         (r) => String(r.creative_type).toLowerCase() !== 'video'
       )
     ).toBe(true);
+
+    // creative_insights_data_export must not send a limit — full dataset only
+    const callBody = executeQuerySpy.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(callBody.limit).toBeUndefined();
   });
 });

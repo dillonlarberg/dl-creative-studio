@@ -153,7 +153,7 @@ export async function fetchFeedSample(opts: {
       // arrays still satisfy `required` so we'd pass schema, but Cube's
       // semantics treat presence-with-empty-value differently than absence,
       // and the prod monolith always omits empty keys here.
-      const body: Record<string, unknown> = { limit: 25 };
+      const body: Record<string, unknown> = modelName === 'creative_insights_data_export' ? {} : { limit: 25 };
       if (attempt.dims.length > 0) body.dimensions = attempt.dims;
       if (attempt.meas.length > 0) body.measures = attempt.meas;
 
