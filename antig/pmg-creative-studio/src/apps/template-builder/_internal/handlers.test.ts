@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fetchDataSources, fetchFeedSample } from './handlers';
+import { fetchDataSources, fetchFeedSample, clearFeedCache } from './handlers';
 import { alliService } from '../../../services/alli';
 
 describe('fetchDataSources', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearFeedCache();
   });
 
   it('returns an error when no client slug is provided', async () => {
@@ -29,14 +30,15 @@ describe('fetchDataSources', () => {
     ]);
   });
 
-  it('falls back to all models when no feed-named ones match', async () => {
+  it('returns empty feeds when no models match feed keyword or creative_insights_data_export', async () => {
     vi.spyOn(alliService, 'getDataSources').mockResolvedValue([
       { name: 'sales_data', description: '' },
-      { name: 'inventory', description: '' },
+      { name: 'aistrategy_promotiontracking_datasource_strategy', description: '' },
     ]);
 
     const result = await fetchDataSources({ clientSlug: 'acme' });
-    expect(result.feeds).toHaveLength(2);
+    expect(result.feeds).toHaveLength(0);
+    expect(result.error).toMatch(/No models found/);
   });
 
   it('returns an error message when the service throws', async () => {
@@ -53,6 +55,7 @@ describe('fetchDataSources', () => {
 describe('fetchFeedSample', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearFeedCache();
     // Stub the proxy ping so failure paths don't try to actually fetch.
     vi.stubGlobal(
       'fetch',
@@ -99,8 +102,8 @@ describe('fetchFeedSample', () => {
     expect(meta.error.modelName).toBe('feed_a');
   });
 
-  it('filters out thumbnail rows on creative_insights_data_export', async () => {
-    vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
+  it('filters out video rows on creative_insights_data_export (keeps image and thumbnail)', async () => {
+    const executeQuerySpy = vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
       results: [
         { ad_id: '1', creative_type: 'image' },
         { ad_id: '2', creative_type: 'thumbnail' },
@@ -116,8 +119,12 @@ describe('fetchFeedSample', () => {
     expect(result.sampleData).toHaveLength(2);
     expect(
       result.sampleData.every(
-        (r) => String(r.creative_type).toLowerCase() !== 'thumbnail'
+        (r) => String(r.creative_type).toLowerCase() !== 'video'
       )
     ).toBe(true);
+
+    // creative_insights_data_export must not send a limit — full dataset only
+    const callBody = executeQuerySpy.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(callBody.limit).toBeUndefined();
   });
 });

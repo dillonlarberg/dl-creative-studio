@@ -80,7 +80,9 @@ export default function CreativeTile({ creative, selected, onSelect, onDimension
             <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
               {creative.fileType}
             </span>
-            <span className="text-[11px] text-gray-400">{formatDate(creative.uploadedAt)}</span>
+            {creative.uploadedAt && (
+              <span className="text-[11px] text-gray-400">{formatDate(creative.uploadedAt)}</span>
+            )}
           </div>
         </div>
       </div>

@@ -35,6 +35,31 @@ export interface FeedSampleResult {
   stressMap?: { shortest: Record<string, unknown>; longest: Record<string, unknown> };
 }
 
+// Module-level session caches — survive component remounts, cleared on
+// explicit rescan or page reload (which also clears the Alli auth session).
+const _dataSourceCache = new Map<string, { feeds: SelectedFeed[]; error?: string }>();
+const _feedSampleCache = new Map<string, FeedSampleResult>();
+
+export function getCachedDataSources(clientSlug: string) {
+  return _dataSourceCache.get(clientSlug) ?? null;
+}
+
+export function getCachedFeedSample(clientSlug: string, feedName: string) {
+  return _feedSampleCache.get(`${clientSlug}:${feedName}`) ?? null;
+}
+
+export function clearFeedCache(clientSlug?: string) {
+  if (clientSlug) {
+    _dataSourceCache.delete(clientSlug);
+    for (const key of Array.from(_feedSampleCache.keys())) {
+      if (key.startsWith(`${clientSlug}:`)) _feedSampleCache.delete(key);
+    }
+  } else {
+    _dataSourceCache.clear();
+    _feedSampleCache.clear();
+  }
+}
+
 /**
  * Port of UseCaseWizardPage.tsx lines 723-871. Runs a progressive-fallback
  * ladder of `executeQuery` calls against an Alli model and returns the
@@ -49,6 +74,8 @@ export async function fetchFeedSample(opts: {
 }): Promise<FeedSampleResult> {
   const feed = opts.feed;
   const modelName = typeof feed === 'string' ? feed : feed.name;
+  const cacheKey = `${opts.clientSlug}:${modelName}`;
+  if (_feedSampleCache.has(cacheKey)) return _feedSampleCache.get(cacheKey)!;
   const feedObj = typeof feed === 'string' ? null : feed;
 
   let dimensions: string[] = [];
@@ -153,7 +180,7 @@ export async function fetchFeedSample(opts: {
       // arrays still satisfy `required` so we'd pass schema, but Cube's
       // semantics treat presence-with-empty-value differently than absence,
       // and the prod monolith always omits empty keys here.
-      const body: Record<string, unknown> = { limit: 25 };
+      const body: Record<string, unknown> = {};
       if (attempt.dims.length > 0) body.dimensions = attempt.dims;
       if (attempt.meas.length > 0) body.measures = attempt.meas;
 
@@ -205,11 +232,13 @@ export async function fetchFeedSample(opts: {
         const ct =
           row.creative_type ||
           row.creative_insights_data_export__creative_type;
-        return String(ct ?? '').toLowerCase() !== 'thumbnail';
+        return String(ct ?? '').toLowerCase() !== 'video';
       });
     }
 
-    return { sampleData: processedData, metadata, stressMap };
+    const result: FeedSampleResult = { sampleData: processedData, metadata, stressMap };
+    _feedSampleCache.set(cacheKey, result);
+    return result;
   } catch (err) {
     const errorMessage = (err as Error)?.message || String(err);
     const isFailedToFetch = errorMessage.toLowerCase().includes('failed to fetch');
@@ -265,6 +294,7 @@ export async function fetchDataSources(opts: {
   if (!opts.clientSlug) {
     return { feeds: [], error: 'No client slug' };
   }
+  if (_dataSourceCache.has(opts.clientSlug)) return _dataSourceCache.get(opts.clientSlug)!;
   try {
     const models = (await alliService.getDataSources(opts.clientSlug)) as Array<
       Record<string, unknown>
@@ -277,10 +307,6 @@ export async function fetchDataSources(opts: {
       return searchStr.includes('feed') || m.name === 'creative_insights_data_export';
     });
 
-    if (feeds.length === 0 && models.length > 0) {
-      feeds = models;
-    }
-
     if (feeds.length === 0) {
       return {
         feeds: [],
@@ -289,7 +315,9 @@ export async function fetchDataSources(opts: {
       };
     }
 
-    return { feeds: feeds as SelectedFeed[] };
+    const result = { feeds: feeds as SelectedFeed[] };
+    _dataSourceCache.set(opts.clientSlug, result);
+    return result;
   } catch (err) {
     return {
       feeds: [],

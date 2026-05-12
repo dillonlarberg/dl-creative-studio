@@ -3,6 +3,23 @@ import { sha256Prefix } from './sha256';
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
+const DATE_COLUMNS = [
+  'created_at', 'updated_at', 'date_modified', 'date_created',
+  'last_updated', 'published_at', 'upload_date', 'date', 'timestamp',
+  'start_date', 'reporting_date', 'ad_date',
+];
+
+function detectUploadDate(row: Record<string, unknown>): string {
+  for (const col of DATE_COLUMNS) {
+    const val = row[col];
+    if (typeof val === 'string' && val.trim()) {
+      const parsed = new Date(val);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+    }
+  }
+  return '';
+}
+
 export function detectImageColumns(rows: Array<Record<string, unknown>>): string[] {
   if (rows.length === 0) return [];
   const sample = rows.slice(0, Math.min(5, rows.length));
@@ -66,7 +83,7 @@ export async function feedToCreatives(
         width: 1080,
         height: 1080,
         fileType: detectFileType(imageUrl),
-        uploadedAt: new Date().toISOString().split('T')[0],
+        uploadedAt: detectUploadDate(row),
         source: feedName,
         tags: [],
       };

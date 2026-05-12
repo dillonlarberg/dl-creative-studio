@@ -70,7 +70,7 @@ export default function AdResizingAppRoot() {
 
   const [filterFormat, setFilterFormat] = useState<FormatFilter>('all');
   const [filterFileType, setFilterFileType] = useState<FileTypeFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>('az');
 
   const [genFilterChannel, setGenFilterChannel] = useState<string>('all');
   const [genSort, setGenSort] = useState<GenSortOption>('default');
@@ -138,7 +138,7 @@ export default function AdResizingAppRoot() {
           width: sc.width,
           height: sc.height,
           fileType: 'JPG',
-          uploadedAt: new Date().toISOString().split('T')[0],
+          uploadedAt: '',
           source: liveBatch.batch.feedId ?? '',
           tags: [],
         },
@@ -205,15 +205,32 @@ export default function AdResizingAppRoot() {
     setSelectedDimensions(new Set());
   }
 
-  // Patch feed creatives' real natural dimensions once <img> loads (PR-D codex F11).
+  // Batch dimension patches so hundreds of concurrent image-load events produce
+  // one state update per 100 ms instead of one per image (avoids useMemo storm).
+  const pendingDimsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+  const dimFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (dimFlushTimerRef.current) clearTimeout(dimFlushTimerRef.current);
+  }, []);
+
   const handleDimensionsResolved = useCallback(
     (creativeId: string, width: number, height: number) => {
-      setFeedCreatives((prev) =>
-        prev?.map((c) => (c.id === creativeId ? { ...c, width, height } : c)) ?? prev,
-      );
-      setSelectedCreative((prev) =>
-        prev && prev.id === creativeId ? { ...prev, width, height } : prev,
-      );
+      pendingDimsRef.current.set(creativeId, { width, height });
+      if (dimFlushTimerRef.current) clearTimeout(dimFlushTimerRef.current);
+      dimFlushTimerRef.current = setTimeout(() => {
+        const batch = new Map(pendingDimsRef.current);
+        pendingDimsRef.current.clear();
+        dimFlushTimerRef.current = null;
+        setFeedCreatives((prev) =>
+          prev?.map((c) => { const d = batch.get(c.id); return d ? { ...c, ...d } : c; }) ?? prev,
+        );
+        setSelectedCreative((prev) => {
+          if (!prev) return prev;
+          const d = batch.get(prev.id);
+          return d ? { ...prev, ...d } : prev;
+        });
+      }, 100);
     },
     [],
   );
@@ -256,13 +273,10 @@ export default function AdResizingAppRoot() {
     if (filterFileType !== 'all') {
       list = list.filter(c => c.fileType === filterFileType);
     }
-    list.sort((a, b) => {
-      if (sortBy === 'newest') return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
-      if (sortBy === 'oldest') return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
-      if (sortBy === 'az') return a.name.localeCompare(b.name);
-      if (sortBy === 'za') return b.name.localeCompare(a.name);
-      return 0;
-    });
+    list.sort((a, b) => sortBy === 'az'
+      ? a.name.localeCompare(b.name)
+      : b.name.localeCompare(a.name)
+    );
     return list;
   }, [feedCreatives, filterFormat, filterFileType, sortBy]);
 
