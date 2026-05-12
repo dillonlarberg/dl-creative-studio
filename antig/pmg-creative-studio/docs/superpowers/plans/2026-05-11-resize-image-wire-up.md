@@ -402,4 +402,32 @@ All decisions locked. Ready to implement PR-A.
 
 **UNRESOLVED:** 0
 
+---
+
+## Session log — 2026-05-11 PM (post wire-up live test)
+
+### Status of wire-up
+- PR-A through PR-D landed on `feature/resize-image-wireup`. End-to-end resize works in dev (Ralph Lauren tested: 4×6", source 1024×1024 → output 1200×1800; preview + Re-crop + Download confirmed).
+- App Check enforcement is **temporarily disabled** on the resize callable (`a70c65e`) so the live test could run before dev debug-token registration. Re-enabling is tracked in the "Pre-main-cutover TODOs" memory.
+- OIDC `sign_in_provider` trust landed in both rule files (`af3a3b1`, `398b7f6`, `8b50582`) — that fix was a prerequisite for any Firestore read by Alli SSO users and is **not yet on dev** (the resize feature branch carries it).
+
+### Adjacent regressions surfaced + fixed during this session
+Separate from the wire-up scope, the live dashboard exposed two bugs we triaged via three parallel investigation agents:
+
+1. **"Couldn't load brand standards" / "Failed to load client asset house"** — `firestore.rules` default-deny was blocking the dashboard's reads of the legacy `clientAssetHouse/{slug}` collection. The service in `src/services/clientAssetHouse.ts` still points at that legacy path per its HOTFIX comment (data was never migrated to `clients/{slug}`). **Fix:** added an allowlist-gated `match /clientAssetHouse/{clientSlug}` allow block to `firestore.rules`, mirrored in the rules test.
+2. **"Change" client switcher no-op on slug routes** — `AppLayout.handleSelectClient` did `navigate(0)` (reload), and the boot effect re-read the URL slug and overwrote the freshly-stored localStorage selection. **Fix:** swap the slug segment in the current pathname when present; fall back to `navigate(0)` only when no slug segment exists.
+3. **App Check `exchangeDebugToken` 403** — independent dev-noise issue, not the root cause of #1. Tracked as follow-up; either register a debug token in Firebase Console for `automated-creative-e10d7` or gate `initializeAppCheck` on `VITE_APPCHECK_RECAPTCHA_KEY`.
+
+### PR shipped
+- PR #17 → `dev`: `fix(asset-house): unblock brand-standards read + persist client switch` — three files: `firestore.rules`, `tests/rules/firestore.rules.test.ts`, `src/components/AppLayout.tsx`. Cut from `origin/dev` (not the resize branch) so it doesn't carry the resize wire-up work with it. Branch: `fix/client-asset-house-rules`.
+- `firestore.rules` was also deployed by Diego from the local terminal (`firebase deploy --only firestore:rules`) so the live dev project sees the carve-out immediately.
+
+### Resume next session
+- **Where we left off:** wire-up is live end-to-end and adjacent fixes are PR'd to dev. Pre-cutover work remains (DEV ribbon, re-enable resize App Check, App Check debug-token registration, brand-standards data migration to `clients/{slug}`).
+- **Immediate next steps when resuming:**
+  1. Watch PR #17 merge into dev.
+  2. After PR #17 merges, port the OIDC `sign_in_provider` fix (commits `af3a3b1`, `398b7f6`, `8b50582`) into dev as its own small PR — currently only present on the resize feature branch, and dev's Alli SSO users will hit `permission-denied` without it.
+  3. File the brand-standards data migration as a separate ticket (`clientAssetHouse/{slug}` → `clients/{slug}`), then remove the carve-out + revert the legacy reader/writer in `src/services/clientAssetHouse.ts` to `paths.client(slug)`.
+  4. Resume resize wire-up cutover items per `project_pre_main_cutover_todos` memory.
+
 **VERDICT:** ENG CLEARED + CODEX CLEARED — ready to implement PR-A.
