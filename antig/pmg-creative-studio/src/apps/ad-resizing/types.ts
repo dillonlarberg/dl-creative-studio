@@ -50,6 +50,8 @@ export interface GeneratedOutput {
   /** Bucket the storageRef refers to; permanent → no Retry, transient → Retry button. */
   errorCategory?: 'transient' | 'permanent';
   errorMessage?: string;
+  /** ms epoch; busts useStorageUrl cache when the same path is overwritten (re-crop). */
+  completedAtMs?: number;
 }
 
 export interface GenerationJob {

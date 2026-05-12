@@ -16,7 +16,7 @@
  * this helper to fetch a URL with raw `fetch(url)` — that would re-resolve
  * DNS and open the rebinding TOCTOU.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions";
@@ -206,7 +206,13 @@ export async function stageSourceIfMissing(args: {
 export async function uploadOutput(args: UploadOutputArgs): Promise<string> {
   const path = outputPath(args.clientSlug, args.outputId);
   const bucket = getStorage().bucket();
-  await bucket.file(path).save(args.buffer, { contentType: "image/png", resumable: false });
+  // Mint a fresh download token on every save so re-crop overwrites invalidate
+  // the previous getDownloadURL token and force clients to refetch a new URL.
+  await bucket.file(path).save(args.buffer, {
+    contentType: "image/png",
+    resumable: false,
+    metadata: { metadata: { firebaseStorageDownloadTokens: randomUUID() } },
+  });
   return path;
 }
 

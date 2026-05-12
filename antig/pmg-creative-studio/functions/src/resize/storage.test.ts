@@ -254,6 +254,19 @@ describe("uploadOutput", () => {
     expect(ref).toBe("clients/acme/apps/ad-resizing/outputs/out-xyz.png");
     expect(mockBucket.file).toHaveBeenCalledWith("clients/acme/apps/ad-resizing/outputs/out-xyz.png");
     expect(saveSpy).toHaveBeenCalledWith(png, expect.objectContaining({ contentType: "image/png" }));
+    const saveOpts = saveSpy.mock.calls[0]![1] as { metadata: { metadata: { firebaseStorageDownloadTokens: string } } };
+    expect(saveOpts.metadata.metadata.firebaseStorageDownloadTokens).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("mints a fresh download token on every save (re-crop cache-bust)", async () => {
+    const saveSpy = vi.fn().mockResolvedValue(undefined);
+    mockBucket.file.mockReturnValue({ save: saveSpy });
+    const png = await makePng();
+    await uploadOutput({ clientSlug: "acme", outputId: "out-xyz", buffer: png });
+    await uploadOutput({ clientSlug: "acme", outputId: "out-xyz", buffer: png });
+    const t1 = (saveSpy.mock.calls[0]![1] as { metadata: { metadata: { firebaseStorageDownloadTokens: string } } }).metadata.metadata.firebaseStorageDownloadTokens;
+    const t2 = (saveSpy.mock.calls[1]![1] as { metadata: { metadata: { firebaseStorageDownloadTokens: string } } }).metadata.metadata.firebaseStorageDownloadTokens;
+    expect(t1).not.toBe(t2);
   });
 });
 

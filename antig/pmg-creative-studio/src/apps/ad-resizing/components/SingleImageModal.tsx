@@ -21,7 +21,7 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
   const [recropSent, setRecropSent] = useState(false);
 
   const output = outputs[index];
-  const resolvedUrl = useStorageUrl(output?.storageRef);
+  const resolvedUrl = useStorageUrl(output?.storageRef, output?.completedAtMs);
   const displayUrl = output?.imageUrl ?? resolvedUrl ?? undefined;
   const canPrev = index > 0;
   const canNext = index < outputs.length - 1;

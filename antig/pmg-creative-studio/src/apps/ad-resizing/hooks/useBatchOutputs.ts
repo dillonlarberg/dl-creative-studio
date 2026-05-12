@@ -4,6 +4,7 @@ import {
   doc,
   onSnapshot,
   query,
+  Timestamp,
   where,
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -22,6 +23,7 @@ interface OutputDoc {
   storageRef?: string;
   errorCategory?: 'transient' | 'permanent';
   errorMessage?: string;
+  completedAt?: Timestamp;
 }
 
 /**
@@ -59,6 +61,7 @@ function toGeneratedOutput(d: OutputDoc): GeneratedOutput {
     storageRef: d.storageRef,
     errorCategory: d.errorCategory,
     errorMessage: d.errorMessage,
+    completedAtMs: d.completedAt?.toMillis(),
   };
 }
 

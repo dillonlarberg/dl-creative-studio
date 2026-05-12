@@ -13,31 +13,41 @@ import { storage } from '../../../firebase';
 const cache = new Map<string, string>();
 const inflight = new Map<string, Promise<string>>();
 
-export function useStorageUrl(storageRef: string | null | undefined): string | null {
+/**
+ * `version` busts the cache when the underlying file is overwritten at the
+ * same storage path (e.g. re-crop). Pass `completedAt.toMillis()` from the
+ * output doc; the cache key becomes `storageRef|version` so a re-crop's new
+ * completedAt forces a fresh getDownloadURL fetch.
+ */
+export function useStorageUrl(
+  storageRef: string | null | undefined,
+  version?: number | string | null,
+): string | null {
+  const cacheKey = storageRef ? `${storageRef}|${version ?? ''}` : null;
   const [url, setUrl] = useState<string | null>(() =>
-    storageRef ? cache.get(storageRef) ?? null : null,
+    cacheKey ? cache.get(cacheKey) ?? null : null,
   );
 
   useEffect(() => {
-    if (!storageRef) {
+    if (!storageRef || !cacheKey) {
       setUrl(null);
       return;
     }
-    const cached = cache.get(storageRef);
+    const cached = cache.get(cacheKey);
     if (cached) {
       setUrl(cached);
       return;
     }
 
     let cancelled = false;
-    let pending = inflight.get(storageRef);
+    let pending = inflight.get(cacheKey);
     if (!pending) {
       pending = getDownloadURL(ref(storage, storageRef)).then((resolved) => {
-        cache.set(storageRef, resolved);
-        inflight.delete(storageRef);
+        cache.set(cacheKey, resolved);
+        inflight.delete(cacheKey);
         return resolved;
       });
-      inflight.set(storageRef, pending);
+      inflight.set(cacheKey, pending);
     }
 
     pending
@@ -46,13 +56,13 @@ export function useStorageUrl(storageRef: string | null | undefined): string | n
       })
       .catch(() => {
         if (!cancelled) setUrl(null);
-        inflight.delete(storageRef);
+        inflight.delete(cacheKey);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [storageRef]);
+  }, [storageRef, cacheKey]);
 
   return url;
 }

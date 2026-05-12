@@ -21,8 +21,8 @@ function aspectStyle(width: number, height: number): React.CSSProperties {
 }
 
 export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName }: GeneratedTileProps) {
-  const { dimension, status, storageRef, errorCategory } = output;
-  const resolvedUrl = useStorageUrl(storageRef);
+  const { dimension, status, storageRef, errorCategory, completedAtMs } = output;
+  const resolvedUrl = useStorageUrl(storageRef, completedAtMs);
   const imageUrl = output.imageUrl ?? resolvedUrl;
   const isPending = status === 'pending';
   const isComplete = status === 'complete';
