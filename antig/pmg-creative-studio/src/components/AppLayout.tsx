@@ -214,20 +214,15 @@ export default function AppLayout() {
         setSelectedClient(client);
         setIsDrawerOpen(false);
 
-        // If the URL embeds a client slug (e.g. /adlabs/ralph_lauren/...),
-        // swap it so the boot effect at the next render doesn't overwrite
-        // the freshly-stored localStorage selection with the stale URL slug.
-        const urlSlug = extractClientSlugFromPath(location.pathname);
-        if (urlSlug && urlSlug !== client.slug) {
-            const parts = location.pathname.split('/');
-            const slugIdx = parts.indexOf(urlSlug);
-            if (slugIdx > 0) {
-                parts[slugIdx] = client.slug;
-                navigate(parts.join('/') + location.search + location.hash);
-                return;
-            }
-        }
-        navigate(0);
+        // Always redirect to the new client's AdLabs home rather than
+        // swapping the slug in place. Why: an in-place slug swap leaves
+        // mid-workflow components mounted with stale per-client state
+        // (e.g. ad-resizing's feedCreatives + jobs from the prior client),
+        // while their data hooks rebind instantly to the new slug — the
+        // UI shows old-client data but writes land under the new client
+        // (issue #30). Routing to /adlabs/{slug}/ unmounts the workflow
+        // and matches the user-facing intent in issue #20.
+        navigate(`/adlabs/${client.slug}/`);
     };
 
     const filteredClients = clients.filter(c =>

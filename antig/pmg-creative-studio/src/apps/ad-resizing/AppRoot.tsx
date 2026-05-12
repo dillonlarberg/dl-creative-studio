@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
@@ -151,6 +151,37 @@ export default function AdResizingAppRoot() {
 
   // Clear tile selection whenever the active job changes
   useEffect(() => { setSelectedOutputIds(new Set()); }, [activeJobId]);
+
+  // Defense-in-depth: if clientSlug ever changes while AppRoot stays mounted
+  // (e.g. a future refactor reintroduces an in-place slug swap), wipe every
+  // piece of per-client state so we never show client A's creatives while
+  // writes land under client B (issue #30). In production today, AppLayout's
+  // handleSelectClient navigates to /adlabs/{slug}/ which unmounts AppRoot,
+  // so this guard is belt-and-suspenders.
+  const prevSlugRef = useRef(clientSlug);
+  useEffect(() => {
+    if (prevSlugRef.current && prevSlugRef.current !== clientSlug) {
+      setStage('browse');
+      setSelectedCreative(null);
+      setSelectedChannels([]);
+      setSelectedDimensions(new Set());
+      setJobs([]);
+      setActiveJobId(null);
+      setAddingToJob(false);
+      setSingleView(null);
+      setSourcePreviewOpen(false);
+      setSelectedOutputIds(new Set());
+      setFeedCreatives(null);
+      setConnectedFeedLabel(null);
+      setRunError(null);
+      const next = new URLSearchParams(searchParams);
+      if (next.has('batchId')) {
+        next.delete('batchId');
+        setSearchParams(next, { replace: true });
+      }
+    }
+    prevSlugRef.current = clientSlug;
+  }, [clientSlug, searchParams, setSearchParams]);
 
   // Mirror activeJobId into ?batchId= so deep links work + browser-back is sane.
   useEffect(() => {
