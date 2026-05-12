@@ -1,10 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fetchDataSources, fetchFeedSample } from './handlers';
+import { fetchDataSources, fetchFeedSample, clearFeedCache } from './handlers';
 import { alliService } from '../../../services/alli';
 
 describe('fetchDataSources', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearFeedCache();
   });
 
   it('returns an error when no client slug is provided', async () => {
@@ -53,6 +54,7 @@ describe('fetchDataSources', () => {
 describe('fetchFeedSample', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearFeedCache();
     // Stub the proxy ping so failure paths don't try to actually fetch.
     vi.stubGlobal(
       'fetch',

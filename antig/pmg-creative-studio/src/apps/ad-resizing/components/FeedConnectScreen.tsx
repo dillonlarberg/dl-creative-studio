@@ -10,6 +10,7 @@ import { cn } from '../../../utils/cn';
 import { fetchDataSources, fetchFeedSample } from '../../template-builder/_internal/handlers';
 import type { SelectedFeed } from '../../template-builder/types';
 import { detectImageColumns, feedToCreatives } from '../utils/feedToCreatives';
+import { clearFeedCache } from '../../template-builder/_internal/handlers';
 import type { MockCreative } from '../types';
 
 interface VerifiedFeed {
@@ -40,8 +41,9 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
   // and async callbacks only write state if they belong to the current run.
   const runId = useRef(0);
 
-  function runScan() {
+  function runScan(bustCache = false) {
     const myId = ++runId.current;
+    if (bustCache) clearFeedCache(clientSlug);
 
     setScanning(true);
     setScanError(null);
@@ -57,28 +59,35 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
       const allFeeds = result.feeds;
       setTotalToScan(allFeeds.length);
 
-      await Promise.allSettled(
-        allFeeds.map(async feed => {
-          if (runId.current !== myId) return;
-          setCurrentlyChecking(feed.name);
+      async function processFeed(feed: typeof allFeeds[number]) {
+        if (runId.current !== myId) return;
+        setCurrentlyChecking(feed.name);
 
-          const sample = await fetchFeedSample({ clientSlug, feed });
-          if (runId.current !== myId) return;
+        const sample = await fetchFeedSample({ clientSlug, feed });
+        if (runId.current !== myId) return;
 
-          setScannedCount(c => c + 1);
-          const cols = detectImageColumns(sample.sampleData);
-          if (cols.length === 0) return;
+        setScannedCount(c => c + 1);
+        const cols = detectImageColumns(sample.sampleData);
+        if (cols.length === 0) return;
 
-          const imageCount = sample.sampleData.filter(row =>
-            String(row[cols[0]] ?? '').startsWith('http')
-          ).length;
+        const imageCount = sample.sampleData.filter(row =>
+          String(row[cols[0]] ?? '').startsWith('http')
+        ).length;
 
-          setVerifiedFeeds(prev =>
-            [...prev, { feed, imageColumns: cols, imageCount, sampleData: sample.sampleData }]
-              .sort((a, b) => a.feed.name.localeCompare(b.feed.name))
-          );
-        })
-      );
+        setVerifiedFeeds(prev =>
+          [...prev, { feed, imageColumns: cols, imageCount, sampleData: sample.sampleData }]
+            .sort((a, b) => a.feed.name.localeCompare(b.feed.name))
+        );
+      }
+
+      // Process in batches of 3. Cached feeds resolve instantly from the
+      // module-level cache; uncached feeds are lazily fetched 3 at a time
+      // to avoid flooding the API with unlimited-row requests in parallel.
+      const BATCH = 3;
+      for (let i = 0; i < allFeeds.length; i += BATCH) {
+        if (runId.current !== myId) break;
+        await Promise.allSettled(allFeeds.slice(i, i + BATCH).map(processFeed));
+      }
 
       if (runId.current === myId) setScanning(false);
     });
@@ -110,7 +119,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
         </div>
         <p className="text-[14px] font-semibold text-gray-800">Could not load data sources</p>
         <p className="mt-1 max-w-xs text-[12px] text-gray-400">{scanError}</p>
-        <button type="button" onClick={runScan}
+        <button type="button" onClick={() => runScan(true)}
           className="mt-4 flex items-center gap-1.5 text-[13px] font-medium text-blue-600 hover:text-blue-700">
           <ArrowPathIcon className="h-3.5 w-3.5" /> Retry
         </button>
@@ -162,7 +171,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
         <p className="mt-1 max-w-xs text-[12px] text-gray-400">
           None of the available feeds for this client contain image URL columns.
         </p>
-        <button type="button" onClick={runScan}
+        <button type="button" onClick={() => runScan(true)}
           className="mt-4 flex items-center gap-1.5 text-[13px] font-medium text-blue-600 hover:text-blue-700">
           <ArrowPathIcon className="h-3.5 w-3.5" /> Rescan
         </button>
@@ -313,7 +322,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
           </div>
 
           {!scanning && (
-            <button type="button" onClick={runScan}
+            <button type="button" onClick={() => runScan(true)}
               className="mt-4 flex items-center gap-1.5 text-[12px] text-gray-400 hover:text-gray-600">
               <ArrowPathIcon className="h-3 w-3" /> Rescan feeds
             </button>
