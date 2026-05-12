@@ -70,7 +70,7 @@ export default function AdResizingAppRoot() {
 
   const [filterFormat, setFilterFormat] = useState<FormatFilter>('all');
   const [filterFileType, setFilterFileType] = useState<FileTypeFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>('az');
 
   const [genFilterChannel, setGenFilterChannel] = useState<string>('all');
   const [genSort, setGenSort] = useState<GenSortOption>('default');
@@ -273,19 +273,10 @@ export default function AdResizingAppRoot() {
     if (filterFileType !== 'all') {
       list = list.filter(c => c.fileType === filterFileType);
     }
-    if (sortBy === 'newest' || sortBy === 'oldest') {
-      // Pre-compute timestamps once (O(n)) instead of re-parsing inside each comparator call (O(n log n)).
-      const times = new Map(list.map(c => [c.id, c.uploadedAt ? new Date(c.uploadedAt).getTime() : 0]));
-      list.sort((a, b) => sortBy === 'newest'
-        ? times.get(b.id)! - times.get(a.id)!
-        : times.get(a.id)! - times.get(b.id)!
-      );
-    } else {
-      list.sort((a, b) => sortBy === 'az'
-        ? a.name.localeCompare(b.name)
-        : b.name.localeCompare(a.name)
-      );
-    }
+    list.sort((a, b) => sortBy === 'az'
+      ? a.name.localeCompare(b.name)
+      : b.name.localeCompare(a.name)
+    );
     return list;
   }, [feedCreatives, filterFormat, filterFileType, sortBy]);
 
