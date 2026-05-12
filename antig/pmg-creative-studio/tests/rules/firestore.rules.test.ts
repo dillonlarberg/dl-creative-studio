@@ -100,8 +100,14 @@ describe('firestore.rules', () => {
       await expect(ref.get()).rejects.toThrow();
     });
 
-    it('denies read of legacy /clientAssetHouse even for an allowlisted user', async () => {
+    it('allows read of legacy /clientAssetHouse for allowlisted users (HOTFIX carve-out)', async () => {
       const ctx = env.authenticatedContext('test-uid', { email: allowedEmail, email_verified: true });
+      const ref = ctx.firestore().doc('clientAssetHouse/ralph_lauren');
+      await expect(ref.get()).resolves.toBeDefined();
+    });
+
+    it('denies read of legacy /clientAssetHouse for non-allowlisted users', async () => {
+      const ctx = env.authenticatedContext('test-uid', { email: deniedEmail, email_verified: true });
       const ref = ctx.firestore().doc('clientAssetHouse/ralph_lauren');
       await expect(ref.get()).rejects.toThrow();
     });

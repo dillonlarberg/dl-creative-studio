@@ -45,8 +45,17 @@ service cloud.firestore {
       allow read, write: if isAlliStudioUser();
     }
 
-    // Default-deny everything else, including legacy `creatives` and
-    // `clientAssetHouse` collections from the pre-rebuild schema.
+    // Legacy brand-standards collection. The dashboard still reads/writes
+    // `clientAssetHouse/{slug}` per the HOTFIX in
+    // src/services/clientAssetHouse.ts (data was never migrated to the
+    // canonical `clients/{slug}` doc). Allowlist-only until that migration
+    // ships; remove this block once the service flips to paths.client(slug).
+    match /clientAssetHouse/{clientSlug} {
+      allow read, write: if isAlliStudioUser();
+    }
+
+    // Default-deny everything else, including legacy `creatives` from the
+    // pre-rebuild schema.
     match /{document=**} {
       allow read, write: if false;
     }
