@@ -40,6 +40,14 @@ export interface FeedSampleResult {
 const _dataSourceCache = new Map<string, { feeds: SelectedFeed[]; error?: string }>();
 const _feedSampleCache = new Map<string, FeedSampleResult>();
 
+export function getCachedDataSources(clientSlug: string) {
+  return _dataSourceCache.get(clientSlug) ?? null;
+}
+
+export function getCachedFeedSample(clientSlug: string, feedName: string) {
+  return _feedSampleCache.get(`${clientSlug}:${feedName}`) ?? null;
+}
+
 export function clearFeedCache(clientSlug?: string) {
   if (clientSlug) {
     _dataSourceCache.delete(clientSlug);

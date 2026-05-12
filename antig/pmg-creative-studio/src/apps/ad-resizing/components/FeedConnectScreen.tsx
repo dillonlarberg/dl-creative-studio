@@ -10,7 +10,7 @@ import { cn } from '../../../utils/cn';
 import { fetchDataSources, fetchFeedSample } from '../../template-builder/_internal/handlers';
 import type { SelectedFeed } from '../../template-builder/types';
 import { detectImageColumns, feedToCreatives } from '../utils/feedToCreatives';
-import { clearFeedCache } from '../../template-builder/_internal/handlers';
+import { clearFeedCache, getCachedDataSources, getCachedFeedSample } from '../../template-builder/_internal/handlers';
 import type { MockCreative } from '../types';
 
 interface VerifiedFeed {
@@ -44,6 +44,30 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
   function runScan(bustCache = false) {
     const myId = ++runId.current;
     if (bustCache) clearFeedCache(clientSlug);
+
+    // Fast path: all data already cached — reconstruct instantly, no scan UI.
+    if (!bustCache) {
+      const cachedSources = getCachedDataSources(clientSlug);
+      if (cachedSources && !cachedSources.error) {
+        const allCached = cachedSources.feeds.every(f => getCachedFeedSample(clientSlug, f.name) !== null);
+        if (allCached) {
+          const rebuilt: VerifiedFeed[] = [];
+          for (const feed of cachedSources.feeds) {
+            const sample = getCachedFeedSample(clientSlug, feed.name)!;
+            const cols = detectImageColumns(sample.sampleData);
+            if (cols.length === 0) continue;
+            const imageCount = sample.sampleData.filter(row => String(row[cols[0]] ?? '').startsWith('http')).length;
+            rebuilt.push({ feed, imageColumns: cols, imageCount, sampleData: sample.sampleData });
+          }
+          setVerifiedFeeds(rebuilt.sort((a, b) => a.feed.name.localeCompare(b.feed.name)));
+          setScanning(false);
+          setScanError(null);
+          setScannedCount(cachedSources.feeds.length);
+          setTotalToScan(cachedSources.feeds.length);
+          return;
+        }
+      }
+    }
 
     setScanning(true);
     setScanError(null);
