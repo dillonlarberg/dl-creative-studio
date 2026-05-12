@@ -299,10 +299,6 @@ export async function fetchDataSources(opts: {
       return searchStr.includes('feed') || m.name === 'creative_insights_data_export';
     });
 
-    if (feeds.length === 0 && models.length > 0) {
-      feeds = models;
-    }
-
     if (feeds.length === 0) {
       return {
         feeds: [],

@@ -30,14 +30,15 @@ describe('fetchDataSources', () => {
     ]);
   });
 
-  it('falls back to all models when no feed-named ones match', async () => {
+  it('returns empty feeds when no models match feed keyword or creative_insights_data_export', async () => {
     vi.spyOn(alliService, 'getDataSources').mockResolvedValue([
       { name: 'sales_data', description: '' },
-      { name: 'inventory', description: '' },
+      { name: 'aistrategy_promotiontracking_datasource_strategy', description: '' },
     ]);
 
     const result = await fetchDataSources({ clientSlug: 'acme' });
-    expect(result.feeds).toHaveLength(2);
+    expect(result.feeds).toHaveLength(0);
+    expect(result.error).toMatch(/No models found/);
   });
 
   it('returns an error message when the service throws', async () => {
