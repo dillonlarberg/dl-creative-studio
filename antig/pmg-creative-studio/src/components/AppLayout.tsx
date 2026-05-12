@@ -25,6 +25,7 @@ import { Fragment } from 'react';
 import { alliService } from '../services/alli';
 import type { Client } from '../types';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
+import { notifySelectedClientChanged } from '../hooks/useSelectedClient';
 
 /**
  * Extract a clientSlug from the pathname for routes that carry one in the URL.
@@ -211,6 +212,7 @@ export default function AppLayout() {
 
     const handleSelectClient = (client: Client) => {
         localStorage.setItem('selectedClient', JSON.stringify(client));
+        notifySelectedClientChanged();
         setSelectedClient(client);
         setIsDrawerOpen(false);
 

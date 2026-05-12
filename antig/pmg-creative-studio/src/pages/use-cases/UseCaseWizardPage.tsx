@@ -18,6 +18,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
+import { useSelectedClient } from '../../hooks/useSelectedClient';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
 
@@ -477,7 +478,7 @@ export default function UseCaseWizardPage() {
 
     const ITEMS_PER_PAGE = 16; // 4 columns × 4 rows
 
-    const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
+    const client = useSelectedClient() ?? ({} as { slug?: string; name?: string });
 
     // Move steps definition up so handleNext can use it
     const steps = appId != null ? (WIZARD_STEPS[appId] || []) : [];
