@@ -45,32 +45,71 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
     const myId = ++runId.current;
     if (bustCache) clearFeedCache(clientSlug);
 
-    // Fast path: all data already cached — reconstruct instantly, no scan UI.
-    if (!bustCache) {
-      const cachedSources = getCachedDataSources(clientSlug);
-      if (cachedSources && !cachedSources.error) {
-        const allCached = cachedSources.feeds.every(f => getCachedFeedSample(clientSlug, f.name) !== null);
-        if (allCached) {
-          const rebuilt: VerifiedFeed[] = [];
-          for (const feed of cachedSources.feeds) {
-            const sample = getCachedFeedSample(clientSlug, feed.name)!;
-            const cols = detectImageColumns(sample.sampleData);
-            if (cols.length === 0) continue;
+    setScanError(null);
+
+    // If the datasource list is cached, pre-populate from cache immediately
+    // and only fetch the feeds that haven't been sampled yet.
+    const cachedSources = !bustCache ? getCachedDataSources(clientSlug) : null;
+    if (cachedSources && !cachedSources.error) {
+      const allFeeds = cachedSources.feeds;
+      const fromCache: VerifiedFeed[] = [];
+      const needsFetch: typeof allFeeds = [];
+
+      for (const feed of allFeeds) {
+        const sample = getCachedFeedSample(clientSlug, feed.name);
+        if (sample) {
+          const cols = detectImageColumns(sample.sampleData);
+          if (cols.length > 0) {
             const imageCount = sample.sampleData.filter(row => String(row[cols[0]] ?? '').startsWith('http')).length;
-            rebuilt.push({ feed, imageColumns: cols, imageCount, sampleData: sample.sampleData });
+            fromCache.push({ feed, imageColumns: cols, imageCount, sampleData: sample.sampleData });
           }
-          setVerifiedFeeds(rebuilt.sort((a, b) => a.feed.name.localeCompare(b.feed.name)));
-          setScanning(false);
-          setScanError(null);
-          setScannedCount(cachedSources.feeds.length);
-          setTotalToScan(cachedSources.feeds.length);
-          return;
+        } else {
+          needsFetch.push(feed);
         }
       }
+
+      setVerifiedFeeds(fromCache.sort((a, b) => a.feed.name.localeCompare(b.feed.name)));
+      setTotalToScan(allFeeds.length);
+      setScannedCount(allFeeds.length - needsFetch.length);
+
+      if (needsFetch.length === 0) {
+        setScanning(false);
+        setCurrentlyChecking('');
+        return;
+      }
+
+      // Partial cache hit — scan only the uncached feeds.
+      setScanning(true);
+      setCurrentlyChecking('');
+
+      async function processFeed(feed: typeof allFeeds[number]) {
+        if (runId.current !== myId) return;
+        setCurrentlyChecking(feed.name);
+        const sample = await fetchFeedSample({ clientSlug, feed });
+        if (runId.current !== myId) return;
+        setScannedCount(c => c + 1);
+        const cols = detectImageColumns(sample.sampleData);
+        if (cols.length === 0) return;
+        const imageCount = sample.sampleData.filter(row => String(row[cols[0]] ?? '').startsWith('http')).length;
+        setVerifiedFeeds(prev =>
+          [...prev, { feed, imageColumns: cols, imageCount, sampleData: sample.sampleData }]
+            .sort((a, b) => a.feed.name.localeCompare(b.feed.name))
+        );
+      }
+
+      const BATCH = 3;
+      (async () => {
+        for (let i = 0; i < needsFetch.length; i += BATCH) {
+          if (runId.current !== myId) break;
+          await Promise.allSettled(needsFetch.slice(i, i + BATCH).map(processFeed));
+        }
+        if (runId.current === myId) setScanning(false);
+      })();
+      return;
     }
 
+    // Cold start — no cached datasource list yet.
     setScanning(true);
-    setScanError(null);
     setVerifiedFeeds([]);
     setScannedCount(0);
     setTotalToScan(0);
@@ -86,33 +125,25 @@ export default function FeedConnectScreen({ clientSlug, onConnect }: FeedConnect
       async function processFeed(feed: typeof allFeeds[number]) {
         if (runId.current !== myId) return;
         setCurrentlyChecking(feed.name);
-
         const sample = await fetchFeedSample({ clientSlug, feed });
         if (runId.current !== myId) return;
-
         setScannedCount(c => c + 1);
         const cols = detectImageColumns(sample.sampleData);
         if (cols.length === 0) return;
-
         const imageCount = sample.sampleData.filter(row =>
           String(row[cols[0]] ?? '').startsWith('http')
         ).length;
-
         setVerifiedFeeds(prev =>
           [...prev, { feed, imageColumns: cols, imageCount, sampleData: sample.sampleData }]
             .sort((a, b) => a.feed.name.localeCompare(b.feed.name))
         );
       }
 
-      // Process in batches of 3. Cached feeds resolve instantly from the
-      // module-level cache; uncached feeds are lazily fetched 3 at a time
-      // to avoid flooding the API with unlimited-row requests in parallel.
       const BATCH = 3;
       for (let i = 0; i < allFeeds.length; i += BATCH) {
         if (runId.current !== myId) break;
         await Promise.allSettled(allFeeds.slice(i, i + BATCH).map(processFeed));
       }
-
       if (runId.current === myId) setScanning(false);
     });
   }
