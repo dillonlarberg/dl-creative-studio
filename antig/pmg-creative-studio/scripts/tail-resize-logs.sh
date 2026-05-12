@@ -77,10 +77,15 @@ while true; do
     | awk '{a[NR]=$0} END {for (i=NR; i>=1; i--) print a[i]}' \
     | while IFS= read -r line; do
         [[ -z "$line" ]] && continue
-        hash=$(printf '%s' "$line" | shasum | cut -d' ' -f1)
+        # Dedup on the formatted output (timestamp + event + parsed fields),
+        # not the raw log line. firebase functions:log re-fetches sometimes
+        # vary the raw prefix (trace IDs, exec IDs) which made the previous
+        # raw-line hash spam duplicates on every poll.
+        formatted=$(format_line "$line")
+        hash=$(printf '%s' "$formatted" | shasum | cut -d' ' -f1)
         if ! grep -q "^$hash$" "$SEEN_FILE" 2>/dev/null; then
           echo "$hash" >> "$SEEN_FILE"
-          format_line "$line"
+          printf '%s\n' "$formatted"
         fi
       done
   sleep "$POLL_S"
