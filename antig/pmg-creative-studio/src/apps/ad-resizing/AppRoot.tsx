@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, XMarkIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
 import { getDeduplicatedDimensions } from './data/channels';
-import type { MockCreative, GenerationJob, GeneratedOutput } from './types';
+import type { Creative, GenerationJob, GeneratedOutput, Dimension } from './types';
 import type { SelectedFeed } from '../template-builder/types';
 import { downloadImage, type DownloadFormat } from './utils/downloadImage';
 import CreativeTile from './components/CreativeTile';
@@ -14,6 +14,30 @@ import FilterSortBar, { type FormatFilter, type FileTypeFilter, type SortOption 
 import GeneratedFilterBar, { type GenSortOption } from './components/GeneratedFilterBar';
 import DownloadDropdown from './components/DownloadDropdown';
 import FeedConnectScreen from './components/FeedConnectScreen';
+import SourcePreviewModal from './components/SourcePreviewModal';
+import StepIndicator from './components/StepIndicator';
+import { useOutpaintRunner } from './hooks/useOutpaintRunner';
+import { useBatchOutputs } from './hooks/useBatchOutputs';
+
+/** UI-side summary kept per started batch. The active job's live outputs come
+ * from `useBatchOutputs`; non-active tabs reuse the last snapshot. */
+interface JobSummary {
+  id: string;                    // batchId
+  sourceCreative: Creative;
+  dimensions: Dimension[];       // requested dims at runtime (for retry/reiterate dim lookup)
+  outputsSnapshot: GeneratedOutput[]; // last seen live outputs, persisted on tab switch
+  startedAt: number;
+}
+
+function newBatchId(): string {
+  return (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function newOutputId(dimId: string): string {
+  return `${dimId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
 
 type Stage = 'browse' | 'results';
 
@@ -24,22 +48,20 @@ function detectFormat(width: number, height: number): 'landscape' | 'square' | '
   return 'square';
 }
 
-const STEPS: { id: Stage | 'download'; label: string }[] = [
-  { id: 'browse', label: 'Browse' },
-  { id: 'results', label: 'Generate' },
-  { id: 'download', label: 'Download' },
-];
-
 export default function AdResizingAppRoot() {
   const { clientSlug } = useParams<{ clientSlug: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const runner = useOutpaintRunner(clientSlug ?? '');
 
   const [stage, setStage] = useState<Stage>('browse');
-  const [selectedCreative, setSelectedCreative] = useState<MockCreative | null>(null);
+  const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
 
-  // Multi-job state — each batch is a saved job; activeJobId tracks which is in view
-  const [jobs, setJobs] = useState<GenerationJob[]>([]);
+  // Multi-job state — each batch is a saved job; activeJobId tracks which is in view.
+  // `outputsSnapshot` mirrors the last live state from useBatchOutputs so non-active
+  // tabs keep showing their counts after the user navigates away.
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [addingToJob, setAddingToJob] = useState(false);
 
@@ -54,21 +76,116 @@ export default function AdResizingAppRoot() {
   const [genSort, setGenSort] = useState<GenSortOption>('default');
   const [selectedOutputIds, setSelectedOutputIds] = useState<Set<string>>(new Set());
 
-  const [feedCreatives, setFeedCreatives] = useState<MockCreative[] | null>(null);
+  const [feedCreatives, setFeedCreatives] = useState<Creative[] | null>(null);
   const [connectedFeedLabel, setConnectedFeedLabel] = useState<string | null>(null);
 
-  const activeJob = jobs.find(j => j.id === activeJobId) ?? null;
+  // Last callable error surfaced to the user as a dismissible banner. Cleared
+  // on next successful action OR via the X button.
+  const [runError, setRunError] = useState<string | null>(null);
+
+  // Honor ?batchId=… on mount: switch to results stage when arriving via deep link.
+  // The actual job summary will hydrate once the user visits the corresponding tab;
+  // for a cold deep-link with no jobs[] entry yet we still surface the live outputs.
+  const deepLinkBatchId = searchParams.get('batchId');
+  useEffect(() => {
+    if (deepLinkBatchId && !activeJobId) {
+      setActiveJobId(deepLinkBatchId);
+      setStage('results');
+    }
+  }, [deepLinkBatchId, activeJobId]);
+
+  // Live subscription to the active batch's outputs (Firestore onSnapshot).
+  const liveBatch = useBatchOutputs(clientSlug ?? null, activeJobId);
+
+  // Persist the live outputs into the matching jobs[] entry so tab strips keep
+  // accurate counts after switching away. We do NOT clobber the snapshot while
+  // liveBatch.outputs is empty — the initial subscription render races ahead of
+  // the callable's per-output Firestore seed, and the local pending shells set
+  // in `handleRun` are the only source of truth during that window.
+  useEffect(() => {
+    if (!activeJobId) return;
+    if (liveBatch.outputs.length === 0) return;
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === activeJobId ? { ...j, outputsSnapshot: liveBatch.outputs } : j,
+      ),
+    );
+  }, [activeJobId, liveBatch.outputs]);
+
+  // Compose the active job view-model. Falls back to a synthetic summary when
+  // arriving via deep link before jobs[] has been seeded.
+  const activeJob: GenerationJob | null = useMemo(() => {
+    if (!activeJobId) return null;
+    const stored = jobs.find((j) => j.id === activeJobId);
+    if (stored) {
+      return {
+        id: stored.id,
+        sourceCreative: stored.sourceCreative,
+        outputs: liveBatch.outputs.length > 0 ? liveBatch.outputs : stored.outputsSnapshot,
+        startedAt: stored.startedAt,
+      };
+    }
+    // Deep-linked batch — synthesise a job shell from the live BatchRecord.
+    if (liveBatch.batch?.sourceCreative) {
+      const sc = liveBatch.batch.sourceCreative;
+      return {
+        id: activeJobId,
+        sourceCreative: {
+          id: sc.creativeId,
+          name: liveBatch.batch.feedName ?? sc.creativeId,
+          thumbnailUrl: sc.originalUrl,
+          originalUrl: sc.originalUrl,
+          width: sc.width,
+          height: sc.height,
+          fileType: 'JPG',
+          uploadedAt: new Date().toISOString().split('T')[0],
+          source: liveBatch.batch.feedId ?? '',
+          tags: [],
+        },
+        outputs: liveBatch.outputs,
+        startedAt: 0,
+      };
+    }
+    return null;
+  }, [activeJobId, jobs, liveBatch.outputs, liveBatch.batch]);
 
   // Clear tile selection whenever the active job changes
   useEffect(() => { setSelectedOutputIds(new Set()); }, [activeJobId]);
 
-  function handleFeedConnect(feed: SelectedFeed, _imageColumn: string, creatives: MockCreative[]) {
+  // Mirror activeJobId into ?batchId= so deep links work + browser-back is sane.
+  useEffect(() => {
+    const current = searchParams.get('batchId');
+    if (activeJobId && current !== activeJobId) {
+      const next = new URLSearchParams(searchParams);
+      next.set('batchId', activeJobId);
+      setSearchParams(next, { replace: true });
+    } else if (!activeJobId && current) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('batchId');
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeJobId, searchParams, setSearchParams]);
+
+  function handleFeedConnect(feed: SelectedFeed, _imageColumn: string, creatives: Creative[]) {
     setFeedCreatives(creatives);
     setConnectedFeedLabel(feed.name);
     setSelectedCreative(null);
     setSelectedChannels([]);
     setSelectedDimensions(new Set());
   }
+
+  // Patch feed creatives' real natural dimensions once <img> loads (PR-D codex F11).
+  const handleDimensionsResolved = useCallback(
+    (creativeId: string, width: number, height: number) => {
+      setFeedCreatives((prev) =>
+        prev?.map((c) => (c.id === creativeId ? { ...c, width, height } : c)) ?? prev,
+      );
+      setSelectedCreative((prev) =>
+        prev && prev.id === creativeId ? { ...prev, width, height } : prev,
+      );
+    },
+    [],
+  );
 
   function handleDisconnectFeed() {
     setFeedCreatives(null);
@@ -118,7 +235,7 @@ export default function AdResizingAppRoot() {
     return list;
   }, [feedCreatives, filterFormat, filterFileType, sortBy]);
 
-  const handleSelectCreative = useCallback((creative: MockCreative) => {
+  const handleSelectCreative = useCallback((creative: Creative) => {
     if (selectedCreative?.id === creative.id) {
       setSelectedCreative(null);
       setSelectedChannels([]);
@@ -166,63 +283,52 @@ export default function AdResizingAppRoot() {
     });
   }, []);
 
-  function simulateOutputCompletion(jobId: string, outputId: string, dimensionId: string, width: number, height: number, seed?: string) {
-    const delay = 900 + Math.random() * 400;
-    setTimeout(() => {
-      setJobs(prev => {
-        const scale = Math.min(1, 800 / width, 800 / height);
-        const w = Math.round(width * scale);
-        const h = Math.round(height * scale);
-        const imageSeed = seed ?? dimensionId;
-        return prev.map(j =>
-          j.id === jobId
-            ? {
-                ...j,
-                outputs: j.outputs.map(o =>
-                  o.id === outputId
-                    ? { ...o, status: 'complete' as const, imageUrl: `https://picsum.photos/seed/${imageSeed}/${w}/${h}` }
-                    : o
-                ),
-              }
-            : j
-        );
-      });
-    }, delay);
-  }
-
-  const handleRun = useCallback(() => {
-    if (!selectedCreative || selectedDimensions.size === 0) return;
+  const handleRun = useCallback(async () => {
+    if (!selectedCreative || selectedDimensions.size === 0 || !clientSlug) return;
 
     const dims = getDeduplicatedDimensions(selectedChannels).filter(d => selectedDimensions.has(d.id));
-    const newOutputs: GeneratedOutput[] = dims.map(dim => ({
-      id: `output-${dim.id}-${Date.now()}`,
+    if (dims.length === 0) return;
+
+    const shouldAppend =
+      addingToJob &&
+      activeJobId &&
+      selectedCreative.id === jobs.find(j => j.id === activeJobId)?.sourceCreative.id;
+
+    // Brand-new batches get a fresh batchId; "add more sizes" re-uses the
+    // existing batchId so the per-output Firestore docs merge into the same
+    // job under one BatchRecord.
+    const targetBatchId = shouldAppend ? activeJobId! : newBatchId();
+    const outputIds = dims.map(d => newOutputId(d.id));
+
+    // Stage the UI: seed JobSummary + per-output pending shells immediately
+    // so the user sees the grid before the callable round-trip completes.
+    const pendingOutputs: GeneratedOutput[] = dims.map((dim, i) => ({
+      id: outputIds[i],
+      outputId: outputIds[i],
       dimension: dim,
       status: 'pending',
     }));
 
-    let targetJobId: string;
-
-    const currentActiveJob = jobs.find(j => j.id === activeJobId);
-    const shouldAppend = addingToJob && activeJobId &&
-      selectedCreative.id === currentActiveJob?.sourceCreative.id;
-
     if (shouldAppend) {
-      targetJobId = activeJobId!;
       setJobs(prev => prev.map(j =>
-        j.id === activeJobId
-          ? { ...j, outputs: [...j.outputs, ...newOutputs] }
-          : j
+        j.id === targetBatchId
+          ? {
+              ...j,
+              dimensions: [...j.dimensions, ...dims],
+              outputsSnapshot: [...j.outputsSnapshot, ...pendingOutputs],
+            }
+          : j,
       ));
     } else {
-      const newJob: GenerationJob = {
-        id: `job-${Date.now()}`,
+      const job: JobSummary = {
+        id: targetBatchId,
         sourceCreative: selectedCreative,
-        outputs: newOutputs,
+        dimensions: dims,
+        outputsSnapshot: pendingOutputs,
         startedAt: Date.now(),
       };
-      targetJobId = newJob.id;
-      setJobs(prev => [...prev, newJob]);
-      setActiveJobId(newJob.id);
+      setJobs(prev => [...prev, job]);
+      setActiveJobId(targetBatchId);
     }
 
     setStage('results');
@@ -233,40 +339,57 @@ export default function AdResizingAppRoot() {
     setGenFilterChannel('all');
     setGenSort('default');
 
-    newOutputs.forEach((output, i) => {
-      setTimeout(() => {
-        simulateOutputCompletion(targetJobId, output.id, output.dimension.id, output.dimension.width, output.dimension.height);
-      }, i * 900);
-    });
-  }, [selectedCreative, selectedChannels, selectedDimensions, addingToJob, activeJobId, jobs]);
+    try {
+      await runner.runBatch({
+        batchId: targetBatchId,
+        creative: selectedCreative,
+        feedName: connectedFeedLabel ?? undefined,
+        dimensions: dims,
+        outputIds,
+      });
+    } catch (err) {
+      // BatchRecord.status is updated to 'failed' server-side when possible;
+      // the live subscription surfaces per-output error states for the tiles.
+      // Surface a banner so the user isn't left waiting on a silent failure.
+      console.error('runOutpaintBatch failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
+    }
+  }, [selectedCreative, selectedChannels, selectedDimensions, addingToJob, activeJobId, jobs, clientSlug, runner, connectedFeedLabel]);
 
-  const handleRetry = useCallback((outputId: string) => {
-    if (!activeJobId) return;
-    const currentJob = jobs.find(j => j.id === activeJobId);
-    if (!currentJob) return;
-    const output = currentJob.outputs.find(o => o.id === outputId);
-    if (!output) return;
-    setJobs(prev => prev.map(j =>
-      j.id === activeJobId
-        ? { ...j, outputs: j.outputs.map(o => o.id === outputId ? { ...o, status: 'pending' as const, imageUrl: undefined } : o) }
-        : j
-    ));
-    simulateOutputCompletion(activeJobId, outputId, output.dimension.id, output.dimension.width, output.dimension.height, `retry-${outputId}-${Date.now()}`);
-  }, [activeJobId, jobs]);
+  const handleRetry = useCallback(async (outputId: string) => {
+    if (!activeJobId || !activeJob) return;
+    const target = activeJob.outputs.find(o => o.id === outputId);
+    if (!target) return;
+    try {
+      await runner.retryOutput({
+        batchId: activeJobId,
+        creative: activeJob.sourceCreative,
+        outputId,
+        dimension: target.dimension,
+      });
+    } catch (err) {
+      console.error('retryOutput failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
+    }
+  }, [activeJobId, activeJob, runner]);
 
-  const handleReiterate = useCallback((outputId: string, _prompt: string) => {
-    if (!activeJobId) return;
-    const currentJob = jobs.find(j => j.id === activeJobId);
-    if (!currentJob) return;
-    const output = currentJob.outputs.find(o => o.id === outputId);
-    if (!output) return;
-    setJobs(prev => prev.map(j =>
-      j.id === activeJobId
-        ? { ...j, outputs: j.outputs.map(o => o.id === outputId ? { ...o, status: 'pending' as const, imageUrl: undefined } : o) }
-        : j
-    ));
-    simulateOutputCompletion(activeJobId, outputId, output.dimension.id, output.dimension.width, output.dimension.height, `recrop-${outputId}-${Date.now()}`);
-  }, [activeJobId, jobs]);
+  const handleReiterate = useCallback(async (outputId: string, prompt: string) => {
+    if (!activeJobId || !activeJob) return;
+    const target = activeJob.outputs.find(o => o.id === outputId);
+    if (!target) return;
+    try {
+      await runner.reiterateOutput({
+        batchId: activeJobId,
+        creative: activeJob.sourceCreative,
+        outputId,
+        dimension: target.dimension,
+        retryPrompt: prompt,
+      });
+    } catch (err) {
+      console.error('reiterateOutput failed', err);
+      setRunError(err instanceof Error ? err.message : String(err));
+    }
+  }, [activeJobId, activeJob, runner]);
 
   const handleToggleOutputSelection = useCallback((outputId: string) => {
     setSelectedOutputIds(prev => {
@@ -276,29 +399,45 @@ export default function AdResizingAppRoot() {
     });
   }, []);
 
-  function handleDownloadSelected(format: DownloadFormat) {
-    if (!activeJob) return;
-    activeJob.outputs
-      .filter(o => selectedOutputIds.has(o.id) && o.imageUrl)
-      .forEach((o, i) => {
-        setTimeout(() => {
-          const filename = `${o.dimension.label.replace(':', 'x')}-${o.dimension.width}x${o.dimension.height}`;
-          downloadImage(o.imageUrl!, filename, format);
-        }, i * 150);
-      });
+  const completedOutputs = activeJob?.outputs.filter(o => o.status === 'complete') ?? [];
+  const allComplete = activeJob !== null && activeJob.outputs.length > 0 && activeJob.outputs.every(o => o.status === 'complete');
+
+  function downloadFilename(output: GeneratedOutput): string {
+    const name = (activeJob?.sourceCreative.name ?? 'output').replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 40);
+    const labelSlug = output.dimension.label.replace(':', 'x').replace(/[^a-zA-Z0-9-_]+/g, '_');
+    const shortStamp = Math.floor(Date.now() / 1000).toString(36).slice(-6);
+    return `${name}_${labelSlug}_${output.dimension.width}x${output.dimension.height}_${shortStamp}`;
   }
 
-  const completedOutputs = activeJob?.outputs.filter(o => o.status === 'complete') ?? [];
-  const allComplete = activeJob !== null && activeJob.outputs.every(o => o.status === 'complete');
+  async function downloadOutput(output: GeneratedOutput, format: DownloadFormat): Promise<void> {
+    if (!output.storageRef) return;
+    try {
+      const { getDownloadURL, ref } = await import('firebase/storage');
+      const { storage } = await import('../../firebase');
+      const url = await getDownloadURL(ref(storage, output.storageRef));
+      await downloadImage(url, downloadFilename(output), format);
+    } catch (err) {
+      console.error('downloadOutput failed', err);
+      // eslint-disable-next-line no-alert
+      alert(`Failed to download ${output.dimension.label}: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }
 
-  function handleDownloadAll(format: DownloadFormat) {
-    completedOutputs.forEach((output, i) => {
-      if (!output.imageUrl) return;
-      setTimeout(() => {
-        const filename = `${output.dimension.label.replace(':', 'x')}-${output.dimension.width}x${output.dimension.height}`;
-        downloadImage(output.imageUrl!, filename, format);
-      }, i * 150);
-    });
+  async function handleDownloadSelected(format: DownloadFormat) {
+    if (!activeJob) return;
+    const targets = activeJob.outputs.filter(o => selectedOutputIds.has(o.id) && o.storageRef);
+    // Slight stagger keeps the browser happy; await ensures errors surface.
+    for (const o of targets) {
+      await downloadOutput(o, format);
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }
+
+  async function handleDownloadAll(format: DownloadFormat) {
+    for (const output of completedOutputs) {
+      await downloadOutput(output, format);
+      await new Promise(r => setTimeout(r, 150));
+    }
   }
 
   const activeStep = stage === 'results' && allComplete ? 'download' : stage;
@@ -324,39 +463,25 @@ export default function AdResizingAppRoot() {
         </div>
       </div>
 
-      {/* Step indicator */}
-      <div className="mb-6 flex items-center gap-0">
-        {STEPS.map((step, i) => {
-          const isDone = (step.id === 'browse' && stage === 'results') ||
-                         (step.id === 'results' && allComplete);
-          const isActive = step.id === activeStep;
-          const isLast = i === STEPS.length - 1;
-          return (
-            <div key={step.id} className="flex items-center">
-              <div className="flex items-center gap-1.5">
-                <div className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors',
-                  isDone ? 'bg-green-500 text-white' : isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
-                )}>
-                  {isDone ? '✓' : i + 1}
-                </div>
-                <span className={cn(
-                  'text-[12px] font-medium transition-colors',
-                  isDone ? 'text-green-600' : isActive ? 'text-blue-600' : 'text-gray-400'
-                )}>
-                  {step.label}
-                </span>
-              </div>
-              {!isLast && (
-                <div className={cn(
-                  'mx-3 h-px w-10 transition-colors',
-                  isDone ? 'bg-green-300' : 'bg-gray-200'
-                )} />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <StepIndicator activeStep={activeStep} resultsDone={allComplete} browseDone={stage === 'results'} />
+
+      {/* Callable error banner — surfaces auth/IAM/server failures the live
+          subscription can't show because the batch never got seeded. */}
+      {runError && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-red-800">Generation request failed</p>
+            <p className="mt-0.5 break-words text-[12px] text-red-700">{runError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRunError(null)}
+            className="shrink-0 text-[12px] font-medium text-red-700 hover:text-red-900"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex items-start gap-0">
@@ -446,6 +571,7 @@ export default function AdResizingAppRoot() {
                         creative={creative}
                         selected={selectedCreative?.id === creative.id}
                         onSelect={handleSelectCreative}
+                        onDimensionsResolved={handleDimensionsResolved}
                       />
                     ))}
                   </div>
@@ -503,7 +629,8 @@ export default function AdResizingAppRoot() {
                   <div className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1">
                     {jobs.map(j => {
                       const isActive = j.id === activeJobId;
-                      const jDone = j.outputs.every(o => o.status === 'complete');
+                      const snap = j.outputsSnapshot;
+                      const jDone = snap.length > 0 && snap.every(o => o.status === 'complete');
                       return (
                         <button
                           key={j.id}
@@ -532,7 +659,7 @@ export default function AdResizingAppRoot() {
                             {j.sourceCreative.name}
                           </span>
                           <span className={cn('text-[11px]', isActive ? 'text-blue-400' : 'text-gray-400')}>
-                            {j.outputs.length}
+                            {snap.length}
                           </span>
                           {!jDone && (
                             <div className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-gray-300 border-t-blue-500" />
@@ -663,6 +790,7 @@ export default function AdResizingAppRoot() {
                           <GeneratedTile
                             key={output.id}
                             output={output}
+                            creativeName={activeJob?.sourceCreative.name}
                             onView={() => {
                               const completedFiltered = filteredOutputs.filter(o => o.status === 'complete');
                               setSingleView({ index: completedFiltered.findIndex(o => o.id === output.id) });
@@ -726,49 +854,11 @@ export default function AdResizingAppRoot() {
 
       {/* Source creative preview modal */}
       {sourcePreviewOpen && activeJob && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setSourcePreviewOpen(false)}
-        >
-          <div
-            className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-              <div>
-                <p className="text-[13px] font-semibold text-gray-900">Source Creative</p>
-                <p className="mt-0.5 text-[11px] text-gray-400">
-                  {activeJob.sourceCreative.name} · {activeJob.sourceCreative.width}×{activeJob.sourceCreative.height} · {activeJob.sourceCreative.fileType}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSourcePreviewOpen(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-center bg-gray-50 p-6">
-              <img
-                src={activeJob.sourceCreative.thumbnailUrl}
-                alt={activeJob.sourceCreative.name}
-                className="max-h-[55vh] w-auto rounded-lg object-contain shadow-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
-              <p className="text-[11px] text-gray-400">
-                Used to generate {activeJob.outputs.length} size{activeJob.outputs.length !== 1 ? 's' : ''}
-              </p>
-              <DownloadDropdown
-                openUp
-                onDownload={fmt => downloadImage(activeJob.sourceCreative.thumbnailUrl, activeJob.sourceCreative.name, fmt)}
-              />
-            </div>
-          </div>
-        </div>
+        <SourcePreviewModal
+          creative={activeJob.sourceCreative}
+          outputCount={activeJob.outputs.length}
+          onClose={() => setSourcePreviewOpen(false)}
+        />
       )}
     </div>
   );

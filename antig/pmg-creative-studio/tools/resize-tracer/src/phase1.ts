@@ -10,6 +10,12 @@ export interface Phase1Input {
   sourceMime: string;
   sourceSpec: Spec;
   targetSpec: Spec;
+  /**
+   * Optional user-supplied re-crop instruction. When present, prepended to
+   * the user prompt so the extensionDirective biases toward the user's
+   * intent. Undefined on initial-batch runs.
+   */
+  additionalContext?: string;
 }
 
 interface ParsedCandidate {
@@ -41,7 +47,9 @@ export async function runPhase1(
   ai: GoogleGenAI,
   input: Phase1Input,
 ): Promise<P1Output> {
-  const userText = `Target dimensions: ${input.targetSpec.w}x${input.targetSpec.h}. Source dimensions: ${input.sourceSpec.w}x${input.sourceSpec.h}. Return JSON conforming to the schema.`;
+  const ctx = input.additionalContext?.trim();
+  const ctxPrefix = ctx ? `User instruction (apply to extensionDirective): ${ctx}\n` : "";
+  const userText = `${ctxPrefix}Target dimensions: ${input.targetSpec.w}x${input.targetSpec.h}. Source dimensions: ${input.sourceSpec.w}x${input.sourceSpec.h}. Return JSON conforming to the schema.`;
 
   console.log(
     `[P1] calling ${P1_MODEL}: source ${input.sourceSpec.w}×${input.sourceSpec.h} → target ${input.targetSpec.w}×${input.targetSpec.h}`,

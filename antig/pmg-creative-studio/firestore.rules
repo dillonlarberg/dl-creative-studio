@@ -8,9 +8,16 @@ service cloud.firestore {
     // functions/src/_shared/allowlist.ts (asserted by the drift test in
     // functions/src/_shared/__tests__/allowlist-drift.test.ts).
     // ─────────────────────────────────────────────────────────────────────
+    // Alli SSO via OIDC issues Firebase tokens without an `email_verified`
+    // claim (the upstream IdP verifies emails during the OAuth handshake
+    // but Firebase's OIDC connector doesn't propagate the claim). Trust
+    // the `sign_in_provider` as a proxy for OIDC IdPs we own. Direct
+    // Google sign-in still needs the standard email_verified flag.
+    // Mirror of functions/src/_shared/assertAlliStudioUser.ts.
     function isAlliStudioUser() {
       return request.auth != null
-          && request.auth.token.email_verified == true
+          && (request.auth.token.email_verified == true
+              || request.auth.token.firebase.sign_in_provider == 'oidc.alli')
           && request.auth.token.email in [
                'annie.nguyen@pmg.com',
                'chris@pmg.com',
@@ -38,8 +45,17 @@ service cloud.firestore {
       allow read, write: if isAlliStudioUser();
     }
 
-    // Default-deny everything else, including legacy `creatives` and
-    // `clientAssetHouse` collections from the pre-rebuild schema.
+    // Legacy brand-standards collection. The dashboard still reads/writes
+    // `clientAssetHouse/{slug}` per the HOTFIX in
+    // src/services/clientAssetHouse.ts (data was never migrated to the
+    // canonical `clients/{slug}` doc). Allowlist-only until that migration
+    // ships; remove this block once the service flips to paths.client(slug).
+    match /clientAssetHouse/{clientSlug} {
+      allow read, write: if isAlliStudioUser();
+    }
+
+    // Default-deny everything else, including legacy `creatives` from the
+    // pre-rebuild schema.
     match /{document=**} {
       allow read, write: if false;
     }

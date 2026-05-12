@@ -30,8 +30,42 @@ describe('storage.rules', () => {
     await expect(ref.put(new Uint8Array([1, 2, 3]))).resolves.not.toThrow();
   });
 
-  it('denies for an unverified-email user', async () => {
-    const ctx = env.authenticatedContext('test-uid', { email: allowedEmail, email_verified: false });
+  it('denies for an unverified-email user on a non-OIDC provider', async () => {
+    const ctx = env.authenticatedContext('test-uid', {
+      email: allowedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'password' },
+    });
+    const ref = ctx.storage().ref('clients/ralph_lauren/apps/edit-image/uploads/abc.png');
+    await expect(ref.put(new Uint8Array([1, 2, 3]))).rejects.toThrow();
+  });
+
+  it('allows an oidc.alli user with allowlisted email even without email_verified', async () => {
+    const ctx = env.authenticatedContext('test-uid', {
+      email: allowedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.alli' },
+    });
+    const ref = ctx.storage().ref('clients/ralph_lauren/apps/edit-image/uploads/abc.png');
+    await expect(ref.put(new Uint8Array([1, 2, 3]))).resolves.not.toThrow();
+  });
+
+  it('denies a non-allowlisted oidc.alli user', async () => {
+    const ctx = env.authenticatedContext('test-uid', {
+      email: deniedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.alli' },
+    });
+    const ref = ctx.storage().ref('clients/ralph_lauren/apps/edit-image/uploads/abc.png');
+    await expect(ref.put(new Uint8Array([1, 2, 3]))).rejects.toThrow();
+  });
+
+  it('denies a different OIDC provider with allowlisted email', async () => {
+    const ctx = env.authenticatedContext('test-uid', {
+      email: allowedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.evil' },
+    });
     const ref = ctx.storage().ref('clients/ralph_lauren/apps/edit-image/uploads/abc.png');
     await expect(ref.put(new Uint8Array([1, 2, 3]))).rejects.toThrow();
   });

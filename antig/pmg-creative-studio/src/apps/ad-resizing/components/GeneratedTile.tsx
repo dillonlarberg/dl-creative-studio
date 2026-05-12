@@ -2,6 +2,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import type { GeneratedOutput } from '../types';
 import { downloadImage } from '../utils/downloadImage';
+import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
 interface GeneratedTileProps {
@@ -11,18 +12,28 @@ interface GeneratedTileProps {
   selected?: boolean;
   anySelected?: boolean;
   onToggleSelect?: () => void;
+  /** Used as the file stem for downloaded blobs. */
+  creativeName?: string;
 }
 
 function aspectStyle(width: number, height: number): React.CSSProperties {
   return { aspectRatio: `${width} / ${height}` };
 }
 
-export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect }: GeneratedTileProps) {
-  const { dimension, status, imageUrl } = output;
+export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName }: GeneratedTileProps) {
+  const { dimension, status, storageRef, errorCategory } = output;
+  const resolvedUrl = useStorageUrl(storageRef);
+  const imageUrl = output.imageUrl ?? resolvedUrl;
   const isPending = status === 'pending';
   const isComplete = status === 'complete';
+  const isError = status === 'error';
+  const canRetry = isError && errorCategory !== 'permanent';
 
-  const filename = `${dimension.label.replace(':', 'x')}-${dimension.width}x${dimension.height}`;
+  // Filename: `${creativeName}_${label}_{w}x{h}_{shortTimestamp}` per plan §PR-D.
+  const safeName = (creativeName ?? 'output').replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 40);
+  const labelSlug = dimension.label.replace(':', 'x').replace(/[^a-zA-Z0-9-_]+/g, '_');
+  const shortStamp = Math.floor(Date.now() / 1000).toString(36).slice(-6);
+  const filename = `${safeName}_${labelSlug}_${dimension.width}x${dimension.height}_${shortStamp}`;
 
   return (
     <div className={cn(
@@ -34,7 +45,6 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
         className="relative w-full overflow-hidden rounded-t-lg bg-gray-100"
         style={aspectStyle(dimension.width, dimension.height)}
       >
-        {/* Select checkbox — top-left; visible on hover, always visible when selected or any tile is selected */}
         {isComplete && onToggleSelect && (
           <button
             type="button"
@@ -72,7 +82,6 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
               alt={`${dimension.label} output`}
               className="h-full w-full object-cover"
             />
-            {/* Hover overlay — View only */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
               <button
                 type="button"
@@ -84,24 +93,35 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
             </div>
           </>
         )}
-        {status === 'error' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-red-50">
-            <p className="text-[11px] font-medium text-red-500">Generation failed</p>
-            {onRetry && (
-              <button
-                type="button"
-                onClick={onRetry}
-                className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700"
-              >
-                <ArrowPathIcon className="h-3 w-3" />
-                Retry
-              </button>
+        {isComplete && !imageUrl && (
+          // storageRef present but getDownloadURL hasn't resolved yet
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-gray-400" />
+          </div>
+        )}
+        {isError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-red-50 px-3 text-center">
+            {canRetry ? (
+              <>
+                <p className="text-[11px] font-medium text-red-500">Generation failed</p>
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    <ArrowPathIcon className="h-3 w-3" />
+                    Retry
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className="text-[11px] font-medium text-red-500">Can't generate this size</p>
             )}
           </div>
         )}
       </div>
 
-      {/* Metadata — Download appears on hover, fading the Ready badge */}
       <div className="flex items-center justify-between px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-[12px] font-medium text-gray-800" title={`${dimension.label} · ${dimension.width}×${dimension.height}`}>{dimension.label}</p>
@@ -126,7 +146,7 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
               'rounded-full px-2 py-0.5 text-[10px] font-medium',
               isPending ? 'bg-gray-100 text-gray-500' : 'bg-red-50 text-red-500',
             )}>
-              {isPending ? 'Generating…' : 'Failed'}
+              {isPending ? 'Generating…' : canRetry ? 'Failed' : 'Skipped'}
             </span>
           )}
         </div>

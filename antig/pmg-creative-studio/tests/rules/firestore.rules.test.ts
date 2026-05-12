@@ -32,8 +32,44 @@ describe('firestore.rules', () => {
       await expect(ref.get()).resolves.toBeDefined();
     });
 
-    it('denies read for an allowlisted user with UNVERIFIED email', async () => {
-      const ctx = env.authenticatedContext('test-uid', { email: allowedEmail, email_verified: false });
+    it('denies read for an allowlisted user with UNVERIFIED email + non-OIDC provider', async () => {
+      const ctx = env.authenticatedContext('test-uid', {
+        email: allowedEmail,
+        email_verified: false,
+        firebase: { sign_in_provider: 'password' },
+      });
+      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      await expect(ref.get()).rejects.toThrow();
+    });
+
+    it('allows read for an oidc.alli user with allowlisted email (email_verified absent)', async () => {
+      // Alli SSO doesn't propagate email_verified; sign_in_provider is the
+      // proxy. Mirror of assertAlliStudioUser test (functions/src/_shared/).
+      const ctx = env.authenticatedContext('test-uid', {
+        email: allowedEmail,
+        email_verified: false,
+        firebase: { sign_in_provider: 'oidc.alli' },
+      });
+      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      await expect(ref.get()).resolves.toBeDefined();
+    });
+
+    it('denies oidc.alli sign-in for a non-allowlisted email', async () => {
+      const ctx = env.authenticatedContext('test-uid', {
+        email: deniedEmail,
+        email_verified: false,
+        firebase: { sign_in_provider: 'oidc.alli' },
+      });
+      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      await expect(ref.get()).rejects.toThrow();
+    });
+
+    it('denies a different OIDC provider even with allowlisted email', async () => {
+      const ctx = env.authenticatedContext('test-uid', {
+        email: allowedEmail,
+        email_verified: false,
+        firebase: { sign_in_provider: 'oidc.evil' },
+      });
       const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
       await expect(ref.get()).rejects.toThrow();
     });
@@ -64,8 +100,14 @@ describe('firestore.rules', () => {
       await expect(ref.get()).rejects.toThrow();
     });
 
-    it('denies read of legacy /clientAssetHouse even for an allowlisted user', async () => {
+    it('allows read of legacy /clientAssetHouse for allowlisted users (HOTFIX carve-out)', async () => {
       const ctx = env.authenticatedContext('test-uid', { email: allowedEmail, email_verified: true });
+      const ref = ctx.firestore().doc('clientAssetHouse/ralph_lauren');
+      await expect(ref.get()).resolves.toBeDefined();
+    });
+
+    it('denies read of legacy /clientAssetHouse for non-allowlisted users', async () => {
+      const ctx = env.authenticatedContext('test-uid', { email: deniedEmail, email_verified: true });
       const ref = ctx.firestore().doc('clientAssetHouse/ralph_lauren');
       await expect(ref.get()).rejects.toThrow();
     });

@@ -338,6 +338,9 @@ const BASELINE_ASSETS = {
 
 // Wizard step definitions per use case
 const WIZARD_STEPS: Record<UseCaseId, { id: string; name: string }[]> = {
+    // ad-resizing has its own dedicated AppRoot (`src/apps/ad-resizing/AppRoot.tsx`)
+    // and never goes through this wizard; stub-only to satisfy the exhaustive Record.
+    'ad-resizing': [],
     'resize-image': [
         { id: 'upload', name: 'Select Image' },
         { id: 'sizes', name: 'Choose Sizes' },

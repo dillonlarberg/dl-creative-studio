@@ -18,8 +18,38 @@ describe('assertAlliStudioUser', () => {
     expect(() => assertAlliStudioUser(req)).not.toThrow();
   });
 
-  it('throws for an allowlisted user with UNVERIFIED email', () => {
-    const req = fakeRequest({ email: allowedEmail, email_verified: false });
+  it('throws for an allowlisted user with UNVERIFIED email when signed in via password', () => {
+    const req = fakeRequest({ email: allowedEmail, email_verified: false, firebase: { sign_in_provider: 'password' } });
+    expect(() => assertAlliStudioUser(req)).toThrow(HttpsError);
+  });
+
+  it('accepts an allowlisted user signed in via oidc.alli even without email_verified', () => {
+    // Alli SSO verifies the email upstream during OIDC handshake but does not
+    // propagate email_verified through the Firebase token claim; we trust the
+    // sign_in_provider as a proxy.
+    const req = fakeRequest({
+      email: allowedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.alli' },
+    });
+    expect(() => assertAlliStudioUser(req)).not.toThrow();
+  });
+
+  it('still rejects a non-allowlisted oidc.alli user', () => {
+    const req = fakeRequest({
+      email: 'random@example.com',
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.alli' },
+    });
+    expect(() => assertAlliStudioUser(req)).toThrow(HttpsError);
+  });
+
+  it('still rejects an unknown OIDC provider even if the email is allowlisted', () => {
+    const req = fakeRequest({
+      email: allowedEmail,
+      email_verified: false,
+      firebase: { sign_in_provider: 'oidc.evil' },
+    });
     expect(() => assertAlliStudioUser(req)).toThrow(HttpsError);
   });
 

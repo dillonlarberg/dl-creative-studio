@@ -67,6 +67,12 @@ export const paths = {
   batchResults: (slug: ClientSlug, appId: AppId, batchId: string) =>
     `${root(slug)}/apps/${appId}/batches/${batchId}/results`,
 
+  // ad-resizing outpaint outputs (flat sibling collection per plan Q14).
+  outpaintOutputs: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/outputs`,
+  outpaintOutput: (slug: ClientSlug, appId: AppId, outputId: string) =>
+    `${root(slug)}/apps/${appId}/outputs/${outputId}`,
+  outpaintSources: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/sources`,
+
   storage: {
     client: (slug: ClientSlug) => root(slug),
     app: (slug: ClientSlug, appId: AppId, suffix: string) =>

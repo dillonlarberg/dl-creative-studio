@@ -3,6 +3,7 @@ import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon } from '@he
 import { cn } from '../../../utils/cn';
 import type { GeneratedOutput, MockCreative } from '../types';
 import { downloadImage } from '../utils/downloadImage';
+import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
 interface SingleImageModalProps {
@@ -20,6 +21,8 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
   const [recropSent, setRecropSent] = useState(false);
 
   const output = outputs[index];
+  const resolvedUrl = useStorageUrl(output?.storageRef);
+  const displayUrl = output?.imageUrl ?? resolvedUrl ?? undefined;
   const canPrev = index > 0;
   const canNext = index < outputs.length - 1;
 
@@ -129,9 +132,9 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                   <span className="ml-2 text-[10px] text-gray-400">{output.dimension.width}×{output.dimension.height} · {output.dimension.channelLabel}</span>
                 </div>
                 <div className="flex flex-1 items-center justify-center p-5">
-                  {output.imageUrl && (
+                  {displayUrl && (
                     <img
-                      src={output.imageUrl}
+                      src={displayUrl}
                       alt={output.dimension.label}
                       style={{ aspectRatio: `${output.dimension.width} / ${output.dimension.height}` }}
                       className="max-h-[52vh] w-auto rounded object-contain shadow-sm"
@@ -144,9 +147,9 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
           ) : (
             /* Single view (no source) */
             <div className="flex flex-1 items-center justify-center p-6">
-              {output.imageUrl && (
+              {displayUrl && (
                 <img
-                  src={output.imageUrl}
+                  src={displayUrl}
                   alt={output.dimension.label}
                   className="max-h-[60vh] w-auto rounded object-contain shadow-sm"
                   fetchPriority="high"
@@ -205,10 +208,18 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
             <ArrowPathIcon className="h-4 w-4" />
             Re-crop
           </button>
-          {output.imageUrl && (
+          {displayUrl && (
             <DownloadDropdown
               openUp
-              onDownload={fmt => downloadImage(output.imageUrl!, filename, fmt)}
+              onDownload={async (fmt) => {
+                try {
+                  await downloadImage(displayUrl, filename, fmt);
+                } catch (err) {
+                  console.error('SingleImageModal download failed', err);
+                  // eslint-disable-next-line no-alert
+                  alert(`Failed to download: ${err instanceof Error ? err.message : 'unknown error'}`);
+                }
+              }}
             />
           )}
         </div>
