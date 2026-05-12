@@ -138,7 +138,7 @@ export default function AdResizingAppRoot() {
           width: sc.width,
           height: sc.height,
           fileType: 'JPG',
-          uploadedAt: new Date().toISOString().split('T')[0],
+          uploadedAt: '',
           source: liveBatch.batch.feedId ?? '',
           tags: [],
         },
