@@ -99,7 +99,7 @@ describe('fetchFeedSample', () => {
     expect(meta.error.modelName).toBe('feed_a');
   });
 
-  it('filters out thumbnail rows on creative_insights_data_export', async () => {
+  it('filters out video rows on creative_insights_data_export (keeps image and thumbnail)', async () => {
     vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
       results: [
         { ad_id: '1', creative_type: 'image' },
@@ -116,7 +116,7 @@ describe('fetchFeedSample', () => {
     expect(result.sampleData).toHaveLength(2);
     expect(
       result.sampleData.every(
-        (r) => String(r.creative_type).toLowerCase() !== 'thumbnail'
+        (r) => String(r.creative_type).toLowerCase() !== 'video'
       )
     ).toBe(true);
   });

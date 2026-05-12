@@ -205,7 +205,7 @@ export async function fetchFeedSample(opts: {
         const ct =
           row.creative_type ||
           row.creative_insights_data_export__creative_type;
-        return String(ct ?? '').toLowerCase() !== 'thumbnail';
+        return String(ct ?? '').toLowerCase() !== 'video';
       });
     }
 
