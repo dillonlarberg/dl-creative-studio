@@ -12,12 +12,12 @@ import {
     QuestionMarkCircleIcon,
     BellIcon,
     ChevronRightIcon,
-    Squares2X2Icon,
-    ChartBarIcon,
+    PresentationChartBarIcon,
+    CircleStackIcon,
     ClipboardDocumentListIcon,
     BoltIcon,
-    UsersIcon,
-    BriefcaseIcon,
+    UserIcon,
+    ShoppingBagIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild, Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
@@ -71,23 +71,27 @@ type NavItem = {
     icon: React.ComponentType<{ className?: string }>;
     href?: string;
     disabled?: boolean;
-    children?: { name: string; href: string }[];
+    children?: { name: string; href: string; matchPrefix?: boolean; disabled?: boolean }[];
 };
 
 const PRIMARY_NAV: NavItem[] = [
-    { name: 'Dashboards', icon: Squares2X2Icon, disabled: true },
-    { name: 'Data', icon: ChartBarIcon, disabled: true },
+    { name: 'Dashboards', icon: PresentationChartBarIcon, disabled: true },
+    { name: 'Data', icon: CircleStackIcon, disabled: true },
     { name: 'Strategy & Planning', icon: ClipboardDocumentListIcon, disabled: true },
     { name: 'Actions', icon: BoltIcon, disabled: true },
-    { name: 'Audiences', icon: UsersIcon, disabled: true },
-    { name: 'AdLabs', icon: PhotoIcon, href: '/' },
-    { name: 'Products', icon: BriefcaseIcon, disabled: true },
+    { name: 'Audiences', icon: UserIcon, disabled: true },
+    { name: 'Creative', icon: PhotoIcon, children: [{ name: 'AdLabs', href: '/adlabs/', matchPrefix: true }] },
+    { name: 'Products', icon: ShoppingBagIcon, disabled: true },
 ];
 
 const SETTINGS_ITEM: NavItem = {
     name: 'Settings',
     icon: Cog6ToothIcon,
-    children: [{ name: 'Client Asset House', href: '/client-asset-house' }],
+    children: [
+        { name: 'Manage Client', href: '#', disabled: true },
+        { name: 'Cloud Storage', href: '#', disabled: true },
+        { name: 'Client Asset House', href: '/client-asset-house' },
+    ],
 };
 
 export default function AppLayout() {
@@ -161,7 +165,7 @@ export default function AppLayout() {
             return;
         }
 
-        if (!clientStr && location.pathname !== '/select-client' && location.pathname !== '/login') {
+        if (!clientStr && location.pathname !== '/select-client' && location.pathname !== '/login' && location.pathname !== '/') {
             navigate('/select-client');
         } else if (clientStr) {
             const client = JSON.parse(clientStr);
@@ -234,11 +238,26 @@ export default function AppLayout() {
     const isAdLabsActive = !location.pathname.startsWith('/client-asset-house');
     const isSettingsActive = location.pathname.startsWith('/client-asset-house');
 
+    // Resolve Creative > AdLabs href to the current client so the link lands correctly.
+    const resolvedPrimaryNav = PRIMARY_NAV.map((item) => {
+        if (item.name === 'Creative' && item.children) {
+            return {
+                ...item,
+                children: item.children.map((child) =>
+                    child.name === 'AdLabs'
+                        ? { ...child, href: selectedClient?.slug ? `/adlabs/${selectedClient.slug}/` : '/adlabs/' }
+                        : child
+                ),
+            };
+        }
+        return item;
+    });
+
     return (
-        <div className="min-h-screen bg-[#EEF1F7]">
+        <div className="brand-gradient min-h-screen bg-white">
             {/* Persistent platform header banner */}
-            <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center border-b border-gray-200 bg-white pr-6">
-                {/* DEV ribbon (gated to dev builds; pre-main-cutover marker) */}
+            <header className="fixed inset-x-0 top-0 z-30 flex h-[60px] items-center border-b border-gray-200 bg-white pr-6">
+                {/* DEV ribbon — top-left corner diagonal banner */}
                 {import.meta.env.DEV && (
                     <span
                         aria-hidden="true"
@@ -248,21 +267,21 @@ export default function AppLayout() {
                     </span>
                 )}
 
-                {/* Logo slot — sits in the 16-wide area above the rail */}
-                <div className="flex h-14 w-16 items-center justify-center">
-                    <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-7 w-auto" />
+                {/* Logo slot — px-5 gives equal 20px gap on both sides of the divider */}
+                <div className="flex h-[60px] shrink-0 items-center px-8">
+                    <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-[23px] w-auto" />
                 </div>
-                <div className="mx-1 h-8 w-px bg-gray-200" />
+                <div className="h-8 w-px bg-gray-200" />
 
                 {/* Client name + change */}
                 <div className="ml-5 flex items-center gap-3">
-                    <span className="text-[15px] font-medium text-gray-900">
+                    <span className="text-[13px] font-medium text-gray-900">
                         {selectedClient?.name || '...'}
                     </span>
                     <button
                         type="button"
                         onClick={() => setIsDrawerOpen(true)}
-                        className="rounded-md border border-blue-600 bg-white px-2.5 py-0.5 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                        className="text-[13px] font-medium text-[#0C69EA] hover:text-blue-700"
                     >
                         Change
                     </button>
@@ -304,7 +323,7 @@ export default function AppLayout() {
                                                 focus ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
                                             )}
                                         >
-                                            <Squares2X2Icon className="h-4 w-4 text-gray-400" />
+                                            <PresentationChartBarIcon className="h-4 w-4 text-gray-400" />
                                             Switch client
                                             {selectedClient?.name && <span className="ml-auto truncate text-xs text-gray-400">{selectedClient.name}</span>}
                                         </button>
@@ -334,25 +353,25 @@ export default function AppLayout() {
                 </div>
             </header>
 
-            {/* Sidebar rail (peer for hover-expand of expanded panel) */}
+            {/* Sidebar rail — icon-only by default, hover-expands to show labels */}
             <aside
-                className="group fixed inset-y-0 left-0 top-14 z-20 flex w-16 flex-col items-stretch border-r border-gray-200 bg-white transition-[width] duration-200 ease-out hover:w-56"
+                className="group fixed inset-y-0 left-0 top-[60px] z-20 flex w-14 flex-col items-stretch border-r border-blue-gray-150 bg-blue-gray-100 transition-[width] duration-200 ease-out hover:w-[264px]"
                 aria-label="Primary navigation"
             >
-                <nav className="flex-1 overflow-y-auto py-3">
-                    <ul className="flex flex-col gap-1 px-2">
-                        {PRIMARY_NAV.map((item) => (
+                <nav className="flex-1 overflow-y-auto py-2">
+                    <ul className="flex flex-col gap-0.5">
+                        {resolvedPrimaryNav.map((item) => (
                             <li key={item.name}>
                                 <RailItem
                                     item={item}
-                                    active={item.name === 'AdLabs' && isAdLabsActive}
+                                    active={item.name === 'Creative' && isAdLabsActive}
                                 />
                             </li>
                         ))}
                     </ul>
                 </nav>
-                <div className="border-t border-gray-200 py-3">
-                    <ul className="flex flex-col gap-1 px-2">
+                <div className="border-t border-blue-gray-150 py-2">
+                    <ul className="flex flex-col gap-0.5">
                         <li>
                             <RailItem item={SETTINGS_ITEM} active={isSettingsActive} />
                         </li>
@@ -361,8 +380,8 @@ export default function AppLayout() {
             </aside>
 
             {/* Main */}
-            <main className="ml-16 pt-14">
-                <div className="brand-gradient relative min-h-[calc(100vh-3.5rem)]">
+            <main className="ml-16 pt-[60px]">
+                <div className="relative min-h-[calc(100vh-60px)]">
                     <div className="relative mx-auto max-w-[1440px] px-9 pt-8 pb-10">
                         <Outlet />
                     </div>
@@ -396,77 +415,73 @@ export default function AppLayout() {
                                     leaveFrom="translate-x-0"
                                     leaveTo="-translate-x-full"
                                 >
-                                    <DialogPanel className="pointer-events-auto w-screen max-w-md">
-                                        <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
-                                            <div className="px-4 sm:px-6">
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <DialogTitle className="text-lg font-medium text-gray-900">Select client</DialogTitle>
-                                                        <p className="mt-0.5 text-sm text-gray-500">Switch which brand you're working in.</p>
-                                                    </div>
-                                                    <div className="ml-3 flex h-7 items-center">
-                                                        <button
-                                                            type="button"
-                                                            className="rounded-md text-gray-400 hover:text-gray-600"
-                                                            onClick={() => setIsDrawerOpen(false)}
-                                                        >
-                                                            <span className="sr-only">Close panel</span>
-                                                            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                                                        </button>
-                                                    </div>
+                                    <DialogPanel className="pointer-events-auto w-[260px]">
+                                        <div className="flex h-full flex-col bg-white shadow-xl">
+                                            {/* Header */}
+                                            <div className="flex items-start justify-between px-5 pt-5 pb-4">
+                                                <div>
+                                                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Manage</p>
+                                                    <DialogTitle className="mt-0.5 text-base font-medium text-blue-gray-800">Select Client</DialogTitle>
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    className="mt-1 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                                    onClick={() => setIsDrawerOpen(false)}
+                                                >
+                                                    <span className="sr-only">Close</span>
+                                                    <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+                                                </button>
                                             </div>
-                                            <div className="relative mt-6 flex-1 px-4 sm:px-6">
-                                                <div className="relative">
-                                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                                                    </div>
+
+                                            {/* Search */}
+                                            <div className="px-5 pb-3">
+                                                <div className="flex items-center rounded-md border border-gray-200 px-3 py-2 focus-within:border-[#0C69EA] focus-within:ring-1 focus-within:ring-[#0C69EA]">
                                                     <input
                                                         type="text"
-                                                        className="block w-full rounded-md border border-gray-200 py-2 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                                                        placeholder="Search clients"
+                                                        className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                                                        placeholder="Search"
                                                         value={search}
                                                         onChange={(e) => setSearch(e.target.value)}
                                                     />
+                                                    <MagnifyingGlassIcon className="ml-2 h-4 w-4 shrink-0 text-gray-400" />
                                                 </div>
+                                            </div>
 
-                                                <div className="mt-6 space-y-1">
-                                                    {loadingClients ? (
-                                                        <div className="flex h-32 items-center justify-center">
-                                                            <ArrowPathIcon className="h-5 w-5 animate-spin text-blue-600" />
-                                                        </div>
-                                                    ) : clientError ? (
-                                                        <div className="px-4 py-8 text-center text-sm">
-                                                            <ExclamationTriangleIcon className="mx-auto h-8 w-8 text-amber-500" />
-                                                            <p className="mt-2 text-gray-600">{clientError}</p>
-                                                            <button
-                                                                onClick={fetchClients}
-                                                                className="mt-4 font-medium text-blue-600 hover:text-blue-500"
-                                                            >
-                                                                Try Again
-                                                            </button>
-                                                        </div>
-                                                    ) : filteredClients.length > 0 ? (
-                                                        filteredClients.map((client) => (
+                                            {/* Client list */}
+                                            <div className="flex-1 overflow-y-auto">
+                                                {loadingClients ? (
+                                                    <div className="flex h-32 items-center justify-center">
+                                                        <ArrowPathIcon className="h-5 w-5 animate-spin text-[#0C69EA]" />
+                                                    </div>
+                                                ) : clientError ? (
+                                                    <div className="px-5 py-8 text-center text-sm">
+                                                        <ExclamationTriangleIcon className="mx-auto h-8 w-8 text-amber-500" />
+                                                        <p className="mt-2 text-gray-600">{clientError}</p>
+                                                        <button onClick={fetchClients} className="mt-4 font-medium text-[#0C69EA] hover:text-blue-700">
+                                                            Try Again
+                                                        </button>
+                                                    </div>
+                                                ) : filteredClients.length > 0 ? (
+                                                    filteredClients.map((client) => {
+                                                        const isActive = selectedClient?.slug === client.slug;
+                                                        return (
                                                             <button
                                                                 key={client.slug}
                                                                 onClick={() => handleSelectClient(client)}
                                                                 className={cn(
-                                                                    "flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                                                                    selectedClient?.slug === client.slug
-                                                                        ? "bg-blue-50 text-blue-600"
-                                                                        : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                                                    'flex w-full items-center border-l-[3px] px-5 py-2.5 text-left text-[13px] transition-colors duration-150',
+                                                                    isActive
+                                                                        ? 'border-[#0C69EA] bg-[#E8F0FD]/60 font-medium text-[#0C69EA]'
+                                                                        : 'border-transparent font-normal text-gray-800 hover:bg-gray-50'
                                                                 )}
                                                             >
                                                                 {client.name}
                                                             </button>
-                                                        ))
-                                                    ) : (
-                                                        <div className="px-4 py-8 text-center text-sm text-gray-500">
-                                                            No clients found.
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <p className="px-5 py-8 text-center text-sm text-gray-500">No clients found.</p>
+                                                )}
                                             </div>
                                         </div>
                                     </DialogPanel>
@@ -481,82 +496,95 @@ export default function AppLayout() {
 }
 
 /**
- * Single sidebar rail item. Width-collapsed by default (icon only); when the
- * parent .group is hovered, the label fades in and the rail widens.
- *
- * Disabled items show but cannot be clicked.
- * Items with children render the children inline below when the rail is expanded.
+ * Sidebar nav item. Icon lives in a fixed-width 64px slot so it stays
+ * centered in the collapsed rail. Labels and chevron fade in on hover.
  */
 function RailItem({ item, active }: { item: NavItem; active: boolean }) {
     const { pathname } = useLocation();
+    const [isOpen, setIsOpen] = useState(active && !!item.children?.length);
     const Icon = item.icon;
     const hasChildren = !!item.children?.length;
 
-    const baseRow =
-        'relative flex h-10 items-center gap-3 rounded-lg px-3 transition-colors';
-    const interactive = item.disabled
-        ? 'cursor-not-allowed text-gray-300'
-        : 'text-blue-gray-500 hover:bg-blue-50 hover:text-gray-900';
-    const activeStyle = active ? 'bg-blue-50 text-blue-600' : '';
+    // Row — no horizontal padding; icon slot and pr-3 handle all spacing
+    const base = 'flex h-11 w-full items-center text-left transition-colors duration-150';
+    const idle = 'font-normal text-blue-gray-600 hover:bg-blue-gray-50';
+    const disabledCls = 'cursor-not-allowed font-normal text-blue-gray-300';
+    const activeCls = 'bg-blue-gray-50 font-medium text-blue-gray-800';
 
-    const Label = (
-        <span
-            className={cn(
-                'whitespace-nowrap text-sm font-medium opacity-0 transition-opacity duration-150',
-                'group-hover:opacity-100',
-                item.disabled && 'group-hover:text-gray-300'
-            )}
-        >
-            {item.name}
-        </span>
-    );
+    // Icon always centered inside the 56px slot = centered in the collapsed rail
+    const iconSlot = 'flex w-14 shrink-0 items-center justify-center';
+    const iconCls = 'h-[18px] w-[18px] shrink-0 text-blue-gray-400';
 
-    const IconEl = (
-        <Icon className={cn('h-5 w-5 shrink-0', active && 'text-blue-600')} />
-    );
+    const labelCls = 'flex-1 truncate text-[13px] opacity-0 transition-opacity duration-150 group-hover:opacity-100';
+    const chevronCls = 'mr-3 h-3.5 w-3.5 shrink-0 text-blue-gray-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100';
 
-    const row = item.disabled ? (
-        <div className={cn(baseRow, interactive, activeStyle)} aria-disabled="true">
-            {IconEl}
-            {Label}
-        </div>
-    ) : item.href && !hasChildren ? (
-        <Link to={item.href} className={cn(baseRow, interactive, activeStyle)} aria-current={active ? 'page' : undefined}>
-            {IconEl}
-            {Label}
-        </Link>
-    ) : (
-        <div className={cn(baseRow, interactive, activeStyle)}>
-            {IconEl}
-            {Label}
-            {hasChildren && (
-                <ChevronRightIcon className="ml-auto h-4 w-4 opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-            )}
-        </div>
-    );
+    if (item.disabled) {
+        return (
+            <div className={cn(base, disabledCls)} aria-disabled="true">
+                <span className={iconSlot}><Icon className={iconCls} /></span>
+                <span className={labelCls}>{item.name}</span>
+                <ChevronRightIcon className={chevronCls} />
+            </div>
+        );
+    }
+
+    if (hasChildren) {
+        return (
+            <>
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(o => !o)}
+                    className={cn(base, active ? activeCls : idle)}
+                >
+                    <span className={iconSlot}><Icon className={iconCls} /></span>
+                    <span className={labelCls}>{item.name}</span>
+                    <ChevronRightIcon
+                        className={cn(chevronCls, isOpen && 'rotate-90')}
+                    />
+                </button>
+                {isOpen && (
+                    <ul className="hidden flex-col group-hover:flex">
+                        {item.children!.map((child) => {
+                            const isChildActive = !child.disabled && (child.matchPrefix
+                                ? pathname.startsWith(child.href)
+                                : pathname === child.href);
+                            return (
+                                <li key={child.name}>
+                                    {child.disabled ? (
+                                        <span className="flex h-9 w-full cursor-not-allowed items-center pl-20 pr-3 text-[13px] text-blue-gray-300">
+                                            {child.name}
+                                        </span>
+                                    ) : (
+                                        <Link
+                                            to={child.href}
+                                            className={cn(
+                                                'flex h-9 w-full items-center pl-20 pr-3 text-[13px] font-normal transition-colors duration-150',
+                                                isChildActive
+                                                    ? 'bg-blue-gray-50 text-blue-gray-800 font-medium'
+                                                    : 'text-blue-gray-500 hover:bg-blue-gray-50 hover:text-blue-gray-700'
+                                            )}
+                                        >
+                                            {child.name}
+                                        </Link>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </>
+        );
+    }
 
     return (
-        <>
-            {row}
-            {hasChildren && (
-                <ul className="mt-1 ml-7 hidden flex-col gap-0.5 group-hover:flex">
-                    {item.children!.map((child) => (
-                        <li key={child.href}>
-                            <Link
-                                to={child.href}
-                                className={cn(
-                                    'block rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors',
-                                    pathname === child.href
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'text-blue-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                                )}
-                            >
-                                {child.name}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </>
+        <Link
+            to={item.href!}
+            className={cn(base, active ? activeCls : idle)}
+            aria-current={active ? 'page' : undefined}
+        >
+            <span className={iconSlot}><Icon className={iconCls} /></span>
+            <span className={labelCls}>{item.name}</span>
+            <ChevronRightIcon className={chevronCls} />
+        </Link>
     );
 }

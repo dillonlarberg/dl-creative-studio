@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { authService } from './services/auth';
+import { alliService } from './services/alli';
 import type { User } from 'firebase/auth';
 
 import AppLayout from './components/AppLayout';
@@ -18,22 +19,47 @@ import ResizeImageAppRoot from './apps/resize-image/AppRoot';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 
 /**
- * Root redirect: send the user to the AdLabs dashboard for whichever client is
- * stored, or to the client picker if none. Replaces the legacy CreatePage
- * mount at /.
+ * Root redirect: send the user to the AdLabs dashboard for their saved client.
+ * If no client is saved, fetch the client list and auto-select the
+ * alphabetically lowest slug so the user lands on AdLabs, not a picker screen.
+ * Falls back to /select-client only on fetch error.
  */
 function RootRedirect() {
-  let slug: string | null = null;
-  try {
-    const raw = localStorage.getItem('selectedClient');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.slug === 'string') slug = parsed.slug;
+  const [target, setTarget] = useState<string | null>(() => {
+    try {
+      const raw = localStorage.getItem('selectedClient');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.slug === 'string') return `/adlabs/${parsed.slug}/`;
+      }
+    } catch {
+      // fall through to fetch
     }
-  } catch {
-    slug = null;
+    return null;
+  });
+
+  useEffect(() => {
+    if (target !== null) return;
+    alliService.getClients().then((clients) => {
+      const sorted = [...clients].sort((a, b) => a.slug.localeCompare(b.slug));
+      if (sorted.length > 0) {
+        localStorage.setItem('selectedClient', JSON.stringify(sorted[0]));
+        setTarget(`/adlabs/${sorted[0].slug}/`);
+      } else {
+        setTarget('/select-client');
+      }
+    }).catch(() => setTarget('/select-client'));
+  }, [target]);
+
+  if (!target) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
   }
-  return <Navigate to={slug ? `/adlabs/${slug}/` : '/select-client'} replace />;
+
+  return <Navigate to={target} replace />;
 }
 
 /**
