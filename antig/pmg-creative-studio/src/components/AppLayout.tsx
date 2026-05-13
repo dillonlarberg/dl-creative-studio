@@ -267,14 +267,14 @@ export default function AppLayout() {
                     </span>
                 )}
 
-                {/* Logo slot — px-5 gives equal 20px gap on both sides of the divider */}
-                <div className="flex h-[60px] shrink-0 items-center px-8">
+                {/* Logo slot — left-padded, no width cap; sidebar border-r bisects the logo naturally */}
+                <div className="flex h-[60px] shrink-0 items-center pl-8 pr-10">
                     <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-[23px] w-auto" />
                 </div>
                 <div className="h-8 w-px bg-gray-200" />
 
                 {/* Client name + change */}
-                <div className="ml-5 flex items-center gap-3">
+                <div className="ml-8 flex items-center gap-3">
                     <span className="text-[13px] font-medium text-gray-900">
                         {selectedClient?.name || '...'}
                     </span>
@@ -353,12 +353,12 @@ export default function AppLayout() {
                 </div>
             </header>
 
-            {/* Sidebar rail — icon-only by default, hover-expands to show labels */}
+            {/* Sidebar rail — full height (behind header), icon-only by default, hover-expands to show labels */}
             <aside
-                className="group fixed inset-y-0 left-0 top-[60px] z-20 flex w-14 flex-col items-stretch border-r border-blue-gray-150 bg-blue-gray-100 transition-[width] duration-200 ease-out hover:w-[264px]"
+                className="group fixed inset-y-0 left-0 z-20 flex w-14 flex-col items-stretch border-r border-gray-200 bg-white transition-[width] duration-200 ease-out hover:w-[264px]"
                 aria-label="Primary navigation"
             >
-                <nav className="flex-1 overflow-y-auto py-2">
+                <nav className="flex-1 overflow-y-auto pt-[60px] pb-2">
                     <ul className="flex flex-col gap-0.5">
                         {resolvedPrimaryNav.map((item) => (
                             <li key={item.name}>
@@ -370,7 +370,7 @@ export default function AppLayout() {
                         ))}
                     </ul>
                 </nav>
-                <div className="border-t border-blue-gray-150 py-2">
+                <div className="border-t border-gray-200 py-2">
                     <ul className="flex flex-col gap-0.5">
                         <li>
                             <RailItem item={SETTINGS_ITEM} active={isSettingsActive} />
@@ -380,7 +380,7 @@ export default function AppLayout() {
             </aside>
 
             {/* Main */}
-            <main className="ml-16 pt-[60px]">
+            <main className="ml-14 pt-[60px]">
                 <div className="relative min-h-[calc(100vh-60px)]">
                     <div className="relative mx-auto max-w-[1440px] px-9 pt-8 pb-10">
                         <Outlet />
@@ -469,10 +469,10 @@ export default function AppLayout() {
                                                                 key={client.slug}
                                                                 onClick={() => handleSelectClient(client)}
                                                                 className={cn(
-                                                                    'flex w-full items-center border-l-[3px] px-5 py-2.5 text-left text-[13px] transition-colors duration-150',
+                                                                    'mx-2 flex w-[calc(100%-16px)] items-center rounded-md px-3 py-2.5 text-left text-[13px] transition-colors duration-150',
                                                                     isActive
-                                                                        ? 'border-[#0C69EA] bg-[#E8F0FD]/60 font-medium text-[#0C69EA]'
-                                                                        : 'border-transparent font-normal text-gray-800 hover:bg-gray-50'
+                                                                        ? 'bg-blue-50 font-medium text-blue-600'
+                                                                        : 'font-normal text-gray-800 hover:bg-gray-50'
                                                                 )}
                                                             >
                                                                 {client.name}
