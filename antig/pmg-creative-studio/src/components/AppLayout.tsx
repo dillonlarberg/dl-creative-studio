@@ -355,7 +355,7 @@ export default function AppLayout() {
 
             {/* Sidebar rail — full height (behind header), icon-only by default, hover-expands to show labels */}
             <aside
-                className="group fixed inset-y-0 left-0 z-20 flex w-14 flex-col items-stretch border-r border-gray-200 bg-white transition-[width] duration-200 ease-out hover:w-[264px]"
+                className="group fixed inset-y-0 left-0 z-20 flex w-14 flex-col items-stretch overflow-hidden border-r border-gray-200 bg-white transition-[width] duration-200 ease-out hover:w-[264px]"
                 aria-label="Primary navigation"
             >
                 <nav className="flex-1 overflow-y-auto pt-[60px] pb-2">
