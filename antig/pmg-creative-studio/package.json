@@ -16,7 +16,9 @@
     "test:e2e": "playwright test",
     "test:tracers": "vitest run && playwright test",
     "import-brand-profiles": "tsx scripts/import-brand-profiles.ts",
-    "import-brand-profiles:dry": "tsx scripts/import-brand-profiles.ts --dry-run"
+    "import-brand-profiles:dry": "tsx scripts/import-brand-profiles.ts --dry-run",
+    "migrate:asset-house": "tsx scripts/migrate-asset-house-to-scoped-path.ts",
+    "migrate:asset-house:dry": "tsx scripts/migrate-asset-house-to-scoped-path.ts --dry-run"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
