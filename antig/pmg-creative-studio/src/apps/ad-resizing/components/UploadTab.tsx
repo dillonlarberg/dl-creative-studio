@@ -101,6 +101,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
             const creative = await uploadCreative(clientSlug, file, dimensions);
             if (!isMountedRef.current) return;
             pendingRevokeRef.current.set(creative.id, tempUrl);
+            allTempUrlsRef.current.delete(tempUrl); // revocation responsibility transfers to handleThumbnailLoaded
             setPendingUploads(prev => prev.filter(p => p.id !== localId));
             setUploadedCreatives(prev => [creative, ...prev]);
           } catch (err) {
@@ -252,6 +253,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
               {pending.status === 'error-firestore' && (
                 <button
                   type="button"
+                  aria-label="Retry upload"
                   onClick={() => retryPending(pending)}
                   className="shrink-0 text-[12px] font-medium text-blue-600 hover:text-blue-700"
                 >
@@ -261,6 +263,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
               {(pending.status === 'invalid' || pending.status === 'error-storage') && (
                 <button
                   type="button"
+                  aria-label="Dismiss"
                   onClick={() => setPendingUploads(prev => prev.filter(p => p.id !== pending.id))}
                   className="shrink-0 text-gray-300 hover:text-gray-500"
                 >
