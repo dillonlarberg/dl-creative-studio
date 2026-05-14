@@ -8,8 +8,8 @@ import type { Client } from '../types';
  *
  * Single source of truth for the dashboard's client-bootstrap concerns:
  *   1. Resolve the active client (URL slug wins, falls back to localStorage).
- *   2. Fetch the client's asset house from the LEGACY top-level
- *      `clientAssetHouse/{slug}` collection — NOT the path-scoped tree.
+ *   2. Fetch the client's asset house from the path-scoped `clients/{slug}`
+ *      document (canonical location post-issue #10 migration).
  *   3. Fire the Alli `getCreativeAssets` cache warm so the singleton's
  *      assetCache is hot when downstream wizards mount.
  *
