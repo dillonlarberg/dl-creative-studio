@@ -1,11 +1,19 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowUpTrayIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { CloudArrowUpIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { cn } from '../../../utils/cn';
 import { validateUploadFile } from '../utils/uploadValidation';
 import { uploadCreative, listUploads, retryFirestoreWrite, type UploadMeta } from '../services/uploadService';
 import UploadedCreativeGrid from './UploadedCreativeGrid';
+import FilterSortBar, { type FormatFilter, type FileTypeFilter, type SortOption } from './FilterSortBar';
 import type { Creative } from '../types';
+
+function detectFormat(width: number, height: number): 'landscape' | 'square' | 'portrait' {
+  const ratio = width / height;
+  if (ratio > 1.2) return 'landscape';
+  if (ratio < 0.85) return 'portrait';
+  return 'square';
+}
 
 interface UploadTabProps {
   clientSlug: string;
@@ -39,6 +47,9 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
   const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
+  const [filterFormat, setFilterFormat] = useState<FormatFilter>('all');
+  const [filterFileType, setFilterFileType] = useState<FileTypeFilter>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('az');
 
   const isMountedRef = useRef(true);
   const pendingRevokeRef = useRef<Map<string, string>>(new Map());
@@ -158,7 +169,18 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
   }
 
   const selectedCreatives = uploadedCreatives.filter(c => selectedIds.has(c.id));
-  const hasUploads = uploadedCreatives.length > 0;
+  const hasInvalidFiles = pendingUploads.some(p => p.status === 'invalid');
+  const isUploading = pendingUploads.some(p => p.status === 'uploading');
+  const uploadingCount = pendingUploads.filter(p => p.status === 'uploading').length;
+  const errorPending = pendingUploads.filter(p => p.status !== 'uploading');
+
+  const filteredCreatives = useMemo(() => {
+    let list = [...uploadedCreatives];
+    if (filterFormat !== 'all') list = list.filter(c => detectFormat(c.width, c.height) === filterFormat);
+    if (filterFileType !== 'all') list = list.filter(c => c.fileType === filterFileType);
+    list.sort((a, b) => sortBy === 'az' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+    return list;
+  }, [uploadedCreatives, filterFormat, filterFileType, sortBy]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -188,27 +210,34 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
         onDrop={e => {
           e.preventDefault();
           setIsDragging(false);
-          processFiles(e.dataTransfer.files);
+          if (!isUploading) processFiles(e.dataTransfer.files);
         }}
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => { if (!isUploading) fileInputRef.current?.click(); }}
         className={cn(
-          'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors',
-          hasUploads ? 'px-4 py-5' : 'px-6 py-16',
-          isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50/40',
+          'flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 transition-colors',
+          isUploading
+            ? 'cursor-default border-gray-200 bg-gray-50'
+            : isDragging
+              ? 'cursor-pointer border-blue-400 bg-blue-50'
+              : hasInvalidFiles
+                ? 'cursor-pointer border-red-300 bg-white hover:border-red-400'
+                : 'cursor-pointer border-gray-300 bg-white hover:border-gray-400',
         )}
       >
-        <ArrowUpTrayIcon className={cn('mb-2 h-6 w-6', isDragging ? 'text-blue-500' : 'text-gray-400')} />
-        {hasUploads ? (
-          <p className="text-[13px] text-gray-500">
-            <span className="font-medium text-blue-600">Upload more files</span>
-            {' '}or drag and drop
-          </p>
+        {isUploading ? (
+          <>
+            <div className="mb-3 h-7 w-7 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+            <p className="text-[14px] text-gray-500">
+              Uploading{uploadingCount > 1 ? ` ${uploadingCount} files` : ''}…
+            </p>
+          </>
         ) : (
           <>
-            <p className="text-[14px] font-medium text-gray-700">Drag files here or click to browse</p>
-            <p className="mt-1 text-[12px] text-gray-400">PNG, JPG, WebP · Max 50 MB per file</p>
+            <CloudArrowUpIcon className={cn('mb-3 h-8 w-8', isDragging ? 'text-blue-500' : 'text-gray-400')} />
+            <p className="text-[14px] font-medium text-gray-700">Drag & drop files here</p>
+            <p className="mt-1 text-[13px] text-gray-400">or</p>
+            <p className="mt-1 text-[13px] font-medium text-blue-600">Browse files</p>
+            <p className="mt-2.5 text-[11px] text-gray-400">PNG, JPG, WebP · Max 50 MB per file</p>
           </>
         )}
         <input
@@ -220,28 +249,25 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
           onChange={e => { if (e.target.files) processFiles(e.target.files); e.target.value = ''; }}
         />
       </div>
+      {hasInvalidFiles && (
+        <p className="text-[12px] text-red-600">Only PNG, JPG, and WebP files are accepted.</p>
+      )}
 
-      {pendingUploads.length > 0 && (
+      {errorPending.length > 0 && (
         <div className="flex flex-col gap-2">
-          {pendingUploads.map(pending => (
+          {errorPending.map(pending => (
             <div
               key={pending.id}
               className={cn(
                 'flex items-center gap-3 rounded-lg border px-3.5 py-2.5 text-[13px]',
-                pending.status === 'uploading' && 'border-blue-100 bg-blue-50',
                 (pending.status === 'error-storage' || pending.status === 'error-firestore') && 'border-red-100 bg-red-50',
                 pending.status === 'invalid' && 'border-amber-100 bg-amber-50',
               )}
             >
-              {pending.status === 'uploading' && (
-                <div className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
-              )}
-              {(pending.status === 'error-storage' || pending.status === 'error-firestore') && (
-                <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-red-400" />
-              )}
-              {pending.status === 'invalid' && (
-                <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-              )}
+              <ExclamationTriangleIcon className={cn(
+                'h-3.5 w-3.5 shrink-0',
+                pending.status === 'invalid' ? 'text-amber-400' : 'text-red-400',
+              )} />
               <div className="min-w-0 flex-1">
                 <span className="truncate font-medium text-gray-700">{pending.name}</span>
                 {pending.error && (
@@ -255,7 +281,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
                   type="button"
                   aria-label="Retry upload"
                   onClick={() => retryPending(pending)}
-                  className="shrink-0 text-[12px] font-medium text-blue-600 hover:text-blue-700"
+                  className="shrink-0 text-blue-600 hover:text-blue-700"
                 >
                   <ArrowPathIcon className="h-3.5 w-3.5" />
                 </button>
@@ -275,8 +301,21 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
         </div>
       )}
 
+      {uploadedCreatives.length > 0 && (
+        <FilterSortBar
+          format={filterFormat}
+          fileType={filterFileType}
+          sort={sortBy}
+          onFormatChange={setFilterFormat}
+          onFileTypeChange={setFilterFileType}
+          onSortChange={setSortBy}
+          onClearFilters={() => { setFilterFormat('all'); setFilterFileType('all'); }}
+          totalCount={uploadedCreatives.length}
+          filteredCount={filteredCreatives.length}
+        />
+      )}
       <UploadedCreativeGrid
-        creatives={uploadedCreatives}
+        creatives={filteredCreatives}
         selectedIds={selectedIds}
         onToggle={toggleSelect}
         onThumbnailLoaded={handleThumbnailLoaded}

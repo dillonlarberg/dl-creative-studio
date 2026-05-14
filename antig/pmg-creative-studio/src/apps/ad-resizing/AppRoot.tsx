@@ -16,7 +16,8 @@ import GeneratedFilterBar, { type GenSortOption } from './components/GeneratedFi
 import DownloadDropdown from './components/DownloadDropdown';
 import FeedConnectScreen from './components/FeedConnectScreen';
 import SourcePreviewModal from './components/SourcePreviewModal';
-import StepIndicator from './components/StepIndicator';
+import StepIndicator, { type StepId } from './components/StepIndicator';
+import ConfirmBanner from './components/ConfirmBanner';
 import { useOutpaintRunner } from './hooks/useOutpaintRunner';
 import { useBatchOutputs } from './hooks/useBatchOutputs';
 
@@ -50,6 +51,7 @@ export default function AdResizingAppRoot() {
   const runner = useOutpaintRunner(clientSlug ?? '');
 
   const [stage, setStage] = useState<Stage>('browse');
+  const [navConfirmPending, setNavConfirmPending] = useState<StepId | null>(null);
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
@@ -249,6 +251,25 @@ export default function AdResizingAppRoot() {
     // Jobs are intentionally preserved — existing generated outputs survive a feed change
   }
 
+  function handleStepClick(step: StepId) {
+    if (step !== 'browse') return;
+    const isGenerating = stage === 'results' && activeJob !== null && !allComplete;
+    if (isGenerating) {
+      setNavConfirmPending('browse');
+      return;
+    }
+    setStage('browse');
+    setAddingToJob(false);
+    // activeJobId preserved: if user re-selects the same creative it merges into the existing job
+  }
+
+  function handleConfirmBack() {
+    setStage('browse');
+    setAddingToJob(false);
+    setNavConfirmPending(null);
+    // activeJobId preserved intentionally — see handleStepClick
+  }
+
   const jobChannelOptions = useMemo(() => {
     if (!activeJob) return [];
     return [...new Set(activeJob.outputs.map(o => o.dimension.channelLabel))];
@@ -338,10 +359,10 @@ export default function AdResizingAppRoot() {
     const dims = getDeduplicatedDimensions(selectedChannels).filter(d => selectedDimensions.has(d.id));
     if (dims.length === 0) return;
 
-    const shouldAppend =
-      addingToJob &&
-      activeJobId &&
+    const sameCreativeAsActive =
+      !!activeJobId &&
       selectedCreative.id === jobs.find(j => j.id === activeJobId)?.sourceCreative.id;
+    const shouldAppend = addingToJob || sameCreativeAsActive;
 
     // Brand-new batches get a fresh batchId; "add more sizes" re-uses the
     // existing batchId so the per-output Firestore docs merge into the same
@@ -512,7 +533,33 @@ export default function AdResizingAppRoot() {
         </div>
       </div>
 
-      <StepIndicator activeStep={activeStep} resultsDone={allComplete} browseDone={stage === 'results'} />
+      <div className="mb-5 flex items-center justify-between">
+        <StepIndicator
+          activeStep={activeStep}
+          resultsDone={stage === 'results' && allComplete}
+          browseDone={stage === 'results'}
+          onStepClick={handleStepClick}
+        />
+        {stage === 'results' && !navConfirmPending && (
+          <button
+            type="button"
+            onClick={() => handleStepClick('browse')}
+            className="flex items-center gap-1 text-[13px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
+          >
+            <ArrowLeftIcon className="h-3.5 w-3.5" />
+            Back to Browse
+          </button>
+        )}
+      </div>
+      {navConfirmPending && (
+        <ConfirmBanner
+          message="Going back will cancel this generation."
+          confirmLabel="Go back"
+          cancelLabel="Stay"
+          onConfirm={handleConfirmBack}
+          onCancel={() => setNavConfirmPending(null)}
+        />
+      )}
 
       {/* Callable error banner — surfaces auth/IAM/server failures the live
           subscription can't show because the batch never got seeded. */}
@@ -583,9 +630,10 @@ export default function AdResizingAppRoot() {
                   <button
                     type="button"
                     onClick={handleDisconnectFeed}
-                    className="text-[12px] text-gray-400 hover:text-gray-600"
+                    className="flex items-center gap-1 text-[12px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
                   >
-                    Change feed
+                    <ArrowLeftIcon className="h-3 w-3" />
+                    Change source
                   </button>
                 </div>
 
@@ -878,9 +926,10 @@ export default function AdResizingAppRoot() {
                               handleDisconnectFeed();
                               setStage('browse');
                             }}
-                            className="text-[13px] text-gray-400 hover:text-gray-600"
+                            className="flex items-center gap-1 text-[13px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
                           >
-                            Change feed
+                            <ArrowLeftIcon className="h-3.5 w-3.5" />
+                            Change source
                           </button>
                         </div>
                         <DownloadDropdown count={activeJob.outputs.length} onDownload={handleDownloadAll} />
