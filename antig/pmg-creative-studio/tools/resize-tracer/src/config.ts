@@ -161,5 +161,20 @@ export function legalGenDims(target: { w: number; h: number }): { w: number; h: 
     h = Math.ceil((h * scale) / GEN_DIM_MULTIPLE) * GEN_DIM_MULTIPLE;
   }
 
+  // Pixel-budget ceiling: gpt-image-2 rejects total pixels > 8,294,400.
+  // 8.5×11" @ 300dpi (2550×3300) rounds to 2544×3296 = 8,385,024 → API
+  // rejects the edit. Scale down proportionally, floor to multiples of
+  // 16, then nudge down if rounding drift pushes us back over the cap.
+  const MAX_PIXELS = 8_294_400;
+  if (w * h > MAX_PIXELS) {
+    const scale = Math.sqrt(MAX_PIXELS / (w * h));
+    w = Math.floor((w * scale) / GEN_DIM_MULTIPLE) * GEN_DIM_MULTIPLE;
+    h = Math.floor((h * scale) / GEN_DIM_MULTIPLE) * GEN_DIM_MULTIPLE;
+    while (w * h > MAX_PIXELS) {
+      if (w >= h) w -= GEN_DIM_MULTIPLE;
+      else h -= GEN_DIM_MULTIPLE;
+    }
+  }
+
   return { w, h };
 }
