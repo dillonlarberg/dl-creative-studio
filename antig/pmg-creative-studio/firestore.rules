@@ -54,8 +54,7 @@ service cloud.firestore {
       allow read, write: if isAlliStudioUser();
     }
 
-    // Default-deny everything else, including legacy `creatives` from the
-    // pre-rebuild schema.
+    // Default-deny everything else.
     match /{document=**} {
       allow read, write: if false;
     }
