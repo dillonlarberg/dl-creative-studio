@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { cn } from '../../../utils/cn';
 
 export type FormatFilter = 'all' | 'landscape' | 'square' | 'portrait';
-export type FileTypeFilter = 'all' | 'PNG' | 'JPG' | 'GIF';
+export type FileTypeFilter = 'all' | 'PNG' | 'JPG' | 'WEBP';
 export type SortOption = 'az' | 'za';
 
 interface FilterSortBarProps {
@@ -29,7 +29,7 @@ const FILETYPE_OPTIONS: { value: FileTypeFilter; label: string }[] = [
   { value: 'all', label: 'All Types' },
   { value: 'PNG', label: 'PNG' },
   { value: 'JPG', label: 'JPG' },
-  { value: 'GIF', label: 'GIF' },
+  { value: 'WEBP', label: 'WebP' },
 ];
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
