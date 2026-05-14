@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
+import { newId } from '../../utils/ids';
 import { getDeduplicatedDimensions } from './data/channels';
 import type { Creative, GenerationJob, GeneratedOutput, Dimension } from './types';
 import type { SelectedFeed } from '../template-builder/types';
@@ -29,11 +30,6 @@ interface JobSummary {
   startedAt: number;
 }
 
-function newBatchId(): string {
-  return (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-    ? crypto.randomUUID()
-    : `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function newOutputId(dimId: string): string {
   return `${dimId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -342,7 +338,7 @@ export default function AdResizingAppRoot() {
     // Brand-new batches get a fresh batchId; "add more sizes" re-uses the
     // existing batchId so the per-output Firestore docs merge into the same
     // job under one BatchRecord.
-    const targetBatchId = shouldAppend ? activeJobId! : newBatchId();
+    const targetBatchId = shouldAppend ? activeJobId! : newId();
     const outputIds = dims.map(d => newOutputId(d.id));
 
     // Stage the UI: seed JobSummary + per-output pending shells immediately
