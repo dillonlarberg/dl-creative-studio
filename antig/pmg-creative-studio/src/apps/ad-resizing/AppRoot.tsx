@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, ArrowUpTrayIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
 import { newId } from '../../utils/ids';
 import { getDeduplicatedDimensions } from './data/channels';
@@ -196,6 +196,14 @@ export default function AdResizingAppRoot() {
   function handleFeedConnect(feed: SelectedFeed, _imageColumn: string, creatives: Creative[]) {
     setFeedCreatives(creatives);
     setConnectedFeedLabel(feed.name);
+    setSelectedCreative(null);
+    setSelectedChannels([]);
+    setSelectedDimensions(new Set());
+  }
+
+  function handleUploadConnect(creatives: Creative[]) {
+    setFeedCreatives(creatives);
+    setConnectedFeedLabel('Uploaded Files');
     setSelectedCreative(null);
     setSelectedChannels([]);
     setSelectedDimensions(new Set());
@@ -534,6 +542,7 @@ export default function AdResizingAppRoot() {
               <FeedConnectScreen
                 clientSlug={clientSlug ?? ''}
                 onConnect={handleFeedConnect}
+                onUploadConnect={handleUploadConnect}
               />
             </div>
           ) : (
@@ -565,7 +574,10 @@ export default function AdResizingAppRoot() {
                 {/* Connected feed indicator */}
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                    <CircleStackIcon className="h-3.5 w-3.5" />
+                    {connectedFeedLabel === 'Uploaded Files'
+                      ? <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                      : <CircleStackIcon className="h-3.5 w-3.5" />
+                    }
                     <span>{connectedFeedLabel}</span>
                   </div>
                   <button
