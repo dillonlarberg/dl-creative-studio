@@ -9,43 +9,64 @@ const STEPS: { id: StepId; label: string }[] = [
 ];
 
 interface StepIndicatorProps {
-  /** Current logical step — 'browse' / 'results' / 'download'. */
   activeStep: StepId;
-  /** Once all outputs in the active job complete, the Generate step shows as done. */
   resultsDone: boolean;
-  /** True once the user has progressed past Browse (i.e. has at least one job). */
   browseDone: boolean;
+  onStepClick?: (step: StepId) => void;
 }
 
-export default function StepIndicator({ activeStep, resultsDone, browseDone }: StepIndicatorProps) {
+export default function StepIndicator({ activeStep, resultsDone, browseDone, onStepClick }: StepIndicatorProps) {
   return (
-    <div className="mb-6 flex items-center gap-0">
+    <div className="flex items-center gap-0">
       {STEPS.map((step, i) => {
         const isDone =
           (step.id === 'browse' && browseDone) ||
           (step.id === 'results' && resultsDone);
         const isActive = step.id === activeStep;
         const isLast = i === STEPS.length - 1;
+        const isClickable = isDone && !!onStepClick;
+
+        const circle = (
+          <div className={cn(
+            'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors',
+            isDone ? 'bg-green-500 text-white' : isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400',
+          )}>
+            {isDone ? '✓' : i + 1}
+          </div>
+        );
+
+        const label = (
+          <span className={cn(
+            'text-[12px] font-medium transition-colors',
+            isDone ? 'text-green-600' : isActive ? 'text-blue-600' : 'text-gray-400',
+            isClickable && 'group-hover:underline group-hover:underline-offset-2',
+          )}>
+            {step.label}
+          </span>
+        );
+
         return (
           <div key={step.id} className="flex items-center">
-            <div className="flex items-center gap-1.5">
-              <div className={cn(
-                'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors',
-                isDone ? 'bg-green-500 text-white' : isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'
-              )}>
-                {isDone ? '✓' : i + 1}
+            {isClickable ? (
+              <button
+                type="button"
+                onClick={() => onStepClick!(step.id)}
+                title={`Go back to ${step.label}`}
+                className="group flex items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+              >
+                {circle}
+                {label}
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                {circle}
+                {label}
               </div>
-              <span className={cn(
-                'text-[12px] font-medium transition-colors',
-                isDone ? 'text-green-600' : isActive ? 'text-blue-600' : 'text-gray-400'
-              )}>
-                {step.label}
-              </span>
-            </div>
+            )}
             {!isLast && (
               <div className={cn(
                 'mx-3 h-px w-10 transition-colors',
-                isDone ? 'bg-green-300' : 'bg-gray-200'
+                isDone ? 'bg-green-300' : 'bg-gray-200',
               )} />
             )}
           </div>

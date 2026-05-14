@@ -268,7 +268,7 @@ export default function AppLayout() {
                 )}
 
                 {/* Logo slot — left-padded, no width cap; sidebar border-r bisects the logo naturally */}
-                <div className="flex h-[60px] shrink-0 items-center pl-8 pr-10">
+                <div className="flex h-[60px] shrink-0 items-center pl-8 pr-5">
                     <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-[23px] w-auto" />
                 </div>
                 <div className="h-8 w-px bg-gray-200" />
