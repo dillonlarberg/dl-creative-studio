@@ -24,6 +24,11 @@ describe('docToCreative', () => {
     expect(c.fileType).toBe('WEBP');
   });
 
+  it('maps JPG fileType', () => {
+    const c = docToCreative({ ...base, fileType: 'JPG' });
+    expect(c.fileType).toBe('JPG');
+  });
+
   it('coerces unknown fileType (GIF) to JPG', () => {
     const c = docToCreative({ ...base, fileType: 'GIF' });
     expect(c.fileType).toBe('JPG');

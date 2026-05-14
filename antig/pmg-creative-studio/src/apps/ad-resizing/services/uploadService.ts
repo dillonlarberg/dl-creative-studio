@@ -85,6 +85,7 @@ export async function uploadCreative(
     width: dimensions.width,
     height: dimensions.height,
     fileType: meta.fileType,
+    // Uses client clock — avoids an extra doc read; acceptable drift for display purposes.
     uploadedAt: new Date().toISOString(),
     source: 'upload',
     sourceKind: 'upload',
