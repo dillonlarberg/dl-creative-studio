@@ -7,6 +7,7 @@
         "rules": "storage.rules"
     },
     "hosting": {
+        "target": "adlabs-alli",
         "public": "dist",
         "ignore": [
             "firebase.json",
