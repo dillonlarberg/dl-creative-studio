@@ -1,0 +1,50 @@
+From: Issue #10 — Migrate clientAssetHouse → clients/{slug}
+Subject: [PROPOSED — awaiting approval before commit] remove legacy
+ clientAssetHouse rule exception
+
+Only commit this after:
+  1. Migration script has run successfully on prod (GATE 2 approval).
+  2. Service flip (phase 2 of this PR) is live AND has soaked long enough
+     that no client is still reading from clientAssetHouse/.
+  3. Follow-up issue for legacy-collection deletion (see PR body link) is
+     scheduled so the leftover docs do not linger forever.
+
+The default-deny rule at the bottom of firestore.rules will reject any
+straggler read/write to clientAssetHouse/ once this block is removed —
+which is what we want, but it means the rule deletion must NOT happen
+before the soak.
+
+storage.rules is unchanged: brand-standards uploads already go through
+`paths.storage.client(slug)` (see clientAssetHouse.uploadAsset:101) and
+never touched a sibling top-level storage path.
+
+────────────────────────────────────────────────────────────────────────
+diff --git a/firestore.rules b/firestore.rules
+--- a/firestore.rules
++++ b/firestore.rules
+@@
+     // Path-scoped tenant subtree.
+     //
+     // PROTOTYPE: allowlist-only until syncClientClaims callable is deployed.
+     // Production target (uncomment and remove the line below once callable is live):
+     //   allow read, write: if isAlliStudioUser() && isClientMember(clientSlug);
+     match /clients/{clientSlug}/{document=**} {
+       allow read, write: if isAlliStudioUser();
+     }
+
+-    // Legacy brand-standards collection. The dashboard still reads/writes
+-    // `clientAssetHouse/{slug}` per the HOTFIX in
+-    // src/services/clientAssetHouse.ts (data was never migrated to the
+-    // canonical `clients/{slug}` doc). Allowlist-only until that migration
+-    // ships; remove this block once the service flips to paths.client(slug).
+-    match /clientAssetHouse/{clientSlug} {
+-      allow read, write: if isAlliStudioUser();
+-    }
+-
+     // Default-deny everything else, including legacy `creatives` from the
+     // pre-rebuild schema.
+     match /{document=**} {
+       allow read, write: if false;
+     }
+   }
+ }
