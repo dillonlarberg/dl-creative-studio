@@ -50,10 +50,11 @@ describe('CHANNELS — 8.5×11" print preset removal', () => {
 describe('CHANNELS — Print channel regression floor', () => {
   const printChannel = CHANNELS.find((c) => c.id === 'print');
 
-  it('still contains exactly print-4x6 and print-5x7', () => {
+  it('still contains print-4x6 and print-5x7', () => {
     expect(printChannel).toBeDefined();
-    const ids = printChannel!.dimensions.map((d) => d.id).sort();
-    expect(ids).toEqual(['print-4x6', 'print-5x7']);
+    const ids = printChannel!.dimensions.map((d) => d.id);
+    expect(ids).toContain('print-4x6');
+    expect(ids).toContain('print-5x7');
   });
 });
 
@@ -75,7 +76,14 @@ Run from the app dir:
 npx vitest run src/apps/ad-resizing/data/channels.test.ts
 ```
 
-Expected: 4 tests run, **3 fail** (the two "removal" assertions fail because `print-8x11` / 2550×3300 still exist; the `getDeduplicatedDimensions` assertion fails because it returns 3 dimensions instead of 2). The "regression floor" test will also fail (`ids` will be `['print-4x6', 'print-5x7', 'print-8x11']`). All four failures are expected at this point — that's the RED state we want.
+Expected: 4 tests run, **3 fail**:
+
+- "does not include a dimension with id `print-8x11`" → FAIL (it exists)
+- "does not include a print dimension at 2550×3300" → FAIL (it exists)
+- "still contains print-4x6 and print-5x7" → PASS (those are already there; this is the regression floor and passes both before and after the deletion)
+- "`getDeduplicatedDimensions(['print'])` returns exactly 2…" → FAIL (returns 3 right now)
+
+Three failures expected — the RED state. The regression-floor passing now is by design: it guards against future regressions, not the current state.
 
 Do **not** commit yet; we'll commit data + tests together in Task 3.
 
