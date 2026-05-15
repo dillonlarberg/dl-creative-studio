@@ -13,6 +13,14 @@ export default defineConfig({
   optimizeDeps: {
     include: ['@agencypmg/alli-design-system'],
   },
+  build: {
+    commonjsOptions: {
+      include: [/alli-frontend-design-system/, /node_modules/],
+      transformMixedEsModules: true,
+      defaultIsModuleExports: 'auto',
+      requireReturnsDefault: 'auto',
+    },
+  },
   server: {
     proxy: {
       '/api': {
