@@ -2,6 +2,7 @@ import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import type { GeneratedOutput } from '../types';
 import { downloadImage } from '../utils/downloadImage';
+import { buildOutputFilename } from '../utils/outputFilename';
 import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
@@ -12,15 +13,15 @@ interface GeneratedTileProps {
   selected?: boolean;
   anySelected?: boolean;
   onToggleSelect?: () => void;
-  /** Used as the file stem for downloaded blobs. */
   creativeName?: string;
+  versionNumber?: number;
 }
 
 function aspectStyle(width: number, height: number): React.CSSProperties {
   return { aspectRatio: `${width} / ${height}` };
 }
 
-export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName }: GeneratedTileProps) {
+export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName, versionNumber = 1 }: GeneratedTileProps) {
   const { dimension, status, storageRef, errorCategory, completedAtMs } = output;
   const resolvedUrl = useStorageUrl(storageRef, completedAtMs);
   const imageUrl = output.imageUrl ?? resolvedUrl;
@@ -29,11 +30,13 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
   const isError = status === 'error';
   const canRetry = isError && errorCategory !== 'permanent';
 
-  // Filename: `${creativeName}_${label}_{w}x{h}_{shortTimestamp}` per plan §PR-D.
-  const safeName = (creativeName ?? 'output').replace(/[^a-zA-Z0-9-_]+/g, '_').slice(0, 40);
-  const labelSlug = dimension.label.replace(':', 'x').replace(/[^a-zA-Z0-9-_]+/g, '_');
-  const shortStamp = Math.floor(Date.now() / 1000).toString(36).slice(-6);
-  const filename = `${safeName}_${labelSlug}_${dimension.width}x${dimension.height}_${shortStamp}`;
+  const filename = buildOutputFilename(
+    creativeName ?? 'output',
+    'ad-resizing',
+    dimension.width,
+    dimension.height,
+    versionNumber,
+  );
 
   return (
     <div className={cn(

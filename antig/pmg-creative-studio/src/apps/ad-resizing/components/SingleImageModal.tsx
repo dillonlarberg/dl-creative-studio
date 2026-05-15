@@ -3,6 +3,7 @@ import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, ArrowPathIcon } from '@he
 import { cn } from '../../../utils/cn';
 import type { GeneratedOutput, MockCreative } from '../types';
 import { downloadImage } from '../utils/downloadImage';
+import { buildOutputFilename } from '../utils/outputFilename';
 import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
@@ -12,9 +13,10 @@ interface SingleImageModalProps {
   sourceCreative?: MockCreative;
   onClose: () => void;
   onReiterate?: (outputId: string, prompt: string) => void;
+  versionNumber?: number;
 }
 
-export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate }: SingleImageModalProps) {
+export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate, versionNumber = 1 }: SingleImageModalProps) {
   const [index, setIndex] = useState(initialIndex);
   const [recropOpen, setRecropOpen] = useState(false);
   const [recropText, setRecropText] = useState('');
@@ -41,7 +43,13 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
 
   if (!output) return null;
 
-  const filename = `${output.dimension.label.replace(':', 'x')}-${output.dimension.width}x${output.dimension.height}`;
+  const filename = buildOutputFilename(
+    sourceCreative?.name ?? 'output',
+    'ad-resizing',
+    output.dimension.width,
+    output.dimension.height,
+    versionNumber,
+  );
   const outRatio = output.dimension.width / output.dimension.height;
   // Narrower modal for portrait, wider for landscape
   const modalWidth = outRatio < 0.75 ? 'max-w-3xl' : outRatio < 1.5 ? 'max-w-4xl' : 'max-w-5xl';
