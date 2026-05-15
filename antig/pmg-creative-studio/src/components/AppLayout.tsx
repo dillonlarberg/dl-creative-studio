@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../utils/cn';
 import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
+import { Input as AlliInputBase } from '@agencypmg/alli-design-system';
 import {
     ArrowRightStartOnRectangleIcon,
     XMarkIcon,
@@ -26,6 +27,14 @@ import { alliService } from '../services/alli';
 import type { Client } from '../types';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
 import { notifySelectedClientChanged } from '../hooks/useSelectedClient';
+
+const AlliInput = AlliInputBase as unknown as React.FC<{
+    name: string;
+    placeholder?: string;
+    value?: string;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    leadingIcon?: React.ReactNode;
+}>;
 
 /**
  * Extract a clientSlug from the pathname for routes that carry one in the URL.
@@ -435,17 +444,15 @@ export default function AppLayout() {
 
                                             {/* Search */}
                                             <div className="px-5 pb-3">
-                                                <div className="flex items-center gap-2 rounded-md bg-white px-3 py-2.5 ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-[#0C69EA]">
-                                                    <MagnifyingGlassIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                                                    <input
-                                                        type="text"
-                                                        className="flex-1 min-w-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400"
-                                                        style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
-                                                        placeholder="Search"
-                                                        value={search}
-                                                        onChange={(e) => setSearch(e.target.value)}
-                                                    />
-                                                </div>
+                                                <AlliInput
+                                                    name="client-search"
+                                                    placeholder="Search"
+                                                    value={search}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                                                    leadingIcon={
+                                                        <MagnifyingGlassIcon className="alli-h-5 alli-w-5 alli-text-gray-600" aria-hidden="true" />
+                                                    }
+                                                />
                                             </div>
 
                                             {/* Client list */}
