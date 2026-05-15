@@ -37,9 +37,12 @@ describe('resize-image manifest', () => {
     expect(a).not.toBe(b);
   });
 
-  it('is registered in the app registry', () => {
+  it('is intentionally NOT in the app registry (kept routable, off the dashboard)', () => {
+    // See src/apps/_registry.ts line ~74: "Old resize-image wizard (skeleton)
+    // kept routable but off the dashboard." Manifest is still imported (and
+    // exercised by the assertions above) but excluded from MANIFESTS so the
+    // dashboard doesn't surface a half-built card.
     const found = getRegistry().find((m) => m.id === 'resize-image');
-    expect(found).toBeDefined();
-    expect(found?.basePath).toBe('resize-image');
+    expect(found).toBeUndefined();
   });
 });
