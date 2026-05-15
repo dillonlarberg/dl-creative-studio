@@ -12,6 +12,7 @@
 **Owner:** Diego.
 **Branch (target):** `feature/video-cutdown-lift` off `dev` (no worktrees).
 **Closes:** the legacy `/create/video-cutdown` route after PR-C; partially implements the "no UI but routes go to it" cleanup workstream.
+**Prerequisite (hard):** [Unified Output Schema Migration](./2026-05-15-unified-output-schema-migration.md) must be merged to `dev` before PR-A starts. Q3/Q18 of this plan lock `batches/{batchId}` + `outputs/{outputId}` as the target schema; video-cutdown writes directly to canonical paths — no schema shim. Starting in parallel will produce a fourth schema variant that needs re-migrating.
 
 ---
 
