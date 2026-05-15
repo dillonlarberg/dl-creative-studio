@@ -435,15 +435,15 @@ export default function AppLayout() {
 
                                             {/* Search */}
                                             <div className="px-5 pb-3">
-                                                <div className="flex items-center rounded-md border border-gray-200 px-3 py-2 focus-within:border-[#0C69EA] focus-within:ring-1 focus-within:ring-[#0C69EA]">
+                                                <div className="flex items-center gap-2 rounded-md bg-white px-3 py-2.5 ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-[#0C69EA]">
+                                                    <MagnifyingGlassIcon className="h-4 w-4 shrink-0 text-gray-400" />
                                                     <input
                                                         type="text"
-                                                        className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                                                        className="flex-1 border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none ring-0 shadow-none focus:ring-0"
                                                         placeholder="Search"
                                                         value={search}
                                                         onChange={(e) => setSearch(e.target.value)}
                                                     />
-                                                    <MagnifyingGlassIcon className="ml-2 h-4 w-4 shrink-0 text-gray-400" />
                                                 </div>
                                             </div>
 
