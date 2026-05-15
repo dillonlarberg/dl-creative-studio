@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, ArrowUpTrayIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { cn } from '../../utils/cn';
+import { newId } from '../../utils/ids';
 import { getDeduplicatedDimensions } from './data/channels';
 import type { Creative, GenerationJob, GeneratedOutput, Dimension } from './types';
 import type { SelectedFeed } from '../template-builder/types';
@@ -15,7 +16,8 @@ import GeneratedFilterBar, { type GenSortOption } from './components/GeneratedFi
 import DownloadDropdown from './components/DownloadDropdown';
 import FeedConnectScreen from './components/FeedConnectScreen';
 import SourcePreviewModal from './components/SourcePreviewModal';
-import StepIndicator from './components/StepIndicator';
+import StepIndicator, { type StepId } from './components/StepIndicator';
+import ConfirmBanner from './components/ConfirmBanner';
 import { useOutpaintRunner } from './hooks/useOutpaintRunner';
 import { useBatchOutputs } from './hooks/useBatchOutputs';
 
@@ -29,11 +31,6 @@ interface JobSummary {
   startedAt: number;
 }
 
-function newBatchId(): string {
-  return (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-    ? crypto.randomUUID()
-    : `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 function newOutputId(dimId: string): string {
   return `${dimId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -54,6 +51,7 @@ export default function AdResizingAppRoot() {
   const runner = useOutpaintRunner(clientSlug ?? '');
 
   const [stage, setStage] = useState<Stage>('browse');
+  const [navConfirmPending, setNavConfirmPending] = useState<StepId | null>(null);
   const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
@@ -205,6 +203,14 @@ export default function AdResizingAppRoot() {
     setSelectedDimensions(new Set());
   }
 
+  function handleUploadConnect(creatives: Creative[]) {
+    setFeedCreatives(creatives);
+    setConnectedFeedLabel('Uploaded Files');
+    setSelectedCreative(null);
+    setSelectedChannels([]);
+    setSelectedDimensions(new Set());
+  }
+
   // Batch dimension patches so hundreds of concurrent image-load events produce
   // one state update per 100 ms instead of one per image (avoids useMemo storm).
   const pendingDimsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
@@ -243,6 +249,25 @@ export default function AdResizingAppRoot() {
     setSelectedDimensions(new Set());
     setAddingToJob(false);
     // Jobs are intentionally preserved — existing generated outputs survive a feed change
+  }
+
+  function handleStepClick(step: StepId) {
+    if (step !== 'browse') return;
+    const isGenerating = stage === 'results' && activeJob !== null && !allComplete;
+    if (isGenerating) {
+      setNavConfirmPending('browse');
+      return;
+    }
+    setStage('browse');
+    setAddingToJob(false);
+    // activeJobId preserved: if user re-selects the same creative it merges into the existing job
+  }
+
+  function handleConfirmBack() {
+    setStage('browse');
+    setAddingToJob(false);
+    setNavConfirmPending(null);
+    // activeJobId preserved intentionally — see handleStepClick
   }
 
   const jobChannelOptions = useMemo(() => {
@@ -334,15 +359,15 @@ export default function AdResizingAppRoot() {
     const dims = getDeduplicatedDimensions(selectedChannels).filter(d => selectedDimensions.has(d.id));
     if (dims.length === 0) return;
 
-    const shouldAppend =
-      addingToJob &&
-      activeJobId &&
+    const sameCreativeAsActive =
+      !!activeJobId &&
       selectedCreative.id === jobs.find(j => j.id === activeJobId)?.sourceCreative.id;
+    const shouldAppend = addingToJob || sameCreativeAsActive;
 
     // Brand-new batches get a fresh batchId; "add more sizes" re-uses the
     // existing batchId so the per-output Firestore docs merge into the same
     // job under one BatchRecord.
-    const targetBatchId = shouldAppend ? activeJobId! : newBatchId();
+    const targetBatchId = shouldAppend ? activeJobId! : newId();
     const outputIds = dims.map(d => newOutputId(d.id));
 
     // Stage the UI: seed JobSummary + per-output pending shells immediately
@@ -508,7 +533,33 @@ export default function AdResizingAppRoot() {
         </div>
       </div>
 
-      <StepIndicator activeStep={activeStep} resultsDone={allComplete} browseDone={stage === 'results'} />
+      <div className="mb-5 flex items-center justify-between">
+        <StepIndicator
+          activeStep={activeStep}
+          resultsDone={stage === 'results' && allComplete}
+          browseDone={stage === 'results'}
+          onStepClick={handleStepClick}
+        />
+        {stage === 'results' && !navConfirmPending && (
+          <button
+            type="button"
+            onClick={() => handleStepClick('browse')}
+            className="flex items-center gap-1 text-[13px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
+          >
+            <ArrowLeftIcon className="h-3.5 w-3.5" />
+            Back to Browse
+          </button>
+        )}
+      </div>
+      {navConfirmPending && (
+        <ConfirmBanner
+          message="Going back will cancel this generation."
+          confirmLabel="Go back"
+          cancelLabel="Stay"
+          onConfirm={handleConfirmBack}
+          onCancel={() => setNavConfirmPending(null)}
+        />
+      )}
 
       {/* Callable error banner — surfaces auth/IAM/server failures the live
           subscription can't show because the batch never got seeded. */}
@@ -538,6 +589,7 @@ export default function AdResizingAppRoot() {
               <FeedConnectScreen
                 clientSlug={clientSlug ?? ''}
                 onConnect={handleFeedConnect}
+                onUploadConnect={handleUploadConnect}
               />
             </div>
           ) : (
@@ -569,15 +621,19 @@ export default function AdResizingAppRoot() {
                 {/* Connected feed indicator */}
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                    <CircleStackIcon className="h-3.5 w-3.5" />
+                    {connectedFeedLabel === 'Uploaded Files'
+                      ? <ArrowUpTrayIcon className="h-3.5 w-3.5" />
+                      : <CircleStackIcon className="h-3.5 w-3.5" />
+                    }
                     <span>{connectedFeedLabel}</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleDisconnectFeed}
-                    className="text-[12px] text-gray-400 hover:text-gray-600"
+                    className="flex items-center gap-1 text-[12px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
                   >
-                    Change feed
+                    <ArrowLeftIcon className="h-3 w-3" />
+                    Change source
                   </button>
                 </div>
 
@@ -870,9 +926,10 @@ export default function AdResizingAppRoot() {
                               handleDisconnectFeed();
                               setStage('browse');
                             }}
-                            className="text-[13px] text-gray-400 hover:text-gray-600"
+                            className="flex items-center gap-1 text-[13px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
                           >
-                            Change feed
+                            <ArrowLeftIcon className="h-3.5 w-3.5" />
+                            Change source
                           </button>
                         </div>
                         <DownloadDropdown count={activeJob.outputs.length} onDownload={handleDownloadAll} />

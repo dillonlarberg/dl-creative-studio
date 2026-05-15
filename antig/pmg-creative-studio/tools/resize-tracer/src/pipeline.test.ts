@@ -121,6 +121,23 @@ describe("legalGenDims", () => {
     expect(() => legalGenDims({ w: 100, h: 0 })).toThrow();
     expect(() => legalGenDims({ w: -10, h: 100 })).toThrow();
   });
+
+  it("stays within gpt-image-2's 8,294,400 max pixel budget for oversized targets", () => {
+    // Regression: 8.5×11" @ 300dpi (2550×3300) rounded to 2544×3296 =
+    // 8,385,024 px, over the cap. Issue #25.
+    const oversized = [
+      { w: 2550, h: 3300 },
+      { w: 3300, h: 2550 },
+      { w: 3000, h: 3000 },
+    ];
+    for (const t of oversized) {
+      const d = legalGenDims(t);
+      expect(d.w * d.h).toBeLessThanOrEqual(8_294_400);
+      expect(d.w % 16).toBe(0);
+      expect(d.h % 16).toBe(0);
+      expect(Math.max(d.w, d.h)).toBeLessThanOrEqual(3840);
+    }
+  });
 });
 
 describe("runPhase1", () => {

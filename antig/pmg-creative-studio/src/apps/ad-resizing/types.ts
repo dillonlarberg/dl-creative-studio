@@ -10,9 +10,10 @@ export interface Creative {
   originalUrl?: string;
   width: number;
   height: number;
-  fileType: 'PNG' | 'JPG' | 'GIF';
+  fileType: 'PNG' | 'JPG' | 'WEBP';
   uploadedAt: string;
   source: string;
+  sourceKind?: 'alli' | 'upload';
   tags: string[];
 }
 

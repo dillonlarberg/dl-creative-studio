@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "automated-creative-e10d7"
-  }
+  },
+  "targets": {
+    "automated-creative-e10d7": {
+      "hosting": {
+        "adlabs-alli": [
+          "adlabs-alli"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

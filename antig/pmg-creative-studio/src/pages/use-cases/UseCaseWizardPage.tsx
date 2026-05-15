@@ -19,6 +19,7 @@ import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
 import { useSelectedClient } from '../../hooks/useSelectedClient';
+import type { Client } from '../../platform/client/ClientProvider';
 
 const fallbackLogo = "https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png"; // temporary fallback
 
@@ -478,7 +479,7 @@ export default function UseCaseWizardPage() {
 
     const ITEMS_PER_PAGE = 16; // 4 columns × 4 rows
 
-    const client = useSelectedClient() ?? ({} as { slug?: string; name?: string });
+    const client = useSelectedClient() ?? ({ slug: '', name: '' } as Client);
 
     // Move steps definition up so handleNext can use it
     const steps = appId != null ? (WIZARD_STEPS[appId] || []) : [];
@@ -890,7 +891,7 @@ export default function UseCaseWizardPage() {
         const brandColor = assetHouse?.primaryColor || '#2563eb';
         const brandFont = assetHouse?.fontPrimary || 'Inter';
         const brandLogo = assetHouse?.logoPrimary;
-        const fallbackLogo = client.logo_url || 'https://via.placeholder.com/150?text=Logo';
+        const fallbackLogo = 'https://via.placeholder.com/150?text=Logo';
 
         // Check which dynamic fields are actually approved/required
         const hasHeadline = requirements.some(r => r.id === 'headline');

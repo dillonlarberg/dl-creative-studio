@@ -26,7 +26,6 @@ export const CHANNELS: Channel[] = [
     id: 'print',
     label: 'Print',
     dimensions: [
-      { id: 'print-8x11', label: '8.5×11"', width: 2550, height: 3300, channelId: 'print', channelLabel: 'Print' },
       { id: 'print-4x6', label: '4×6"', width: 1200, height: 1800, channelId: 'print', channelLabel: 'Print' },
       { id: 'print-5x7', label: '5×7"', width: 1500, height: 2100, channelId: 'print', channelLabel: 'Print' },
     ],

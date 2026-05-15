@@ -1,7 +1,7 @@
 import type { Creative } from '../types';
 import { sha256Prefix } from './sha256';
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
 
 const DATE_COLUMNS = [
   'created_at', 'updated_at', 'date_modified', 'date_created',
@@ -34,10 +34,10 @@ export function detectImageColumns(rows: Array<Record<string, unknown>>): string
   });
 }
 
-function detectFileType(url: string): 'PNG' | 'JPG' | 'GIF' {
+function detectFileType(url: string): 'PNG' | 'JPG' | 'WEBP' {
   const lower = url.toLowerCase();
   if (lower.includes('.png')) return 'PNG';
-  if (lower.includes('.gif')) return 'GIF';
+  if (lower.includes('.webp')) return 'WEBP';
   return 'JPG';
 }
 
@@ -70,21 +70,18 @@ export async function feedToCreatives(
   return Promise.all(
     filtered.map(async (row) => {
       const imageUrl = String(row[imageColumn]);
-      // URL-stable id (codex F10): matches the cache key the Cloud Function
-      // derives from the same originalUrl, so re-staging is a no-op.
       const id = await sha256Prefix(imageUrl);
       return {
         id,
         name: deriveLabel(row, imageColumn),
         thumbnailUrl: imageUrl,
         originalUrl: imageUrl,
-        // Initial guesstimate; CreativeTile probes the real natural dimensions
-        // on <img> load and patches these via onDimensionsResolved (PR-D).
         width: 1080,
         height: 1080,
         fileType: detectFileType(imageUrl),
         uploadedAt: detectUploadDate(row),
         source: feedName,
+        sourceKind: 'alli' as const,
         tags: [],
       };
     }),
