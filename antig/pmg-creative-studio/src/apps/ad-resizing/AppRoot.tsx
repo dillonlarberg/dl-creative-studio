@@ -474,23 +474,12 @@ export default function AdResizingAppRoot() {
   const completedOutputs = activeJob?.outputs.filter(o => o.status === 'complete') ?? [];
   const allComplete = activeJob !== null && activeJob.outputs.length > 0 && activeJob.outputs.every(o => o.status === 'complete');
 
-  // Version = 1-based position of this job among all jobs for the same source creative, ordered by start time.
-  const activeVersionNumber = useMemo(() => {
-    if (!activeJob) return 1;
-    const sameSource = jobs
-      .filter(j => j.sourceCreative.id === activeJob.sourceCreative.id)
-      .sort((a, b) => a.startedAt - b.startedAt);
-    const idx = sameSource.findIndex(j => j.id === activeJob.id);
-    return idx >= 0 ? idx + 1 : 1;
-  }, [jobs, activeJob]);
-
   function downloadFilename(output: GeneratedOutput): string {
     return buildOutputFilename(
       activeJob?.sourceCreative.name ?? 'output',
       'ad-resizing',
       output.dimension.width,
       output.dimension.height,
-      activeVersionNumber,
     );
   }
 
@@ -906,7 +895,6 @@ export default function AdResizingAppRoot() {
                             key={output.id}
                             output={output}
                             creativeName={activeJob?.sourceCreative.name}
-                            versionNumber={activeVersionNumber}
                             onView={() => {
                               const completedFiltered = filteredOutputs.filter(o => o.status === 'complete');
                               setSingleView({ index: completedFiltered.findIndex(o => o.id === output.id) });
@@ -964,7 +952,6 @@ export default function AdResizingAppRoot() {
           outputs={filteredOutputs.filter(o => o.status === 'complete')}
           initialIndex={singleView.index}
           sourceCreative={activeJob.sourceCreative}
-          versionNumber={activeVersionNumber}
           onClose={() => setSingleView(null)}
           onReiterate={handleReiterate}
         />

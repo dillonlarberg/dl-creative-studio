@@ -13,10 +13,9 @@ interface SingleImageModalProps {
   sourceCreative?: MockCreative;
   onClose: () => void;
   onReiterate?: (outputId: string, prompt: string) => void;
-  versionNumber?: number;
 }
 
-export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate, versionNumber = 1 }: SingleImageModalProps) {
+export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate }: SingleImageModalProps) {
   const [index, setIndex] = useState(initialIndex);
   const [recropOpen, setRecropOpen] = useState(false);
   const [recropText, setRecropText] = useState('');
@@ -48,7 +47,6 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
     'ad-resizing',
     output.dimension.width,
     output.dimension.height,
-    versionNumber,
   );
   const outRatio = output.dimension.width / output.dimension.height;
   // Narrower modal for portrait, wider for landscape

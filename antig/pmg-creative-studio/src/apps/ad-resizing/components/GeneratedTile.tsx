@@ -14,14 +14,13 @@ interface GeneratedTileProps {
   anySelected?: boolean;
   onToggleSelect?: () => void;
   creativeName?: string;
-  versionNumber?: number;
 }
 
 function aspectStyle(width: number, height: number): React.CSSProperties {
   return { aspectRatio: `${width} / ${height}` };
 }
 
-export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName, versionNumber = 1 }: GeneratedTileProps) {
+export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName }: GeneratedTileProps) {
   const { dimension, status, storageRef, errorCategory, completedAtMs } = output;
   const resolvedUrl = useStorageUrl(storageRef, completedAtMs);
   const imageUrl = output.imageUrl ?? resolvedUrl;
@@ -35,7 +34,6 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
     'ad-resizing',
     dimension.width,
     dimension.height,
-    versionNumber,
   );
 
   return (
