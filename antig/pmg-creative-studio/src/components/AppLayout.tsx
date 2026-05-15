@@ -439,7 +439,8 @@ export default function AppLayout() {
                                                     <MagnifyingGlassIcon className="h-4 w-4 shrink-0 text-gray-400" />
                                                     <input
                                                         type="text"
-                                                        className="flex-1 border-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none ring-0 shadow-none focus:ring-0"
+                                                        className="flex-1 min-w-0 bg-transparent text-sm text-gray-900 placeholder:text-gray-400"
+                                                        style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
                                                         placeholder="Search"
                                                         value={search}
                                                         onChange={(e) => setSearch(e.target.value)}
