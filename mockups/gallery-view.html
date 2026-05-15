@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Gallery — Alli AdLabs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --blue: #0C69EA;
+            --blue-hover: #0A5DD4;
+            --blue-light: #E6F7FF;
+            --blue-mid: #C5D9FB;
+            --bg: #EEF1F7;
+            --white: #FFFFFF;
+            --sidebar-bg: #F4F7FC;
+            --text-primary: #1F2430;
+            --text-secondary: #42485C;
+            --text-muted: #6B7280;
+            --border: #E5E8EE;
+
+            --app-resize: #0C69EA;
+            --app-template: #4F46E5;
+            --app-batch: #0891B2;
+            --app-outpaint: #059669;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 60px;
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            z-index: 30;
+            overflow: hidden;
+        }
+
+        .header-logo {
+            width: 80px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .header-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .header-client {
+            margin-left: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-client-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .header-client-change {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--blue);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            font-family: inherit;
+        }
+
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding-right: 24px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9CA3AF;
+            transition: background 150ms;
+        }
+
+        .icon-btn:hover {
+            background: #F3F4F6;
+            color: var(--text-secondary);
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--blue);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+
+        /* ── SIDEBAR — matches real Alli AppLayout light rail ── */
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            width: 64px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            transition: width 200ms ease-out;
+            overflow: hidden;
+        }
+
+        .sidebar:hover { width: 256px; }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-top: 60px;
+            padding-bottom: 8px;
+        }
+
+        .nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 40px;
+            padding: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #42485C;
+            font-family: inherit;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: background 150ms, color 150ms;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #EEF1F7;
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: #EEF1F7;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .nav-btn:disabled {
+            color: #B8BEC9;
+            cursor: not-allowed;
+        }
+
+        /* Icon slot — fixed 64px so it stays centered in collapsed rail */
+        .nav-icon {
+            width: 64px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #8B9CBD;
+        }
+
+        .nav-btn.active .nav-icon,
+        .nav-btn:hover:not(:disabled) .nav-icon { color: #0C69EA; }
+        .nav-btn:disabled .nav-icon { color: #B8BEC9; }
+
+        .nav-label {
+            flex: 1;
+            opacity: 0;
+            transition: opacity 150ms 40ms;
+            font-size: 13px;
+        }
+
+        .sidebar:hover .nav-label { opacity: 1; }
+
+        .nav-chevron {
+            width: 12px;
+            height: 12px;
+            margin-right: 12px;
+            opacity: 0;
+            transition: opacity 150ms 40ms;
+            color: #B8BEC9;
+        }
+
+        .sidebar:hover .nav-chevron { opacity: 1; }
+
+        .nav-children {
+            display: none;
+            list-style: none;
+            flex-direction: column;
+        }
+
+        .sidebar:hover .nav-children { display: flex; }
+
+        .nav-child {
+            display: flex;
+            align-items: center;
+            height: 36px;
+            padding-left: 64px;
+            padding-right: 12px;
+            font-size: 13px;
+            color: #42485C;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background 150ms, color 150ms;
+        }
+
+        .nav-child:hover { background: #EEF1F7; color: var(--text-primary); }
+
+        .nav-child.active {
+            color: #0C69EA;
+            background: #EEF1F7;
+            font-weight: 600;
+        }
+
+        .sidebar-bottom {
+            border-top: 1px solid var(--border);
+            padding: 8px 0;
+        }
+
+        /* ── MAIN ── */
+        .main {
+            margin-left: 64px;
+            padding-top: 60px;
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 32px 36px 64px;
+        }
+
+        /* ── PAGE HEADER ── */
+        .page-header {
+            margin-bottom: 28px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .page-subtitle {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ── FILTER BAR ── */
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 36px;
+            flex-wrap: wrap;
+        }
+
+        .search-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--white);
+            border: 1px solid #CDD0D7;
+            border-radius: 6px;
+            padding: 0 12px;
+            height: 34px;
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+            transition: border-color 150ms;
+        }
+
+        .search-wrap:focus-within {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(12,105,234,0.1);
+        }
+
+        .search-wrap input {
+            border: none;
+            outline: none;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--text-primary);
+            background: none;
+            width: 100%;
+        }
+
+        .search-wrap input::placeholder { color: #9CA3AF; }
+
+        /* Filter pills — Alli tertiary button base, primary when active */
+        .filter-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 34px;
+            padding: 0 12px;
+            background: var(--white);
+            border: none;
+            box-shadow: inset 0 0 0 1px #E5E8EE;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #42485C;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: box-shadow 150ms, color 150ms, background 150ms;
+            font-family: inherit;
+        }
+
+        .filter-pill:hover {
+            box-shadow: inset 0 0 0 1px #B8BEC9;
+            color: var(--text-primary);
+        }
+
+        .filter-pill.active {
+            background: var(--blue);
+            box-shadow: none;
+            color: white;
+        }
+
+        .filter-pill.active:hover {
+            background: var(--blue-hover);
+        }
+
+        /* ── SECTION HEADER ── */
+        .gallery-section { margin-bottom: 44px; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .section-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .section-rule {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── GRID ── */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 12px;
+        }
+
+        /* ── TILE ── */
+        .tile {
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            cursor: pointer;
+            transition: box-shadow 150ms ease-out, transform 150ms ease-out, border-color 150ms;
+        }
+
+        .tile:hover {
+            box-shadow: 0 4px 16px rgba(26,31,46,0.10);
+            transform: translateY(-1px);
+            border-color: var(--blue-mid);
+        }
+
+        .tile:hover .tile-overlay { opacity: 1; }
+
+        .tile-thumb {
+            position: relative;
+            height: 158px;
+            background: #F3F4F6;
+            overflow: hidden;
+        }
+
+        .tile-thumb svg { display: block; width: 100%; height: 100%; }
+
+        .tile-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15,18,30,0.42);
+            opacity: 0;
+            transition: opacity 150ms ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .overlay-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.92);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            transition: background 100ms;
+        }
+
+        .overlay-btn:hover { background: white; }
+
+        /* Status badge — matches Alli Badge: rounded-md, solid bg, font-medium */
+        .status-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-done {
+            background: #EDFBDE;
+            color: #27750C;
+        }
+
+        .badge-processing {
+            background: #E6F7FF;
+            color: #114DBB;
+        }
+
+        .badge-failed {
+            background: #FFE5E1;
+            color: #861111;
+        }
+
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .badge-done .status-dot { background: #27750C; }
+        .badge-failed .status-dot { background: #861111; }
+
+        .status-spinner {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(12,105,234,0.3);
+            border-top-color: var(--blue);
+            animation: spin 0.75s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Failed tile treatment */
+        .tile-failed .tile-thumb { filter: saturate(0.4); }
+
+        .tile-failed-wash {
+            position: absolute;
+            inset: 0;
+            background: rgba(220,38,38,0.06);
+        }
+
+        /* Tile metadata */
+        .tile-meta {
+            padding: 10px 12px 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tile-source {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tile-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+        }
+
+        .app-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            min-width: 0;
+        }
+
+        .app-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .tile-dims {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        /* ── LIGHTBOX ── */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .lightbox.open { display: flex; }
+
+        .lightbox-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(10,13,24,0.78);
+        }
+
+        .lightbox-panel {
+            position: relative;
+            display: flex;
+            width: min(94vw, 1080px);
+            height: min(86vh, 700px);
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.40);
+        }
+
+        .lightbox-image-area {
+            flex: 1;
+            background: #0A0D18;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lightbox-image-area svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .lb-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.8);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 150ms;
+            z-index: 1;
+        }
+
+        .lb-nav:hover { background: rgba(255,255,255,0.22); }
+        .lb-nav.prev { left: 12px; }
+        .lb-nav.next { right: 12px; }
+
+        .lb-counter {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.35);
+            padding: 3px 10px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+
+        .lightbox-detail {
+            width: 272px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border);
+        }
+
+        .lb-detail-top {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .lb-source-eyebrow {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .lb-source-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        .lb-detail-body {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            overflow-y: auto;
+        }
+
+        .detail-row {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .detail-eyebrow {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .detail-val {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .detail-val.mono {
+            font-size: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--text-muted);
+        }
+
+        .detail-val.status-ok {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #27750C;
+        }
+
+        .lb-actions {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Lightbox action buttons — Alli primary / tertiary */
+        .btn-primary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--blue);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 150ms;
+        }
+
+        .btn-primary:hover { background: var(--blue-hover); }
+
+        .btn-ghost {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--white);
+            color: #42485C;
+            border: none;
+            box-shadow: inset 0 0 0 1px #E5E8EE;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: box-shadow 150ms, color 150ms;
+        }
+
+        .btn-ghost:hover {
+            box-shadow: inset 0 0 0 1px #B8BEC9;
+            color: var(--text-primary);
+        }
+
+        .lb-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            color: rgba(255,255,255,0.65);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 1;
+            transition: background 150ms, color 150ms;
+        }
+
+        .lb-close:hover {
+            background: rgba(255,255,255,0.18);
+            color: white;
+        }
+
+        /* ── VERSION STACKING ── */
+        /* Tiles with multiple generated versions show a paper-stack visual */
+        .tile-wrap {
+            position: relative;
+        }
+
+        .tile-wrap.has-versions::after,
+        .tile-wrap.has-versions::before {
+            content: '';
+            position: absolute;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .tile-wrap.has-versions::after {
+            bottom: -4px;
+            left: 4px;
+            right: 4px;
+            height: 20px;
+            z-index: -1;
+        }
+
+        .tile-wrap.has-versions::before {
+            bottom: -8px;
+            left: 8px;
+            right: 8px;
+            height: 20px;
+            z-index: -2;
+            opacity: 0.6;
+        }
+
+        /* Small version count badge in tile bottom-left */
+        .version-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            background: #E6F7FF;
+            color: #114DBB;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* ── LIGHTBOX VERSION STRIP ── */
+        .lb-version-strip {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .lb-version-strip-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .lb-version-row {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .lb-version-thumb {
+            flex-shrink: 0;
+            width: 48px;
+            height: 36px;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 120ms;
+            background: #F4F7FC;
+            position: relative;
+        }
+
+        .lb-version-thumb svg { display: block; width: 100%; height: 100%; }
+
+        .lb-version-thumb:hover { border-color: #B8BEC9; }
+
+        .lb-version-thumb.active { border-color: #0C69EA; }
+
+        .lb-version-label {
+            font-size: 9px;
+            text-align: center;
+            margin-top: 3px;
+            font-weight: 500;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .lb-version-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .lb-version-item.active .lb-version-label { color: #0C69EA; }
+
+        /* Compare toggle button in lightbox image area */
+        .lb-compare-btn {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.75);
+            font-size: 11px;
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 150ms, color 150ms;
+        }
+
+        .lb-compare-btn:hover {
+            background: rgba(255,255,255,0.20);
+            color: white;
+        }
+
+        /* Compare split-view layout */
+        .compare-area {
+            display: none;
+            flex: 1;
+            position: relative;
+            background: #0A0D18;
+        }
+
+        .compare-area.active { display: flex; }
+
+        .compare-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .compare-pane + .compare-pane {
+            border-left: 2px solid rgba(255,255,255,0.15);
+        }
+
+        .compare-label {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.55);
+            background: rgba(0,0,0,0.35);
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* scrollbar polish */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+        .lb-version-row::-webkit-scrollbar { height: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="header">
+    <div class="header-logo">
+        <!-- PMG Alli wordmark -->
+        <svg width="44" height="20" viewBox="0 0 44 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 16L6 4h3l6 12h-3.2L10.5 10 8.5 14h4l1 2H0zm8.5-6l1.5 3H7l1.5-3z" fill="#1A1F2E"/>
+            <rect x="18" y="3" width="2.4" height="13" rx="1.2" fill="#1A1F2E"/>
+            <rect x="23" y="3" width="2.4" height="13" rx="1.2" fill="#1A1F2E"/>
+            <path d="M29 16V4h2.4v10h6V16H29z" fill="#1A1F2E"/>
+            <path d="M38 7.5C38 5.6 39.6 4 41.5 4S45 5.6 45 7.5c0 .8-.3 1.5-.7 2.1L38.3 16H38V7.5z" fill="#0C69EA" opacity="0.9"/>
+        </svg>
+    </div>
+    <div class="header-divider"></div>
+    <div class="header-client">
+        <span class="header-client-name">Ralph Lauren</span>
+        <button class="header-client-change">Change</button>
+    </div>
+    <div class="header-right">
+        <button class="icon-btn" aria-label="Help">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="17" height="17">
+                <circle cx="10" cy="10" r="7.5"/>
+                <path d="M10 13.5v.5"/>
+                <path d="M10 11.5c0-1.5 2-2 2-3.5a2 2 0 00-4 0"/>
+            </svg>
+        </button>
+        <button class="icon-btn" aria-label="Notifications">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="17" height="17">
+                <path d="M10 2.5A5.5 5.5 0 004.5 8v3l-1.5 2.5h14L15.5 11V8A5.5 5.5 0 0010 2.5z"/>
+                <path d="M8 14a2 2 0 004 0"/>
+            </svg>
+        </button>
+        <div class="avatar">AN</div>
+    </div>
+</header>
+
+<!-- ── SIDEBAR — light rail matching real Alli AppLayout ── -->
+<aside class="sidebar" aria-label="Primary navigation">
+    <nav class="sidebar-nav">
+        <ul class="nav-list">
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><rect x="2.5" y="2.5" width="6" height="6" rx="1"/><rect x="11.5" y="2.5" width="6" height="6" rx="1"/><rect x="2.5" y="11.5" width="6" height="6" rx="1"/><rect x="11.5" y="11.5" width="6" height="6" rx="1"/></svg></span>
+                    <span class="nav-label">Dashboards</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><polyline points="2,15 7,10 11,14 18,6"/></svg></span>
+                    <span class="nav-label">Data</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><rect x="3" y="4" width="14" height="2" rx="1"/><rect x="3" y="9" width="10" height="2" rx="1"/><rect x="3" y="14" width="7" height="2" rx="1"/></svg></span>
+                    <span class="nav-label">Strategy &amp; Planning</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M11 2L4 11h7l-2 7 9-9h-7l2-8z"/></svg></span>
+                    <span class="nav-label">Actions</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><circle cx="7" cy="7" r="3"/><circle cx="14" cy="7" r="2"/><path d="M1 17c0-3 2.7-5 6-5s6 2 6 5"/><path d="M14 12c2 .5 4 2 4 5"/></svg></span>
+                    <span class="nav-label">Audiences</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+            <!-- Creative — active, expanded -->
+            <li>
+                <button class="nav-btn active">
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><rect x="2" y="4" width="16" height="12" rx="2"/><circle cx="7.5" cy="9" r="1.5"/><path d="M2 14l4-4 4 4 3.5-3.5L18 14"/></svg></span>
+                    <span class="nav-label">Creative</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="transform:rotate(90deg);color:#0C69EA"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+                <ul class="nav-children">
+                    <li><a href="#" class="nav-child">AdLabs</a></li>
+                    <li><a href="#" class="nav-child active" aria-current="page">Gallery</a></li>
+                </ul>
+            </li>
+            <li>
+                <button class="nav-btn" disabled>
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M2 5h16M6 5V3m8 2V3M3 9h14l-1.5 8H4.5L3 9z"/></svg></span>
+                    <span class="nav-label">Products</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+        </ul>
+    </nav>
+    <div class="sidebar-bottom">
+        <ul class="nav-list">
+            <li>
+                <button class="nav-btn">
+                    <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2m0 12v2M2 10h2m12 0h2m-3.05-5.95-1.41 1.41M6.46 13.54l-1.41 1.41m0-10.9 1.41 1.41m7.08 7.08 1.41 1.41"/></svg></span>
+                    <span class="nav-label">Settings</span>
+                    <svg class="nav-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3l4 4-4 4"/></svg>
+                </button>
+            </li>
+        </ul>
+    </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main">
+    <div class="page">
+
+        <div class="page-header">
+            <h1 class="page-title">Creative Gallery</h1>
+            <p class="page-subtitle">All generated outputs for Ralph Lauren &middot; 47 total</p>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div class="search-wrap">
+                <svg viewBox="0 0 16 16" fill="none" stroke="#9CA3AF" stroke-width="1.5" width="14" height="14" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4"/><path d="M11 11l2.5 2.5"/></svg>
+                <input type="text" placeholder="Search by creative name&hellip;" aria-label="Search creatives">
+            </div>
+            <button class="filter-pill active" type="button">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11" aria-hidden="true"><rect x="1" y="4" width="12" height="8" rx="1"/><path d="M4 4V3a3 3 0 016 0v1"/></svg>
+                All apps
+                <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <button class="filter-pill" type="button">
+                Last 30 days
+                <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+            <button class="filter-pill" type="button">
+                All statuses
+                <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>
+            </button>
+        </div>
+
+        <!-- ── TODAY ── -->
+        <section class="gallery-section">
+            <div class="section-header">
+                <span class="section-label">Today</span>
+                <span class="section-count">4 outputs</span>
+                <div class="section-rule"></div>
+            </div>
+            <div class="gallery-grid">
+
+                <!-- Tile: Ad Resizing / completed / portrait — 3 versions -->
+                <div class="tile-wrap has-versions">
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox(3)" onkeydown="if(event.key==='Enter')openLightbox(3)">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#12152B"/>
+                            <rect width="210" height="70" fill="#C9A96E" opacity="0.18"/>
+                            <circle cx="170" cy="35" r="80" fill="#C9A96E" opacity="0.07"/>
+                            <rect x="24" y="22" width="120" height="9" rx="4.5" fill="white" opacity="0.65"/>
+                            <rect x="24" y="38" width="85" height="6" rx="3" fill="white" opacity="0.35"/>
+                            <rect x="24" y="55" width="65" height="6" rx="3" fill="white" opacity="0.2"/>
+                            <rect x="24" y="88" width="162" height="52" rx="5" fill="#1E2240"/>
+                            <rect x="34" y="97" width="142" height="34" rx="3" fill="#2A2F50"/>
+                            <rect x="24" y="148" width="80" height="5" rx="2.5" fill="#C9A96E" opacity="0.5"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>
+                            </button>
+                            <button class="overlay-btn" aria-label="Download">
+                                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg>
+                            </button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">campaign_summer_hero.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-resize)"></div><span style="color:var(--app-resize)">Ad Resizing</span></div>
+                            <span class="version-count">
+                                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9"><path d="M2 9V4l4-2 4 2v5l-4 2-4-2z"/></svg>
+                                3 versions
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Tile: Ad Resizing / completed / leaderboard -->
+                <div class="tile-wrap">
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox(1)" onkeydown="if(event.key==='Enter')openLightbox(1)">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#F5F0EB"/>
+                            <rect width="210" height="158" fill="url(#rl1)" opacity="0.55"/>
+                            <defs><linearGradient id="rl1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C9A96E"/><stop offset="1" stop-color="#F5F0EB"/></linearGradient></defs>
+                            <rect x="18" y="44" width="174" height="10" rx="5" fill="#7A5C38" opacity="0.45"/>
+                            <rect x="40" y="60" width="130" height="6" rx="3" fill="#7A5C38" opacity="0.28"/>
+                            <rect x="70" y="88" width="70" height="26" rx="4" fill="#12152B" opacity="0.78"/>
+                            <rect x="78" y="96" width="54" height="10" rx="2" fill="white" opacity="0.88"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">campaign_summer_hero.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-resize)"></div><span style="color:var(--app-resize)">Ad Resizing</span></div>
+                            <span class="tile-dims">728×90</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Tile: Template Builder / processing -->
+                <div class="tile-wrap">
+                <div class="tile">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#F0F0F4"/>
+                            <rect x="16" y="14" width="178" height="8" rx="4" fill="#C5C8D8" opacity="0.7"/>
+                            <rect x="16" y="30" width="178" height="112" rx="5" fill="white" opacity="0.8"/>
+                            <rect x="26" y="40" width="75" height="92" rx="4" fill="#E5E7EF"/>
+                            <rect x="111" y="40" width="72" height="44" rx="4" fill="#E5E7EF"/>
+                            <rect x="111" y="90" width="72" height="44" rx="4" fill="#E5E7EF"/>
+                        </svg>
+                        <div class="tile-overlay" style="opacity:0.15"><!-- keep thumb readable while processing --></div>
+                        <span class="status-badge badge-processing"><span class="status-spinner"></span>Generating</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">ralph_product_shot.jpg</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-template)"></div><span style="color:var(--app-template)">Tmpl Builder</span></div>
+                            <span class="tile-dims">300×250</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Tile: Ad Resizing / completed / skyscraper — 2 versions -->
+                <div class="tile-wrap has-versions">
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox(2)" onkeydown="if(event.key==='Enter')openLightbox(2)">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#0D1120"/>
+                            <rect width="210" height="85" fill="#0C69EA" opacity="0.1"/>
+                            <circle cx="180" cy="45" r="90" fill="#0C69EA" opacity="0.06"/>
+                            <rect x="22" y="20" width="115" height="10" rx="5" fill="white" opacity="0.65"/>
+                            <rect x="22" y="37" width="80" height="6" rx="3" fill="white" opacity="0.3"/>
+                            <rect x="22" y="108" width="90" height="32" rx="5" fill="#C9A96E" opacity="0.88"/>
+                            <rect x="31" y="118" width="72" height="12" rx="3" fill="white" opacity="0.9"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">campaign_summer_hero.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-resize)"></div><span style="color:var(--app-resize)">Ad Resizing</span></div>
+                            <span class="version-count">
+                                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="9" height="9"><path d="M2 9V4l4-2 4 2v5l-4 2-4-2z"/></svg>
+                                2 versions
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ── YESTERDAY ── -->
+        <section class="gallery-section">
+            <div class="section-header">
+                <span class="section-label">Yesterday</span>
+                <span class="section-count">4 outputs</span>
+                <div class="section-rule"></div>
+            </div>
+            <div class="gallery-grid">
+
+                <!-- Tile: Batch Variants / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#ECFEFF"/>
+                            <rect width="210" height="158" fill="url(#bv1)"/>
+                            <defs><linearGradient id="bv1" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#CFFAFE"/><stop offset="1" stop-color="#A5F3FC" stop-opacity="0.5"/></linearGradient></defs>
+                            <rect x="18" y="16" width="174" height="9" rx="4.5" fill="#0891B2" opacity="0.4"/>
+                            <rect x="26" y="35" width="158" height="100" rx="6" fill="white" opacity="0.75"/>
+                            <rect x="36" y="45" width="138" height="68" rx="4" fill="#BAE6FD" opacity="0.55"/>
+                            <rect x="36" y="120" width="95" height="6" rx="3" fill="#0891B2" opacity="0.3"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">brand_video_thumb.jpg</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-batch)"></div><span style="color:var(--app-batch)">Batch Variants</span></div>
+                            <span class="tile-dims">1200×628</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile: Batch Variants / FAILED -->
+                <div class="tile tile-failed" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#ECFEFF"/>
+                            <rect x="15" y="64" width="180" height="32" rx="4" fill="#BAE6FD" opacity="0.6"/>
+                            <rect x="24" y="72" width="162" height="16" rx="3" fill="#7DD3FC" opacity="0.55"/>
+                        </svg>
+                        <div class="tile-failed-wash"></div>
+                        <span class="status-badge badge-failed"><span class="status-dot"></span>Failed</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">brand_video_thumb.jpg</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-batch)"></div><span style="color:var(--app-batch)">Batch Variants</span></div>
+                            <span class="tile-dims">320×50</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile: Ad Resizing / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#1A1F2E"/>
+                            <rect width="210" height="158" fill="#C9A96E" opacity="0.06"/>
+                            <circle cx="105" cy="79" r="85" fill="#C9A96E" opacity="0.04"/>
+                            <rect x="18" y="18" width="125" height="11" rx="5.5" fill="white" opacity="0.55"/>
+                            <rect x="18" y="36" width="88" height="7" rx="3.5" fill="white" opacity="0.28"/>
+                            <rect x="18" y="62" width="174" height="60" rx="5" fill="white" opacity="0.04"/>
+                            <rect x="28" y="72" width="154" height="40" rx="4" fill="#C9A96E" opacity="0.14"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">product_lifestyle.jpg</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-resize)"></div><span style="color:var(--app-resize)">Ad Resizing</span></div>
+                            <span class="tile-dims">970×250</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile: Template Builder / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#EEF2FF"/>
+                            <rect width="210" height="44" fill="#4F46E5" opacity="0.14"/>
+                            <rect x="14" y="12" width="145" height="9" rx="4.5" fill="white" opacity="0.7"/>
+                            <rect x="14" y="27" width="100" height="6" rx="3" fill="white" opacity="0.4"/>
+                            <rect x="14" y="52" width="182" height="94" rx="5" fill="white" opacity="0.65"/>
+                            <rect x="22" y="60" width="86" height="78" rx="4" fill="#C7D2FE" opacity="0.65"/>
+                            <rect x="118" y="60" width="68" height="37" rx="4" fill="#E0E7FF" opacity="0.8"/>
+                            <rect x="118" y="103" width="68" height="37" rx="4" fill="#E0E7FF" opacity="0.8"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">product_lifestyle.jpg</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-template)"></div><span style="color:var(--app-template)">Tmpl Builder</span></div>
+                            <span class="tile-dims">336×280</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ── MAY 12 ── -->
+        <section class="gallery-section">
+            <div class="section-header">
+                <span class="section-label">May 12</span>
+                <span class="section-count">3 outputs</span>
+                <div class="section-rule"></div>
+            </div>
+            <div class="gallery-grid">
+
+                <!-- Tile: Resize Image / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#F0FDF4"/>
+                            <rect width="210" height="80" fill="#059669" opacity="0.07"/>
+                            <rect x="18" y="16" width="174" height="10" rx="5" fill="#059669" opacity="0.28"/>
+                            <rect x="28" y="36" width="154" height="100" rx="5" fill="#D1FAE5" opacity="0.75"/>
+                            <circle cx="105" cy="86" r="34" fill="#6EE7B7" opacity="0.45"/>
+                            <circle cx="105" cy="86" r="16" fill="#059669" opacity="0.28"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">spring_collection.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-outpaint)"></div><span style="color:var(--app-outpaint)">Resize Image</span></div>
+                            <span class="tile-dims">1200×628</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile: Resize Image / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#F0FDF4"/>
+                            <rect width="210" height="158" fill="#059669" opacity="0.04"/>
+                            <rect x="58" y="14" width="94" height="9" rx="4.5" fill="#059669" opacity="0.28"/>
+                            <rect x="40" y="34" width="130" height="104" rx="5" fill="#D1FAE5" opacity="0.7"/>
+                            <rect x="52" y="46" width="106" height="80" rx="4" fill="#6EE7B7" opacity="0.38"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">spring_collection.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-outpaint)"></div><span style="color:var(--app-outpaint)">Resize Image</span></div>
+                            <span class="tile-dims">320×480</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tile: Template Builder / completed -->
+                <div class="tile" role="button" tabindex="0" onclick="openLightbox()" onkeydown="if(event.key==='Enter')openLightbox()">
+                    <div class="tile-thumb">
+                        <svg viewBox="0 0 210 158" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                            <rect width="210" height="158" fill="#EEF2FF"/>
+                            <rect width="210" height="52" fill="#4F46E5" opacity="0.18"/>
+                            <rect x="14" y="14" width="148" height="10" rx="5" fill="white" opacity="0.68"/>
+                            <rect x="14" y="30" width="104" height="7" rx="3.5" fill="white" opacity="0.38"/>
+                            <rect x="14" y="62" width="182" height="82" rx="5" fill="white" opacity="0.6"/>
+                            <rect x="22" y="70" width="166" height="66" rx="4" fill="#C7D2FE" opacity="0.55"/>
+                            <rect x="32" y="80" width="60" height="46" rx="3" fill="#4F46E5" opacity="0.18"/>
+                            <rect x="102" y="80" width="76" height="20" rx="3" fill="#4F46E5" opacity="0.14"/>
+                            <rect x="102" y="106" width="76" height="14" rx="3" fill="#4F46E5" opacity="0.1"/>
+                        </svg>
+                        <div class="tile-overlay">
+                            <button class="overlay-btn" aria-label="Preview"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><ellipse cx="8" cy="8" rx="6" ry="4"/><circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                            <button class="overlay-btn" aria-label="Download"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M8 3v7m-3-3 3 3 3-3"/><path d="M3 13h10"/></svg></button>
+                        </div>
+                        <span class="status-badge badge-done"><span class="status-dot"></span>Done</span>
+                    </div>
+                    <div class="tile-meta">
+                        <div class="tile-source">store_banner.png</div>
+                        <div class="tile-bottom">
+                            <div class="app-badge"><div class="app-dot" style="background:var(--app-template)"></div><span style="color:var(--app-template)">Tmpl Builder</span></div>
+                            <span class="tile-dims">300×600</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<!-- ── LIGHTBOX ── -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Creative preview" onclick="closeLightboxOnBackdrop(event)">
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-panel">
+        <div class="lightbox-image-area">
+            <!-- Portrait creative mockup -->
+            <svg viewBox="0 0 360 560" width="300" height="466" style="max-width:100%;max-height:calc(100% - 32px)">
+                <rect width="360" height="560" fill="#12152B"/>
+                <rect width="360" height="210" fill="#C9A96E" opacity="0.17"/>
+                <circle cx="300" cy="100" r="130" fill="#C9A96E" opacity="0.06"/>
+                <rect x="36" y="72" width="220" height="16" rx="8" fill="white" opacity="0.65"/>
+                <rect x="36" y="97" width="155" height="10" rx="5" fill="white" opacity="0.35"/>
+                <rect x="36" y="116" width="110" height="10" rx="5" fill="white" opacity="0.2"/>
+                <rect x="36" y="230" width="288" height="210" rx="8" fill="#1E2240"/>
+                <rect x="50" y="244" width="260" height="182" rx="6" fill="#272C4A"/>
+                <rect x="36" y="460" width="175" height="14" rx="5" fill="#C9A96E" opacity="0.6"/>
+                <rect x="250" y="456" width="94" height="24" rx="5" fill="#C9A96E" opacity="0.88"/>
+                <rect x="260" y="463" width="74" height="10" rx="3" fill="white" opacity="0.9"/>
+            </svg>
+            <button class="lb-nav prev" aria-label="Previous" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M9 2L4 7l5 5"/></svg>
+            </button>
+            <button class="lb-nav next" aria-label="Next" onclick="event.stopPropagation()">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M5 2l5 5-5 5"/></svg>
+            </button>
+            <div class="lb-counter" id="lb-counter">1 of 4 &middot; Today</div>
+            <!-- Compare toggle -->
+            <button class="lb-compare-btn" id="lb-compare-btn" onclick="toggleCompare(event)" type="button">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 1v12M1 4h5M8 4h5M1 10h5M8 10h5"/></svg>
+                Compare to source
+            </button>
+        </div>
+
+        <!-- Compare split-view (hidden until toggled) -->
+        <div class="compare-area" id="compare-area" onclick="event.stopPropagation()">
+            <div class="compare-pane">
+                <span class="compare-label">Source</span>
+                <svg viewBox="0 0 240 200" width="200" style="max-width:90%;max-height:calc(100% - 48px)">
+                    <rect width="240" height="200" fill="#F5F0EB"/>
+                    <rect width="240" height="200" fill="url(#src1)" opacity="0.5"/>
+                    <defs><linearGradient id="src1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#C9A96E"/><stop offset="1" stop-color="#F5F0EB"/></linearGradient></defs>
+                    <rect x="20" y="30" width="200" height="140" rx="6" fill="white" opacity="0.6"/>
+                    <rect x="32" y="48" width="176" height="12" rx="6" fill="#7A5C38" opacity="0.4"/>
+                    <rect x="50" y="68" width="140" height="8" rx="4" fill="#7A5C38" opacity="0.24"/>
+                    <circle cx="120" cy="130" r="28" fill="#C9A96E" opacity="0.35"/>
+                    <rect x="88" y="118" width="64" height="24" rx="4" fill="#12152B" opacity="0.7"/>
+                    <rect x="94" y="126" width="52" height="8" rx="2" fill="white" opacity="0.88"/>
+                </svg>
+            </div>
+            <div class="compare-pane">
+                <span class="compare-label">Version 3 (latest)</span>
+                <svg viewBox="0 0 360 560" width="130" style="max-width:90%;max-height:calc(100% - 48px)">
+                    <rect width="360" height="560" fill="#12152B"/>
+                    <rect width="360" height="210" fill="#C9A96E" opacity="0.17"/>
+                    <circle cx="300" cy="100" r="130" fill="#C9A96E" opacity="0.06"/>
+                    <rect x="36" y="72" width="220" height="16" rx="8" fill="white" opacity="0.65"/>
+                    <rect x="36" y="97" width="155" height="10" rx="5" fill="white" opacity="0.35"/>
+                    <rect x="36" y="230" width="288" height="210" rx="8" fill="#1E2240"/>
+                    <rect x="50" y="244" width="260" height="182" rx="6" fill="#272C4A"/>
+                    <rect x="36" y="460" width="175" height="14" rx="5" fill="#C9A96E" opacity="0.6"/>
+                    <rect x="250" y="456" width="94" height="24" rx="5" fill="#C9A96E" opacity="0.88"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="lightbox-detail">
+            <!-- Version strip — shown for tiles that have versions -->
+            <div class="lb-version-strip" id="lb-version-strip">
+                <div class="lb-version-strip-label">Versions</div>
+                <div class="lb-version-row">
+                    <!-- Source -->
+                    <div class="lb-version-item">
+                        <div class="lb-version-thumb" onclick="selectVersion(0)" title="Source image">
+                            <svg viewBox="0 0 48 36" preserveAspectRatio="xMidYMid slice">
+                                <rect width="48" height="36" fill="#F5F0EB"/>
+                                <rect width="48" height="36" fill="#C9A96E" opacity="0.25"/>
+                                <rect x="6" y="8" width="36" height="20" rx="2" fill="white" opacity="0.7"/>
+                                <rect x="10" y="12" width="28" height="4" rx="2" fill="#7A5C38" opacity="0.4"/>
+                            </svg>
+                        </div>
+                        <div class="lb-version-label">Source</div>
+                    </div>
+                    <!-- v1 -->
+                    <div class="lb-version-item">
+                        <div class="lb-version-thumb" onclick="selectVersion(1)" title="Version 1">
+                            <svg viewBox="0 0 48 36" preserveAspectRatio="xMidYMid slice">
+                                <rect width="48" height="36" fill="#12152B"/>
+                                <rect width="48" height="14" fill="#C9A96E" opacity="0.2"/>
+                                <rect x="4" y="5" width="26" height="3" rx="1.5" fill="white" opacity="0.55"/>
+                                <rect x="4" y="10" width="19" height="2" rx="1" fill="white" opacity="0.3"/>
+                                <rect x="4" y="22" width="40" height="10" rx="2" fill="#1E2240"/>
+                            </svg>
+                        </div>
+                        <div class="lb-version-label">v1</div>
+                    </div>
+                    <!-- v2 -->
+                    <div class="lb-version-item">
+                        <div class="lb-version-thumb" onclick="selectVersion(2)" title="Version 2">
+                            <svg viewBox="0 0 48 36" preserveAspectRatio="xMidYMid slice">
+                                <rect width="48" height="36" fill="#10142A"/>
+                                <rect width="48" height="18" fill="#C9A96E" opacity="0.14"/>
+                                <rect x="4" y="4" width="22" height="3" rx="1.5" fill="white" opacity="0.55"/>
+                                <rect x="4" y="9" width="16" height="2" rx="1" fill="white" opacity="0.28"/>
+                                <rect x="4" y="24" width="28" height="8" rx="2" fill="#C9A96E" opacity="0.8"/>
+                            </svg>
+                        </div>
+                        <div class="lb-version-label">v2</div>
+                    </div>
+                    <!-- v3 — active (latest) -->
+                    <div class="lb-version-item active">
+                        <div class="lb-version-thumb active" onclick="selectVersion(3)" title="Version 3 (latest)">
+                            <svg viewBox="0 0 48 36" preserveAspectRatio="xMidYMid slice">
+                                <rect width="48" height="36" fill="#12152B"/>
+                                <rect width="48" height="15" fill="#C9A96E" opacity="0.18"/>
+                                <rect x="4" y="4" width="24" height="3" rx="1.5" fill="white" opacity="0.65"/>
+                                <rect x="4" y="9" width="17" height="2" rx="1" fill="white" opacity="0.35"/>
+                                <rect x="4" y="20" width="40" height="12" rx="2" fill="#1E2240"/>
+                                <rect x="8" y="23" width="32" height="6" rx="1.5" fill="#2A2F50"/>
+                            </svg>
+                        </div>
+                        <div class="lb-version-label">v3 (latest)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lb-detail-top">
+                <div class="lb-source-eyebrow">Source creative</div>
+                <div class="lb-source-name">campaign_summer_hero.png</div>
+            </div>
+            <div class="lb-detail-body">
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Generated by</div>
+                    <div class="detail-val" style="display:flex;align-items:center;gap:6px">
+                        <span style="width:8px;height:8px;border-radius:50%;background:var(--app-resize);display:inline-block;flex-shrink:0"></span>
+                        Ad Resizing
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Dimensions</div>
+                    <div class="detail-val" id="lb-dims">1080 &times; 1920 px</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Generated</div>
+                    <div class="detail-val" id="lb-date">May 15, 2026 &middot; 10:42 AM</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Version</div>
+                    <div class="detail-val" id="lb-version-label" style="display:flex;align-items:center;gap:8px">
+                        <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#E6F7FF;color:#114DBB;border-radius:6px;font-size:11px;font-weight:500">v3 of 3</span>
+                        <span style="font-size:12px;color:var(--text-muted)">latest</span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Status</div>
+                    <div class="detail-val status-ok">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#27750C;display:inline-block"></span>
+                        Completed
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-eyebrow">Batch</div>
+                    <div class="detail-val mono">batch_4f3a9c</div>
+                </div>
+            </div>
+            <div class="lb-actions">
+                <button class="btn-primary" type="button">
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M7 2v8m-3-3 3 3 3-3"/><path d="M2 12h10"/></svg>
+                    Download PNG
+                </button>
+                <button class="btn-ghost" type="button">
+                    Open in Ad Resizing
+                    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12"><path d="M3 7h8m-3-3 3 3-3 3"/></svg>
+                </button>
+            </div>
+        </div>
+        <button class="lb-close" onclick="closeLightbox()" aria-label="Close preview">&times;</button>
+    </div>
+</div>
+
+<script>
+    // versionCount: how many versions this creative has (0 = no version strip)
+    function openLightbox(versionCount) {
+        const lb = document.getElementById('lightbox');
+        const strip = document.getElementById('lb-version-strip');
+        const compareBtn = document.getElementById('lb-compare-btn');
+        const compareArea = document.getElementById('compare-area');
+
+        // Reset compare mode
+        compareArea.classList.remove('active');
+        document.querySelector('.lightbox-image-area').style.display = 'flex';
+
+        // Show/hide version strip
+        strip.style.display = (versionCount > 0) ? 'block' : 'none';
+        compareBtn.style.display = (versionCount > 0) ? 'flex' : 'none';
+
+        lb.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        lb.querySelector('.lb-close').focus();
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function selectVersion(v) {
+        // Update active thumb
+        document.querySelectorAll('.lb-version-thumb').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.lb-version-item').forEach(t => t.classList.remove('active'));
+        const thumbs = document.querySelectorAll('.lb-version-thumb');
+        const items = document.querySelectorAll('.lb-version-item');
+        if (thumbs[v]) thumbs[v].classList.add('active');
+        if (items[v]) items[v].classList.add('active');
+
+        // Update version label in metadata
+        const label = document.getElementById('lb-version-label');
+        if (v === 0) {
+            label.innerHTML = '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#EEF1F7;color:#42485C;border-radius:6px;font-size:11px;font-weight:500">Source</span>';
+        } else {
+            const isLatest = v === 3;
+            label.innerHTML = '<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#E6F7FF;color:#114DBB;border-radius:6px;font-size:11px;font-weight:500">v' + v + ' of 3</span>' + (isLatest ? '<span style="font-size:12px;color:var(--text-muted)">latest</span>' : '');
+        }
+    }
+
+    function toggleCompare(e) {
+        e.stopPropagation();
+        const imageArea = document.querySelector('.lightbox-image-area');
+        const compareArea = document.getElementById('compare-area');
+        const btn = document.getElementById('lb-compare-btn');
+        const isComparing = compareArea.classList.contains('active');
+
+        if (isComparing) {
+            compareArea.classList.remove('active');
+            imageArea.style.display = 'flex';
+            btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 1v12M1 4h5M8 4h5M1 10h5M8 10h5"/></svg> Compare to source';
+        } else {
+            compareArea.classList.add('active');
+            imageArea.style.display = 'none';
+            btn.innerHTML = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" width="11" height="11"><path d="M7 1v12M1 4h5M8 4h5M1 10h5M8 10h5"/></svg> Exit compare';
+        }
+    }
+
+    function closeLightboxOnBackdrop(e) {
+        if (e.target === document.getElementById('lightbox') ||
+            e.target.classList.contains('lightbox-backdrop')) {
+            closeLightbox();
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
+</script>
+
+</body>
+</html>
