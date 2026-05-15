@@ -7,6 +7,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['@agencypmg/alli-design-system'],
+  },
   server: {
     proxy: {
       '/api': {

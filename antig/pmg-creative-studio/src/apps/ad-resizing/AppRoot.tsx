@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, ArrowUpTrayIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { Button } from '@agencypmg/alli-design-system';
 import { cn } from '../../utils/cn';
 import { newId } from '../../utils/ids';
 import { getDeduplicatedDimensions } from './data/channels';
@@ -541,14 +542,13 @@ export default function AdResizingAppRoot() {
           onStepClick={handleStepClick}
         />
         {stage === 'results' && !navConfirmPending && (
-          <button
-            type="button"
+          <Button
+            variant="text"
+            icon={<ArrowLeftIcon className="alli-h-3.5 alli-w-3.5" />}
             onClick={() => handleStepClick('browse')}
-            className="flex items-center gap-1 text-[13px] font-medium text-[#4B5675] hover:text-[#1A1F2E]"
           >
-            <ArrowLeftIcon className="h-3.5 w-3.5" />
             Back to Browse
-          </button>
+          </Button>
         )}
       </div>
       {navConfirmPending && (

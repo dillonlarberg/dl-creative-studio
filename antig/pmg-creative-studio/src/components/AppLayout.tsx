@@ -12,11 +12,11 @@ import {
     QuestionMarkCircleIcon,
     BellIcon,
     ChevronRightIcon,
-    PresentationChartBarIcon,
-    CircleStackIcon,
+    Squares2X2Icon,
+    ChartBarIcon,
     ClipboardDocumentListIcon,
     BoltIcon,
-    UserIcon,
+    UsersIcon,
     ShoppingBagIcon,
     PhotoIcon,
 } from '@heroicons/react/24/outline';
@@ -75,11 +75,11 @@ type NavItem = {
 };
 
 const PRIMARY_NAV: NavItem[] = [
-    { name: 'Dashboards', icon: PresentationChartBarIcon, disabled: true },
-    { name: 'Data', icon: CircleStackIcon, disabled: true },
+    { name: 'Dashboards', icon: Squares2X2Icon, disabled: true },
+    { name: 'Data', icon: ChartBarIcon, disabled: true },
     { name: 'Strategy & Planning', icon: ClipboardDocumentListIcon, disabled: true },
     { name: 'Actions', icon: BoltIcon, disabled: true },
-    { name: 'Audiences', icon: UserIcon, disabled: true },
+    { name: 'Audiences', icon: UsersIcon, disabled: true },
     { name: 'Creative', icon: PhotoIcon, children: [{ name: 'AdLabs', href: '/adlabs/', matchPrefix: true }] },
     { name: 'Products', icon: ShoppingBagIcon, disabled: true },
 ];
@@ -254,9 +254,9 @@ export default function AppLayout() {
     });
 
     return (
-        <div className="brand-gradient min-h-screen bg-white">
+        <div className="min-h-screen" style={{ backgroundColor: '#EEF1F7' }}>
             {/* Persistent platform header banner */}
-            <header className="fixed inset-x-0 top-0 z-30 flex h-[60px] items-center border-b border-gray-200 bg-white pr-6">
+            <header className="fixed inset-x-0 top-0 z-30 flex h-[60px] items-center overflow-hidden border-b border-gray-200 bg-white">
                 {/* DEV ribbon — top-left corner diagonal banner */}
                 {import.meta.env.DEV && (
                     <span
@@ -267,14 +267,14 @@ export default function AppLayout() {
                     </span>
                 )}
 
-                {/* Logo slot — left-padded, no width cap; sidebar border-r bisects the logo naturally */}
-                <div className="flex h-[60px] shrink-0 items-center pl-8 pr-5">
-                    <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-[23px] w-auto" />
+                {/* Logo slot — centered in collapsed sidebar width */}
+                <div className="flex h-[60px] w-28 shrink-0 items-center justify-center">
+                    <img src="/PMG_Alli_AllBlack_Logo.png" alt="alli" className="h-[22px] w-auto" />
                 </div>
-                <div className="h-8 w-px bg-gray-200" />
+                <div className="h-7 w-px bg-gray-200" />
 
                 {/* Client name + change */}
-                <div className="ml-8 flex items-center gap-3">
+                <div className="ml-6 flex items-center gap-3">
                     <span className="text-[13px] font-medium text-gray-900">
                         {selectedClient?.name || '...'}
                     </span>
@@ -288,15 +288,15 @@ export default function AppLayout() {
                 </div>
 
                 {/* Right cluster */}
-                <div className="ml-auto flex items-center gap-2">
-                    <button type="button" aria-label="Help" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-50 hover:text-gray-700">
+                <div className="ml-auto flex items-center gap-1 pr-6">
+                    <button type="button" aria-label="Help" className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
                         <QuestionMarkCircleIcon className="h-5 w-5" />
                     </button>
-                    <button type="button" aria-label="Notifications" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-50 hover:text-gray-700">
+                    <button type="button" aria-label="Notifications" className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
                         <BellIcon className="h-5 w-5" />
                     </button>
                     <Menu as="div" className="relative">
-                        <MenuButton className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-[13px] font-medium text-white">
+                        <MenuButton className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-[12px] font-semibold text-white">
                             {userInitials || '...'}
                         </MenuButton>
                         <Transition
@@ -323,7 +323,7 @@ export default function AppLayout() {
                                                 focus ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
                                             )}
                                         >
-                                            <PresentationChartBarIcon className="h-4 w-4 text-gray-400" />
+                                            <Squares2X2Icon className="h-4 w-4 text-gray-400" />
                                             Switch client
                                             {selectedClient?.name && <span className="ml-auto truncate text-xs text-gray-400">{selectedClient.name}</span>}
                                         </button>
@@ -355,7 +355,7 @@ export default function AppLayout() {
 
             {/* Sidebar rail — full height (behind header), icon-only by default, hover-expands to show labels */}
             <aside
-                className="group fixed inset-y-0 left-0 z-20 flex w-14 flex-col items-stretch overflow-hidden border-r border-gray-200 bg-white transition-[width] duration-200 ease-out hover:w-[264px]"
+                className="group fixed inset-y-0 left-0 z-20 flex w-16 flex-col items-stretch overflow-hidden border-r border-gray-200 transition-[width] duration-200 ease-out hover:w-[256px]" style={{ backgroundColor: '#F4F7FC' }}
                 aria-label="Primary navigation"
             >
                 <nav className="flex-1 overflow-y-auto pt-[60px] pb-2">
@@ -380,7 +380,7 @@ export default function AppLayout() {
             </aside>
 
             {/* Main */}
-            <main className="ml-14 pt-[60px]">
+            <main className="ml-16 pt-[60px]" style={{ backgroundColor: '#EEF1F7' }}>
                 <div className="relative min-h-[calc(100vh-60px)]">
                     <div className="relative mx-auto max-w-[1440px] px-9 pt-8 pb-10">
                         <Outlet />
@@ -506,14 +506,14 @@ function RailItem({ item, active }: { item: NavItem; active: boolean }) {
     const hasChildren = !!item.children?.length;
 
     // Row — no horizontal padding; icon slot and pr-3 handle all spacing
-    const base = 'flex h-11 w-full items-center text-left transition-colors duration-150';
-    const idle = 'font-normal text-blue-gray-600 hover:bg-blue-gray-50';
+    const base = 'flex h-10 w-full items-center text-left transition-colors duration-150';
+    const idle = 'font-normal text-blue-gray-700 hover:bg-blue-gray-50';
     const disabledCls = 'cursor-not-allowed font-normal text-blue-gray-300';
-    const activeCls = 'bg-blue-gray-50 font-medium text-blue-gray-800';
+    const activeCls = 'bg-blue-gray-50 font-semibold text-blue-gray-900';
 
-    // Icon always centered inside the 56px slot = centered in the collapsed rail
-    const iconSlot = 'flex w-14 shrink-0 items-center justify-center';
-    const iconCls = 'h-[18px] w-[18px] shrink-0 text-blue-gray-400';
+    // Icon always centered inside the 64px slot = centered in the collapsed rail
+    const iconSlot = 'flex w-16 shrink-0 items-center justify-center';
+    const iconCls = cn('h-[20px] w-[20px] shrink-0', active ? 'text-blue-600' : 'text-blue-gray-500');
 
     const labelCls = 'flex-1 truncate text-[13px] opacity-0 transition-opacity duration-150 group-hover:opacity-100';
     const chevronCls = 'mr-3 h-3.5 w-3.5 shrink-0 text-blue-gray-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100';
@@ -551,17 +551,17 @@ function RailItem({ item, active }: { item: NavItem; active: boolean }) {
                             return (
                                 <li key={child.name}>
                                     {child.disabled ? (
-                                        <span className="flex h-9 w-full cursor-not-allowed items-center pl-20 pr-3 text-[13px] text-blue-gray-300">
+                                        <span className="flex h-9 w-full cursor-not-allowed items-center pl-16 pr-3 text-[13px] text-blue-gray-300">
                                             {child.name}
                                         </span>
                                     ) : (
                                         <Link
                                             to={child.href}
                                             className={cn(
-                                                'flex h-9 w-full items-center pl-20 pr-3 text-[13px] font-normal transition-colors duration-150',
+                                                'flex h-9 w-full items-center pl-16 pr-3 text-[13px] font-normal transition-colors duration-150',
                                                 isChildActive
-                                                    ? 'bg-blue-gray-50 text-blue-gray-800 font-medium'
-                                                    : 'text-blue-gray-500 hover:bg-blue-gray-50 hover:text-blue-gray-700'
+                                                    ? 'bg-blue-gray-50 font-semibold text-blue-600'
+                                                    : 'text-blue-gray-600 hover:bg-blue-gray-50 hover:text-blue-gray-800'
                                             )}
                                         >
                                             {child.name}

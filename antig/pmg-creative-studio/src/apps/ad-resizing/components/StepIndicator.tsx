@@ -1,3 +1,4 @@
+import { CheckIcon } from '@heroicons/react/24/solid';
 import { cn } from '../../../utils/cn';
 
 export type StepId = 'browse' | 'results' | 'download';
@@ -15,44 +16,77 @@ interface StepIndicatorProps {
   onStepClick?: (step: StepId) => void;
 }
 
-export default function StepIndicator({ activeStep, resultsDone, browseDone, onStepClick }: StepIndicatorProps) {
+function getStatus(
+  id: StepId,
+  activeStep: StepId,
+  browseDone: boolean,
+  resultsDone: boolean,
+): 'complete' | 'current' | 'upcoming' {
+  if (id === 'browse') return browseDone ? 'complete' : activeStep === 'browse' ? 'current' : 'upcoming';
+  if (id === 'results') return resultsDone ? 'complete' : activeStep === 'results' ? 'current' : 'upcoming';
+  return activeStep === 'download' ? 'current' : 'upcoming';
+}
+
+export default function StepIndicator({
+  activeStep,
+  resultsDone,
+  browseDone,
+  onStepClick,
+}: StepIndicatorProps) {
   return (
-    <div className="flex items-center gap-0">
+    <div className="flex items-center">
       {STEPS.map((step, i) => {
-        const isDone =
-          (step.id === 'browse' && browseDone) ||
-          (step.id === 'results' && resultsDone);
-        const isActive = step.id === activeStep;
-        const isLast = i === STEPS.length - 1;
-        const isClickable = isDone && !!onStepClick;
+        const status = getStatus(step.id, activeStep, browseDone, resultsDone);
+        const clickable = status === 'complete' && !!onStepClick;
 
         const circle = (
-          <div className={cn(
-            'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors',
-            isDone ? 'bg-green-500 text-white' : isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400',
-          )}>
-            {isDone ? '✓' : i + 1}
+          <div
+            className={cn(
+              'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full',
+              status === 'upcoming'
+                ? 'border border-gray-300 bg-white'
+                : 'bg-blue-600',
+            )}
+          >
+            {status === 'complete' ? (
+              <CheckIcon className="h-2.5 w-2.5 text-white" />
+            ) : (
+              <span
+                className={cn(
+                  'text-[10px] font-bold leading-none',
+                  status === 'upcoming' ? 'text-gray-400' : 'text-white',
+                )}
+              >
+                {i + 1}
+              </span>
+            )}
           </div>
         );
 
         const label = (
-          <span className={cn(
-            'text-[12px] font-medium transition-colors',
-            isDone ? 'text-green-600' : isActive ? 'text-blue-600' : 'text-gray-400',
-            isClickable && 'group-hover:underline group-hover:underline-offset-2',
-          )}>
+          <span
+            className={cn(
+              'text-[12px] font-medium leading-none',
+              status === 'upcoming'
+                ? 'text-gray-400'
+                : status === 'current'
+                  ? 'text-gray-900'
+                  : 'text-gray-600',
+              clickable && 'group-hover:text-blue-600',
+            )}
+          >
             {step.label}
           </span>
         );
 
         return (
           <div key={step.id} className="flex items-center">
-            {isClickable ? (
+            {clickable ? (
               <button
                 type="button"
-                onClick={() => onStepClick!(step.id)}
-                title={`Go back to ${step.label}`}
-                className="group flex items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+                onClick={() => onStepClick(step.id)}
+                title={`Back to ${step.label}`}
+                className="group flex items-center gap-1.5"
               >
                 {circle}
                 {label}
@@ -63,11 +97,8 @@ export default function StepIndicator({ activeStep, resultsDone, browseDone, onS
                 {label}
               </div>
             )}
-            {!isLast && (
-              <div className={cn(
-                'mx-3 h-px w-10 transition-colors',
-                isDone ? 'bg-green-300' : 'bg-gray-200',
-              )} />
+            {i < STEPS.length - 1 && (
+              <div className="mx-3 h-px w-6 bg-gray-200" />
             )}
           </div>
         );
