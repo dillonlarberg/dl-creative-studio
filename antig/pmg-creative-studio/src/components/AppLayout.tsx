@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
 import { Input as AlliInputBase } from '@agencypmg/alli-design-system';
 import {
-    ArrowRightStartOnRectangleIcon,
     XMarkIcon,
     MagnifyingGlassIcon,
     ArrowPathIcon,
@@ -326,15 +325,26 @@ export default function AppLayout() {
                                     {({ focus }) => (
                                         <button
                                             type="button"
-                                            onClick={() => setIsDrawerOpen(true)}
                                             className={cn(
-                                                'flex w-full items-center gap-2 px-4 py-2 text-left text-sm',
+                                                'flex w-full items-center px-4 py-2 text-left text-sm',
                                                 focus ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
                                             )}
                                         >
-                                            <Squares2X2Icon className="h-4 w-4 text-gray-400" />
-                                            Switch client
-                                            {selectedClient?.name && <span className="ml-auto truncate text-xs text-gray-400">{selectedClient.name}</span>}
+                                            Profile
+                                        </button>
+                                    )}
+                                </MenuItem>
+                                <MenuItem>
+                                    {({ focus }) => (
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsDrawerOpen(true)}
+                                            className={cn(
+                                                'flex w-full items-center px-4 py-2 text-left text-sm',
+                                                focus ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
+                                            )}
+                                        >
+                                            Manage Client
                                         </button>
                                     )}
                                 </MenuItem>
@@ -347,12 +357,12 @@ export default function AppLayout() {
                                                 navigate('/login');
                                             }}
                                             className={cn(
-                                                'flex w-full items-center gap-2 px-4 py-2 text-left text-sm',
-                                                focus ? 'bg-gray-50 text-gray-900' : 'text-gray-700'
+                                                'flex w-full items-center px-4 py-2 text-left text-sm',
+                                                focus ? 'bg-red-50' : '',
+                                                'text-red-600'
                                             )}
                                         >
-                                            <ArrowRightStartOnRectangleIcon className="h-4 w-4 text-gray-400" />
-                                            Log out
+                                            Sign Out
                                         </button>
                                     )}
                                 </MenuItem>
