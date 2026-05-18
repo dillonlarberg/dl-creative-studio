@@ -88,6 +88,31 @@ export class AuthService {
         // or use the Firebase ID token if the API supports it (but Alli usually wants the provider token)
         return sessionStorage.getItem('alli_access_token');
     }
+
+    /**
+     * Returns the Alli user identifier (OIDC `sub` claim) for the signed-in
+     * user, suitable for use as `createdBy` on generated artifacts.
+     *
+     * Returns null when no user is signed in. THROWS when a user is signed in
+     * but the `oidc.alli` provider data is missing — the only legitimate caller
+     * path is post-OIDC-sign-in, so missing provider data indicates a real bug
+     * (e.g. someone created a Firebase user without going through Alli). Throwing
+     * prevents silently mis-attributing generations to the Firebase UID.
+     *
+     * See plan §self-review P1#4: "Implementation should switch to `throw` if
+     * oidc.alli provider data is missing; the only legit caller path has it."
+     */
+    getAlliUserId(): string | null {
+        const user = auth.currentUser;
+        if (!user) return null;
+        const oidc = user.providerData.find(p => p.providerId === 'oidc.alli');
+        if (oidc?.uid) return oidc.uid;
+        throw new Error(
+            '[auth] getAlliUserId: signed-in user has no oidc.alli provider data. ' +
+            'createdBy attribution would be wrong; refusing to fall back to Firebase UID. ' +
+            'Ensure the sign-in flow completed via the Alli OIDC provider.'
+        );
+    }
 }
 
 export const authService = AuthService.getInstance();
