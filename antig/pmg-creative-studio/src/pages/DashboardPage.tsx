@@ -122,27 +122,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4" data-testid="adlabs-dashboard">
-      {/* Brand-standards warning banner — preserves CreatePage UX */}
-      {!loading && !isReady && !error && (
-        <div
-          role="alert"
-          data-testid="brand-standards-warning"
-          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
-        >
-          <ExclamationTriangleIcon className="h-5 w-5 shrink-0 text-amber-600" />
-          <div>
-            <p className="font-medium">Brand standards required</p>
-            <p className="mt-0.5">
-              Set up brand standards in{' '}
-              <Link to="/client-asset-house" className="font-medium underline">
-                Client Asset House
-              </Link>{' '}
-              to unlock the gated apps below.
-            </p>
-          </div>
-        </div>
-      )}
-
       {error && (
         <div
           role="alert"
@@ -335,9 +314,20 @@ function AppCard({ manifest, href, disabled }: AppCardProps) {
             ))}
           </div>
         )}
-        <p className="mt-auto pt-3 text-[11px] font-medium text-amber-600">
-          Brand standards required
-        </p>
+        <div className="mt-auto flex items-start gap-1.5 pt-3">
+          <ExclamationTriangleIcon className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <p className="text-[11px] leading-snug text-amber-700">
+            Brand standards required.{' '}
+            <Link
+              to="/client-asset-house"
+              className="font-medium underline underline-offset-2 hover:text-amber-900"
+              onClick={e => e.stopPropagation()}
+            >
+              Set up in Client Asset House
+            </Link>{' '}
+            to unlock.
+          </p>
+        </div>
       </div>
     );
   }
