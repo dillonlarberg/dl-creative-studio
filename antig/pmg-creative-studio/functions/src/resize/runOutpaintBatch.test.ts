@@ -112,7 +112,7 @@ import {
 import {
   validateInput,
   runOutpaintBatchCore,
-  type RunOutpaintBatchInput,
+  type RunOutpaintBatchExecution,
 } from "./runOutpaintBatch";
 
 const mockedPhase1 = runPhase1Once as unknown as ReturnType<typeof vi.fn>;
@@ -132,13 +132,19 @@ const SAMPLE_P1 = {
   extensionDirective: "extend outward",
 };
 
-function validInput(overrides: Partial<RunOutpaintBatchInput> = {}): RunOutpaintBatchInput {
+function validInput(
+  overrides: Partial<RunOutpaintBatchExecution> = {},
+): RunOutpaintBatchExecution {
   return {
     clientSlug: "acme",
     batchId: "batch-1",
     creativeId: "creative-1",
     originalUrl: "https://cdn.example.com/x.jpg",
     creativeName: "Hero ad",
+    // createdBy is server-derived in production (from getAlliUserIdFromAuth);
+    // tests inject a stable value here since runOutpaintBatchCore takes the
+    // augmented execution shape, not the public callable input.
+    createdBy: "alli-user-test",
     outputs: [
       { outputId: "o1", dimension: { width: 1080, height: 1080, channel: "Social", label: "social-1x1" } },
     ],
@@ -304,6 +310,44 @@ describe("runOutpaintBatchCore — happy path", () => {
 
     expect(firestoreState.docs.get("clients/acme/apps/ad-resizing/outputs/o1")?.status).toBe("complete");
     expect(firestoreState.docs.get("clients/acme/apps/ad-resizing/outputs/o2")?.status).toBe("complete");
+  });
+
+  it("seeds pending outputs with parity fields (clientSlug, appId, createdBy, kind, format)", async () => {
+    setStagedSource();
+    setHappyP1();
+    setHappyP2();
+    mockedUpload.mockResolvedValueOnce("clients/acme/apps/ad-resizing/outputs/o1.png");
+
+    await runOutpaintBatchCore(validInput());
+
+    const doc = firestoreState.docs.get("clients/acme/apps/ad-resizing/outputs/o1");
+    expect(doc?.clientSlug).toBe("acme");
+    expect(doc?.appId).toBe("ad-resizing");
+    expect(doc?.createdBy).toBe("alli-user-test");
+    expect(doc?.kind).toBe("image");
+    expect(doc?.format).toEqual({ width: 1080, height: 1080, label: "social-1x1" });
+    // The legacy `dimension` field is preserved via the sidecar merge in
+    // seedPendingOutputs so existing readers keep working. Drop in Task 10.
+    expect(doc?.dimension).toEqual({ width: 1080, height: 1080, channel: "Social", label: "social-1x1" });
+  });
+
+  it("completion via updateOutput does NOT overwrite createdAt (P0 invariant)", async () => {
+    setStagedSource();
+    setHappyP1();
+    setHappyP2();
+    mockedUpload.mockResolvedValueOnce("clients/acme/apps/ad-resizing/outputs/o1.png");
+
+    await runOutpaintBatchCore(validInput());
+
+    const doc = firestoreState.docs.get("clients/acme/apps/ad-resizing/outputs/o1");
+    expect(doc?.status).toBe("complete");
+    // createdAt was stamped by createOutput in seedPendingOutputs and not
+    // touched by updateOutput on completion — the mock sentinel survives.
+    expect(doc?.createdAt).toEqual({ __ts__: true });
+    expect(doc?.completedAt).toEqual({ __ts__: true });
+    // Sidecar fields (not in OutputDocSchema, written via direct .set merge).
+    expect(doc?.p1Analysis).toBeDefined();
+    expect(doc?.timings).toBeDefined();
   });
 
   it("threads representativeTargetSpec (first output dims) into P1", async () => {
