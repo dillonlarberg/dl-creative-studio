@@ -354,7 +354,7 @@ export default function FeedConnectScreen({ clientSlug, onConnect, onUploadConne
                     name="search"
                     placeholder="Search feeds…"
                     value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                     leadingIcon={<MagnifyingGlassIcon className="alli-h-4 alli-w-4 alli-text-gray-400" aria-hidden="true" />}
                   />
                 </div>

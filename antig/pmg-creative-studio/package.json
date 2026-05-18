@@ -15,6 +15,7 @@
     "test:rules": "vitest run --config vitest.rules.config.ts",
     "test:e2e": "playwright test",
     "test:tracers": "vitest run && playwright test",
+    "preflight": "bash scripts/preflight.sh",
     "import-brand-profiles": "tsx scripts/import-brand-profiles.ts",
     "import-brand-profiles:dry": "tsx scripts/import-brand-profiles.ts --dry-run"
   },

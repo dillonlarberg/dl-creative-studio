@@ -13,6 +13,7 @@ export default defineConfig({
       'src/**/__tests__/**/*.test.{ts,tsx}',
       'functions/src/**/*.test.ts',
       'functions/src/**/__tests__/**/*.test.ts',
+      'tests/compat/**/*.test.{ts,tsx}',
     ],
     exclude: [
       'node_modules',
