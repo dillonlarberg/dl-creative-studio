@@ -25,6 +25,8 @@ import OpenAI from "openai";
 import pLimit from "p-limit";
 
 import { assertAlliStudioUser } from "../_shared/assertAlliStudioUser";
+import { getAlliUserIdFromAuth } from "../_shared/getAlliUserIdFromAuth";
+import { createOutput, updateOutput } from "../_shared/outputs";
 import {
   runPhase1Once,
   runPhase2ForTarget,
@@ -101,6 +103,16 @@ export interface RunOutpaintBatchInput {
   retryPrompt?: string;
   quality?: P2Quality;
 }
+
+/**
+ * Internal execution shape — RunOutpaintBatchInput augmented with the
+ * server-derived createdBy. NOT part of the public callable input: clients
+ * never supply createdBy themselves. The onCall handler extracts it from
+ * request.auth via getAlliUserIdFromAuth and threads it through.
+ */
+export type RunOutpaintBatchExecution = RunOutpaintBatchInput & {
+  createdBy: string;
+};
 
 export interface RunOutpaintBatchResult {
   batchId: string;
@@ -265,24 +277,43 @@ async function upsertBatchProcessing(
 }
 
 async function seedPendingOutputs(
-  input: RunOutpaintBatchInput,
+  input: RunOutpaintBatchExecution,
 ): Promise<void> {
   const db = getFirestore();
-  const batch = db.batch();
-  for (const o of input.outputs) {
-    const ref = db.doc(outputDocPath(input.clientSlug, o.outputId));
-    batch.set(
-      ref,
-      {
+  // Use createOutput (admin helper) so each pending doc carries the full
+  // canonical OutputDoc shape: parity fields (clientSlug, appId, createdBy,
+  // kind, format) on every write, validated against the shared schema.
+  // The dimension object is preserved as a top-level field for backwards-compat
+  // with existing readers; format mirrors the same data in the canonical shape.
+  await Promise.all(
+    input.outputs.map((o) =>
+      createOutput(db, {
         outputId: o.outputId,
         batchId: input.batchId,
-        dimension: o.dimension,
+        clientSlug: input.clientSlug,
+        appId: APP_ID,
+        createdBy: input.createdBy,
         status: "pending",
+        kind: "image",
+        format: {
+          width: o.dimension.width,
+          height: o.dimension.height,
+          label: o.dimension.label ?? `${o.dimension.width}x${o.dimension.height}`,
+        },
         model: "gpt-image-2",
         quality: input.quality ?? "medium",
         prompt: input.retryPrompt ?? null,
-        createdAt: FieldValue.serverTimestamp(),
-      },
+      }),
+    ),
+  );
+  // Preserve the legacy `dimension` field via a per-doc merge so existing
+  // readers (useBatchOutputs at src/apps/ad-resizing/hooks) keep working
+  // until they migrate in Task 9. Drop this merge in the Task 10 cleanup.
+  const batch = db.batch();
+  for (const o of input.outputs) {
+    batch.set(
+      db.doc(outputDocPath(input.clientSlug, o.outputId)),
+      { dimension: o.dimension },
       { merge: true },
     );
   }
@@ -301,7 +332,7 @@ interface RunOneErr {
 }
 
 async function runOne(
-  input: RunOutpaintBatchInput,
+  input: RunOutpaintBatchExecution,
   source: { buffer: Buffer; mime: string; width: number; height: number },
   o: OutputRequest,
   p1: P1Output,
@@ -356,15 +387,23 @@ async function runOne(
       }),
     ]);
 
+    // Canonical update: status + storageRef + provider metadata. Does NOT
+    // touch createdAt (P0 invariant — split create/update via updateOutput).
+    await updateOutput(db, input.clientSlug, APP_ID, o.outputId, {
+      status: "complete",
+      storageRef,
+      model: p2.p2Model,
+      quality: p2.p2Quality,
+    });
+    // Sidecar write for fields outside the OutputDoc schema (p1Analysis,
+    // timings) and the FieldValue.delete() sentinels that clear any prior
+    // error state. updateOutput's UpdateOutputInput type forbids these so we
+    // keep them in a separate merge — they're persistent intermediates the
+    // dashboard reads, not part of the cross-app contract.
     await ref.set(
       {
-        status: "complete",
-        storageRef,
         p1Analysis: p1,
         timings: { p1Ms, p2Ms: p2.p2Ms },
-        model: p2.p2Model,
-        quality: p2.p2Quality,
-        completedAt: FieldValue.serverTimestamp(),
         errorCategory: FieldValue.delete(),
         errorMessage: FieldValue.delete(),
       },
@@ -395,15 +434,16 @@ async function runOne(
       reason: classified.reason,
       message: classified.message,
     });
-    await ref.set(
-      {
-        status: "error",
-        errorCategory: classified.category,
-        errorMessage: classified.message,
-        completedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    await updateOutput(db, input.clientSlug, APP_ID, o.outputId, {
+      status: "error",
+      errorCategory: classified.category,
+      errorMessage: classified.message,
+    });
+    // Sidecar: stamp completedAt explicitly for error terminations too —
+    // updateOutput only stamps completedAt on status='complete', but the
+    // existing dashboard expects a completedAt timestamp on any terminal
+    // state. Preserve that contract until the dashboard updates.
+    await ref.set({ completedAt: FieldValue.serverTimestamp() }, { merge: true });
     return {
       outputId: o.outputId,
       ok: false,
@@ -414,7 +454,7 @@ async function runOne(
 }
 
 async function finaliseBatch(
-  input: RunOutpaintBatchInput,
+  input: RunOutpaintBatchExecution,
   outcomes: Array<RunOneOk | RunOneErr>,
 ): Promise<RunOutpaintBatchResult> {
   const completedCount = outcomes.filter((o) => o.ok).length;
@@ -440,7 +480,7 @@ async function finaliseBatch(
 
 /** Pure orchestrator — exported for tests that bypass the onCall wrapper. */
 export async function runOutpaintBatchCore(
-  input: RunOutpaintBatchInput,
+  input: RunOutpaintBatchExecution,
 ): Promise<RunOutpaintBatchResult> {
   const batchStart = Date.now();
   emitEvent("batch_received", {
@@ -574,8 +614,12 @@ export const runOutpaintBatch = onCall(
   async (req: CallableRequest<unknown>): Promise<RunOutpaintBatchResult> => {
     assertAlliStudioUser(req);
     const input = validateInput(req.data);
+    // Derive createdBy server-side from the OIDC sub claim. NEVER trust a
+    // client-supplied createdBy — that would let any caller forge attribution.
+    const createdBy = getAlliUserIdFromAuth(req.auth);
+    const execution: RunOutpaintBatchExecution = { ...input, createdBy };
     try {
-      return await runOutpaintBatchCore(input);
+      return await runOutpaintBatchCore(execution);
     } catch (err) {
       if (err instanceof HttpsError) throw err;
       const classified = classifyError(err);
@@ -587,10 +631,10 @@ export const runOutpaintBatch = onCall(
       // Mark the batch failed so the UI can observe terminal state.
       try {
         const db = getFirestore();
-        await db.doc(batchDocPath(input.clientSlug, input.batchId)).set(
+        await db.doc(batchDocPath(execution.clientSlug, execution.batchId)).set(
           {
             status: "failed",
-            errorCount: input.outputs.length,
+            errorCount: execution.outputs.length,
             updatedAt: FieldValue.serverTimestamp(),
           },
           { merge: true },
