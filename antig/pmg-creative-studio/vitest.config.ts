@@ -14,6 +14,10 @@ export default defineConfig({
       'functions/src/**/*.test.ts',
       'functions/src/**/__tests__/**/*.test.ts',
       'tests/compat/**/*.test.{ts,tsx}',
+      // Pure transformer tests under scripts/. The emulator-using scripts
+      // tests live in `scripts/__tests__/` and are picked up by the rules
+      // config; this glob deliberately matches only the `_internal/` tree.
+      'scripts/_internal/**/__tests__/**/*.test.ts',
     ],
     exclude: [
       'node_modules',
