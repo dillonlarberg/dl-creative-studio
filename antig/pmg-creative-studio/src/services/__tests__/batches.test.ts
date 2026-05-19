@@ -66,17 +66,75 @@ describe('batchService', () => {
   });
 
   describe('addResult', () => {
-    it('writes to the correct batch results subcollection path', async () => {
-      vi.mocked(doc).mockReturnValue({ path: 'results/r1' } as any);
+    const ctx = { createdBy: 'alli-sub-xyz', kind: 'image' as const };
+
+    it('writes to the correct batch results subcollection path (legacy)', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
       await batchService.addResult('acme', 'template-builder', 'b1', {
         url: 'https://example.com/out.png',
         feedRowIndex: 0,
-      });
+      }, ctx);
       expect(vi.mocked(collection)).toHaveBeenCalledWith(
         expect.anything(),
         'clients/acme/apps/template-builder/batches/b1/results'
       );
-      expect(vi.mocked(setDoc)).toHaveBeenCalled();
+    });
+
+    it('dual-writes a peer OutputDoc with parity fields', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
+      await batchService.addResult('acme', 'template-builder', 'b1', {
+        url: 'https://example.com/out.png',
+        feedRowIndex: 0,
+        metadata: { width: 1080, height: 1080, label: 'square' },
+      }, ctx);
+      // Two setDoc calls: legacy results + peer outputs.
+      expect(vi.mocked(setDoc).mock.calls.length).toBeGreaterThanOrEqual(2);
+      // The peer write hits the outputs/ doc path with createdAt + parity fields.
+      const peerCall = vi.mocked(setDoc).mock.calls.find((call) => {
+        const payload = call[1] as Record<string, unknown>;
+        return payload?.kind === 'image' && payload?.clientSlug === 'acme';
+      });
+      expect(peerCall).toBeDefined();
+      const peerPayload = peerCall![1] as Record<string, unknown>;
+      expect(peerPayload).toMatchObject({
+        clientSlug: 'acme',
+        appId: 'template-builder',
+        createdBy: 'alli-sub-xyz',
+        kind: 'image',
+        status: 'complete',
+        format: { width: 1080, height: 1080, label: 'square' },
+      });
+    });
+
+    it('defaults format dimensions when metadata is missing', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
+      await batchService.addResult('acme', 'template-builder', 'b1', {
+        url: 'https://example.com/out.png',
+        feedRowIndex: 0,
+        // No width/height in metadata — the picsum mocks don't carry them.
+        // Should default to 1080x1080 with a sensible label so the OutputDoc
+        // schema validation (which requires positive ints) passes.
+      }, ctx);
+      const peerCall = vi.mocked(setDoc).mock.calls.find((call) => {
+        const payload = call[1] as Record<string, unknown>;
+        return payload?.kind === 'image';
+      });
+      const fmt = (peerCall![1] as { format: { width: number; height: number; label: string } }).format;
+      expect(fmt.width).toBe(1080);
+      expect(fmt.height).toBe(1080);
+      expect(fmt.label).toBe('1080x1080');
+    });
+
+    it('throws when ctx.createdBy is missing (no silent attribution)', async () => {
+      await expect(
+        batchService.addResult(
+          'acme',
+          'template-builder',
+          'b1',
+          { url: 'x', feedRowIndex: 0 },
+          { createdBy: '', kind: 'image' },
+        ),
+      ).rejects.toThrow(/createdBy/);
     });
   });
 
