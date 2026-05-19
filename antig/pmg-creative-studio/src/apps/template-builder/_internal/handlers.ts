@@ -6,6 +6,7 @@
  */
 
 import { batchService } from '../../../services/batches';
+import { authService } from '../../../services/auth';
 import { alliService } from '../../../services/alli';
 import type { ClientAssetHouse } from '../../../services/clientAssetHouse';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
@@ -513,16 +514,30 @@ export async function handleExecuteBatch(opts: {
 
   await batchService.updateBatchStatus(opts.clientSlug, opts.appId, batchId, 'processing');
 
+  // Required at every addResult call site: createdBy must be the Alli user
+  // id (OIDC sub), never a Firebase UID or anonymous placeholder. Fail loudly
+  // here rather than silently mis-attributing every generated variant.
+  const createdBy = authService.getAlliUserId();
+  if (!createdBy) {
+    throw new Error('template-builder: no signed-in Alli user; refusing to write results.');
+  }
+
   for (let i = 0; i < Math.min(3, opts.feedSampleData.length); i++) {
     const headlineKey = opts.feedMappings.headline;
     const product = headlineKey
       ? (opts.feedSampleData[i]?.[headlineKey] as string) || 'Product Variation'
       : 'Product Variation';
-    await batchService.addResult(opts.clientSlug, opts.appId, batchId, {
-      url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
-      feedRowIndex: i,
-      metadata: { product },
-    });
+    await batchService.addResult(
+      opts.clientSlug,
+      opts.appId,
+      batchId,
+      {
+        url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
+        feedRowIndex: i,
+        metadata: { product, width: 1080, height: 1080, label: '1080x1080' },
+      },
+      { createdBy, kind: 'image' },
+    );
   }
 
   await batchService.updateBatchStatus(opts.clientSlug, opts.appId, batchId, 'completed', opts.feedSampleData.length || 45);

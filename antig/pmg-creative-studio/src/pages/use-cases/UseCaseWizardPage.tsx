@@ -18,6 +18,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { templateService } from '../../services/templates';
 import type { TemplateRecord } from '../../services/templates';
 import { batchService } from '../../services/batches';
+import { authService } from '../../services/auth';
 import { useSelectedClient } from '../../hooks/useSelectedClient';
 import type { Client } from '../../platform/client/ClientProvider';
 
@@ -666,13 +667,31 @@ export default function UseCaseWizardPage() {
             // Simulate the processing phase
             await batchService.updateBatchStatus(client.slug, appId!, batchId, 'processing');
 
+            // Required at every addResult call site: createdBy must be the Alli
+            // user id, never a Firebase UID or anonymous placeholder.
+            const createdBy = authService.getAlliUserId();
+            if (!createdBy) {
+                throw new Error('UseCaseWizardPage: no signed-in Alli user; refusing to write results.');
+            }
+
             // Mocking results adding for troubleshooting demo
             for (let i = 0; i < Math.min(3, feedSampleData.length); i++) {
-                await batchService.addResult(client.slug, appId!, batchId, {
-                    url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
-                    feedRowIndex: i,
-                    metadata: { product: feedSampleData[i]?.[feedMappings.headline] || 'Product Variation' }
-                });
+                await batchService.addResult(
+                    client.slug,
+                    appId!,
+                    batchId,
+                    {
+                        url: `https://picsum.photos/seed/${batchId}-${i}/1080/1080`,
+                        feedRowIndex: i,
+                        metadata: {
+                            product: feedSampleData[i]?.[feedMappings.headline] || 'Product Variation',
+                            width: 1080,
+                            height: 1080,
+                            label: '1080x1080',
+                        },
+                    },
+                    { createdBy, kind: 'image' },
+                );
             }
 
             await batchService.updateBatchStatus(client.slug, appId!, batchId, 'completed', feedSampleData.length || 45);
