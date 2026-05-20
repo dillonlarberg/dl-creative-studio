@@ -27,7 +27,8 @@
  * Firestore-walking wrapper around it.
  */
 
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, applicationDefault } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { legacyResultToOutputDoc } from './_internal/legacyResultToOutputDoc';
 
 interface Counters {
@@ -40,10 +41,16 @@ async function run(options: {
   dryRun: boolean;
   clientFilter: string | null;
 }): Promise<Counters> {
-  if (admin.apps.length === 0) {
-    admin.initializeApp({ credential: admin.credential.applicationDefault() });
+  if (getApps().length === 0) {
+    // Project ID must be explicit when running under ADC outside a GCP-
+    // managed environment (i.e. local dev). `gcloud auth
+    // application-default login` saves creds but does NOT auto-detect a
+    // project. Override via FIREBASE_PROJECT_ID env var if you ever need
+    // to point this at a different env.
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'automated-creative-e10d7';
+    initializeApp({ credential: applicationDefault(), projectId });
   }
-  const db = admin.firestore();
+  const db = getFirestore();
   const counters: Counters = { copied: 0, skipped: 0, errored: 0 };
 
   const clients = await db.collection('clients').listDocuments();
@@ -71,7 +78,7 @@ async function run(options: {
               clientSlug: clientRef.id,
               appId: appRef.id,
               legacy: r.data() as Record<string, unknown>,
-              fallbackCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              fallbackCreatedAt: FieldValue.serverTimestamp(),
             });
 
             if (options.dryRun) {
@@ -121,10 +128,11 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main().catch((e) => {
-    // eslint-disable-next-line no-console
-    console.error(e);
-    process.exit(1);
-  });
-}
+// The script is only ever invoked as a CLI (`npx tsx scripts/...`); nothing
+// imports it. Run main() unconditionally — the ESM `require.main === module`
+// idiom isn't available with "type": "module" in package.json.
+main().catch((e) => {
+  // eslint-disable-next-line no-console
+  console.error(e);
+  process.exit(1);
+});
