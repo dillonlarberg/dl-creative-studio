@@ -64,24 +64,13 @@ export const paths = {
 
   batches: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/batches`,
   batch: (slug: ClientSlug, appId: AppId, id: string) => `${root(slug)}/apps/${appId}/batches/${id}`,
-  batchResults: (slug: ClientSlug, appId: AppId, batchId: string) =>
-    `${root(slug)}/apps/${appId}/batches/${batchId}/results`,
 
   // Unified per-app outputs (collectionGroup-queryable). Every modular app
   // writes generated artifacts here. See OutputDoc schema in src/types/outputs.ts
-  // and the writeOutput helper in src/services/outputs.ts (added in Task 4 of
-  // #thegreatmigration).
+  // and the writeOutput helper in src/services/outputs.ts.
   outputs: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/outputs`,
   output: (slug: ClientSlug, appId: AppId, outputId: string) =>
     `${root(slug)}/apps/${appId}/outputs/${outputId}`,
-
-  // Deprecated aliases — kept for one release while ad-resizing call sites
-  // migrate to the names above. Remove in a follow-up cleanup after Task 11
-  // (P2#8 in the unified-schema plan self-review). Resolve to the same paths.
-  outpaintOutputs: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/outputs`,
-  outpaintOutput: (slug: ClientSlug, appId: AppId, outputId: string) =>
-    `${root(slug)}/apps/${appId}/outputs/${outputId}`,
-  outpaintSources: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/sources`,
 
   storage: {
     client: (slug: ClientSlug) => root(slug),

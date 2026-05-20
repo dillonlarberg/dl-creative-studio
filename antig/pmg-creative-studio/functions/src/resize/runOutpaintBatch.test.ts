@@ -326,9 +326,9 @@ describe("runOutpaintBatchCore — happy path", () => {
     expect(doc?.createdBy).toBe("alli-user-test");
     expect(doc?.kind).toBe("image");
     expect(doc?.format).toEqual({ width: 1080, height: 1080, label: "social-1x1" });
-    // The legacy `dimension` field is preserved via the sidecar merge in
-    // seedPendingOutputs so existing readers keep working. Drop in Task 10.
-    expect(doc?.dimension).toEqual({ width: 1080, height: 1080, channel: "Social", label: "social-1x1" });
+    // The legacy `dimension` top-level field was dropped in
+    // #thegreatmigration no. 11 — only the canonical `format` remains.
+    expect(doc?.dimension).toBeUndefined();
   });
 
   it("completion via updateOutput does NOT overwrite createdAt (P0 invariant)", async () => {

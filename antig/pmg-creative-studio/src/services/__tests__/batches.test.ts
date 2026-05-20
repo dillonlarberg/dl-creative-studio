@@ -68,34 +68,28 @@ describe('batchService', () => {
   describe('addResult', () => {
     const ctx = { createdBy: 'alli-sub-xyz', kind: 'image' as const };
 
-    it('writes to the correct batch results subcollection path (legacy)', async () => {
-      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
+    it('does NOT write to the legacy results subcollection (#thegreatmigration no. 11)', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'outputs/r1' } as any);
       await batchService.addResult('acme', 'template-builder', 'b1', {
         url: 'https://example.com/out.png',
         feedRowIndex: 0,
       }, ctx);
-      expect(vi.mocked(collection)).toHaveBeenCalledWith(
-        expect.anything(),
-        'clients/acme/apps/template-builder/batches/b1/results'
+      const legacyCalls = vi.mocked(collection).mock.calls.filter(
+        ([, path]) => typeof path === 'string' && path.includes('/results'),
       );
+      expect(legacyCalls).toHaveLength(0);
     });
 
-    it('dual-writes a peer OutputDoc with parity fields', async () => {
-      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
+    it('writes a single peer OutputDoc to the outputs collection', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'outputs/r1' } as any);
       await batchService.addResult('acme', 'template-builder', 'b1', {
         url: 'https://example.com/out.png',
         feedRowIndex: 0,
         metadata: { width: 1080, height: 1080, label: 'square' },
       }, ctx);
-      // Two setDoc calls: legacy results + peer outputs.
-      expect(vi.mocked(setDoc).mock.calls.length).toBeGreaterThanOrEqual(2);
-      // The peer write hits the outputs/ doc path with createdAt + parity fields.
-      const peerCall = vi.mocked(setDoc).mock.calls.find((call) => {
-        const payload = call[1] as Record<string, unknown>;
-        return payload?.kind === 'image' && payload?.clientSlug === 'acme';
-      });
-      expect(peerCall).toBeDefined();
-      const peerPayload = peerCall![1] as Record<string, unknown>;
+      // Single setDoc call: peer outputs only (legacy write dropped).
+      expect(vi.mocked(setDoc).mock.calls).toHaveLength(1);
+      const peerPayload = vi.mocked(setDoc).mock.calls[0]![1] as Record<string, unknown>;
       expect(peerPayload).toMatchObject({
         clientSlug: 'acme',
         appId: 'template-builder',
@@ -106,20 +100,25 @@ describe('batchService', () => {
       });
     });
 
-    it('defaults format dimensions when metadata is missing', async () => {
-      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'results/r1' } as any);
+    it('targets the outputs collection (not results) when generating the id', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'outputs/r1' } as any);
       await batchService.addResult('acme', 'template-builder', 'b1', {
         url: 'https://example.com/out.png',
         feedRowIndex: 0,
-        // No width/height in metadata — the picsum mocks don't carry them.
-        // Should default to 1080x1080 with a sensible label so the OutputDoc
-        // schema validation (which requires positive ints) passes.
       }, ctx);
-      const peerCall = vi.mocked(setDoc).mock.calls.find((call) => {
-        const payload = call[1] as Record<string, unknown>;
-        return payload?.kind === 'image';
-      });
-      const fmt = (peerCall![1] as { format: { width: number; height: number; label: string } }).format;
+      expect(vi.mocked(collection)).toHaveBeenCalledWith(
+        expect.anything(),
+        'clients/acme/apps/template-builder/outputs',
+      );
+    });
+
+    it('defaults format dimensions when metadata is missing', async () => {
+      vi.mocked(doc).mockReturnValue({ id: 'r1', path: 'outputs/r1' } as any);
+      await batchService.addResult('acme', 'template-builder', 'b1', {
+        url: 'https://example.com/out.png',
+        feedRowIndex: 0,
+      }, ctx);
+      const fmt = (vi.mocked(setDoc).mock.calls[0]![1] as { format: { width: number; height: number; label: string } }).format;
       expect(fmt.width).toBe(1080);
       expect(fmt.height).toBe(1080);
       expect(fmt.label).toBe('1080x1080');

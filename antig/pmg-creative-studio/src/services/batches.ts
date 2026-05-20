@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { paths } from '../platform/firebase/paths';
 import type { AppId, ClientSlug } from '../platform/firebase/paths';
 import { createOutput } from './outputs';
@@ -63,19 +63,13 @@ export const batchService = {
     },
 
     /**
-     * Dual-writes a generated result to two places during the
-     * #thegreatmigration cutover window:
-     *
-     *   1. Legacy `batches/{batchId}/results/{id}` — the historical nested
-     *      subcollection that today's readers still use. Dropped in Task 10.
-     *   2. Peer `outputs/{outputId}` — the canonical unified-schema collection
-     *      that the new readers (Task 9) and the future cross-app generations
-     *      view use.
+     * Writes a generated result to the canonical unified-schema collection at
+     * `clients/{slug}/apps/{appId}/outputs/{outputId}`. The legacy peer write
+     * to `batches/{batchId}/results/{id}` was dropped in #thegreatmigration
+     * no. 11 — all readers consume `outputs/` now.
      *
      * `ctx.createdBy` is required (no anonymous attribution) and `ctx.kind`
-     * selects the OutputDoc.format shape. The same generated id is used for
-     * both the legacy results doc and the peer outputs doc so they're trivially
-     * cross-referenceable during the backfill / cutover phases.
+     * selects the OutputDoc.format shape.
      */
     async addResult(
         clientSlug: ClientSlug,
@@ -92,12 +86,7 @@ export const batchService = {
             );
         }
 
-        // Legacy write — kept during cutover; removed in Task 10.
-        const resultRef = doc(collection(db, paths.batchResults(clientSlug, appId, batchId)));
-        await setDoc(resultRef, { ...result, batchId, createdAt: serverTimestamp() });
-
-        // Peer canonical write to outputs/. Shares the same id so the two
-        // docs are trivially cross-referenceable during backfill.
+        const outputId = doc(collection(db, paths.outputs(clientSlug, appId))).id;
         const meta = (result.metadata ?? {}) as Record<string, unknown>;
         const num = (v: unknown, fallback: number) =>
             typeof v === 'number' && Number.isFinite(v) && v > 0
@@ -118,7 +107,7 @@ export const batchService = {
               };
 
         await createOutput(db, {
-            outputId: resultRef.id,
+            outputId,
             batchId,
             clientSlug,
             appId,
@@ -133,11 +122,6 @@ export const batchService = {
         const docSnap = await getDoc(doc(db, paths.batch(clientSlug, appId, batchId)));
         if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as BatchRecord;
         return null;
-    },
-
-    async getBatchResults(clientSlug: ClientSlug, appId: AppId, batchId: string): Promise<BatchResult[]> {
-        const querySnapshot = await getDocs(collection(db, paths.batchResults(clientSlug, appId, batchId)));
-        return querySnapshot.docs.map(d => ({ id: d.id, ...d.data() } as BatchResult));
     },
 
     /**

@@ -280,11 +280,10 @@ async function seedPendingOutputs(
   input: RunOutpaintBatchExecution,
 ): Promise<void> {
   const db = getFirestore();
-  // Use createOutput (admin helper) so each pending doc carries the full
-  // canonical OutputDoc shape: parity fields (clientSlug, appId, createdBy,
-  // kind, format) on every write, validated against the shared schema.
-  // The dimension object is preserved as a top-level field for backwards-compat
-  // with existing readers; format mirrors the same data in the canonical shape.
+  // Each pending doc carries the canonical OutputDoc shape: parity fields
+  // (clientSlug, appId, createdBy, kind, format) validated against the shared
+  // schema. The legacy top-level `dimension` field was dropped in
+  // #thegreatmigration no. 11 — readers consume `format` directly.
   await Promise.all(
     input.outputs.map((o) =>
       createOutput(db, {
@@ -306,18 +305,6 @@ async function seedPendingOutputs(
       }),
     ),
   );
-  // Preserve the legacy `dimension` field via a per-doc merge so existing
-  // readers (useBatchOutputs at src/apps/ad-resizing/hooks) keep working
-  // until they migrate in Task 9. Drop this merge in the Task 10 cleanup.
-  const batch = db.batch();
-  for (const o of input.outputs) {
-    batch.set(
-      db.doc(outputDocPath(input.clientSlug, o.outputId)),
-      { dimension: o.dimension },
-      { merge: true },
-    );
-  }
-  await batch.commit();
 }
 
 interface RunOneOk {

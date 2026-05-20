@@ -1,14 +1,7 @@
-// COMPAT TEST — keep through the dual-write window. Delete when Task 10
-// removes the legacy results/ write from addResult.
-//
-// Pins: batchService.addResult must write to BOTH the legacy results/
-// subcollection AND the canonical outputs/ collection in a single call.
-// If a future PR (#thegreatmigration no. 09 — reader cutover) breaks the
-// dual-write before backfill completes, readers split: some clients see
-// results/, some see outputs/, and the migration corrupts mid-flight.
-//
-// This test runs on every preflight and fails loudly if either path is
-// missing or if the peer write omits parity fields.
+// HISTORICAL COMPAT TEST — the legacy results/ write was dropped from
+// batchService.addResult in #thegreatmigration no. 11. This file now pins
+// the SINGLE-write contract (peer outputs/ only) so a future regression
+// can't silently bring the legacy write back.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -33,8 +26,8 @@ import { batchService } from '../../src/services/batches';
 
 beforeEach(() => vi.clearAllMocks());
 
-describe('batchService.addResult — dual-write contract', () => {
-  it('writes BOTH the legacy results/ subcollection AND the canonical outputs/ collection', async () => {
+describe('batchService.addResult — single-write contract (post no. 11)', () => {
+  it('does NOT write to the legacy results/ subcollection', async () => {
     await batchService.addResult(
       'acme',
       'template-builder',
@@ -47,25 +40,34 @@ describe('batchService.addResult — dual-write contract', () => {
       { createdBy: 'alli-sub-pin', kind: 'image' },
     );
 
-    const paths = vi.mocked(collection).mock.calls.map((c) => c[1]);
-    // Legacy path (nested under the batch).
-    expect(paths).toContain('clients/acme/apps/template-builder/batches/b-pin/results');
+    const collectionPaths = vi.mocked(collection).mock.calls.map((c) => c[1]);
+    const legacy = collectionPaths.filter(
+      (p) => typeof p === 'string' && p.includes('/results'),
+    );
+    expect(legacy).toHaveLength(0);
+  });
 
-    // The peer write goes through paths.output(...) which calls
-    // doc(db, '<full path>') directly, not through collection(). Verify the
-    // peer write happened by inspecting setDoc calls for the canonical shape.
-    const peerWrite = vi
-      .mocked(setDoc)
-      .mock.calls.find((call) => {
-        const payload = call[1] as Record<string, unknown>;
-        return (
-          payload?.clientSlug === 'acme' &&
-          payload?.appId === 'template-builder' &&
-          payload?.kind === 'image' &&
-          payload?.createdBy === 'alli-sub-pin'
-        );
-      });
-    expect(peerWrite).toBeDefined();
+  it('writes exactly one peer OutputDoc to the canonical outputs/ collection', async () => {
+    await batchService.addResult(
+      'acme',
+      'template-builder',
+      'b-pin',
+      {
+        url: 'https://x/y.png',
+        feedRowIndex: 0,
+        metadata: { width: 1080, height: 1080, label: 'square' },
+      },
+      { createdBy: 'alli-sub-pin', kind: 'image' },
+    );
+
+    expect(vi.mocked(setDoc).mock.calls).toHaveLength(1);
+    const payload = vi.mocked(setDoc).mock.calls[0]![1] as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      clientSlug: 'acme',
+      appId: 'template-builder',
+      kind: 'image',
+      createdBy: 'alli-sub-pin',
+    });
   });
 
   it('refuses to write when createdBy is missing — no silent attribution corruption', async () => {
