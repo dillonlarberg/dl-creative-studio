@@ -18,12 +18,7 @@ const APP_ID = 'ad-resizing';
 interface OutputDoc {
   outputId: string;
   batchId: string;
-  // Canonical unified-schema shape (OutputDocSchema). Backfilled docs and
-  // new dual-writes always carry this.
-  format?: { width: number; height: number; label?: string };
-  // Legacy shape kept for any in-flight doc the dual-writer also stamps
-  // with channel metadata. Dropped from writes in #thegreatmigration no. 11.
-  dimension?: { width: number; height: number; label?: string; channel?: string };
+  format: { width: number; height: number; label?: string };
   status: 'pending' | 'complete' | 'error';
   storageRef?: string;
   errorCategory?: 'transient' | 'permanent';
@@ -33,15 +28,12 @@ interface OutputDoc {
 
 /**
  * Look up a channel/dimension shape from `channels.ts` so the in-memory
- * GeneratedOutput keeps the same display semantics it had before the wire-up
- * (label, channelLabel, etc.). Falls back to a synthetic Dimension if the
- * backend recorded a label that isn't in the local registry.
+ * GeneratedOutput keeps the same display semantics. For labels that exist
+ * in the registry we recover the full Dimension (incl. channelLabel); for
+ * synthetic labels we synthesise a 'Custom' channel.
  */
 function dimensionFromDoc(d: OutputDoc): Dimension {
-  // Prefer canonical `format`; fall back to legacy `dimension` only for any
-  // pre-canonical doc still in flight. Channel metadata only exists on the
-  // legacy field, so look it up there if present.
-  const f = d.format ?? d.dimension ?? { width: 0, height: 0 };
+  const f = d.format ?? { width: 0, height: 0 };
   const labelHint = f.label;
   if (labelHint) {
     for (const ch of CHANNELS) {
@@ -50,14 +42,13 @@ function dimensionFromDoc(d: OutputDoc): Dimension {
       }
     }
   }
-  const channelLabel = d.dimension?.channel ?? 'Custom';
   return {
     id: labelHint ?? `${f.width}x${f.height}`,
     label: labelHint ?? `${f.width}×${f.height}`,
     width: f.width,
     height: f.height,
-    channelId: channelLabel.toLowerCase().replace(/\s+/g, '-'),
-    channelLabel,
+    channelId: 'custom',
+    channelLabel: 'Custom',
   };
 }
 
@@ -123,8 +114,8 @@ export function useBatchOutputs(
         const docs = snap.docs.map((s) => s.data() as OutputDoc);
         // Stable order: by format.label, then width × height descending.
         docs.sort((a, b) => {
-          const af = a.format ?? a.dimension ?? { width: 0, height: 0, label: '' };
-          const bf = b.format ?? b.dimension ?? { width: 0, height: 0, label: '' };
+          const af = a.format ?? { width: 0, height: 0, label: '' };
+          const bf = b.format ?? { width: 0, height: 0, label: '' };
           const al = af.label ?? '';
           const bl = bf.label ?? '';
           if (al !== bl) return al.localeCompare(bl);

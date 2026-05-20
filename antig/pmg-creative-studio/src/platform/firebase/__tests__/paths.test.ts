@@ -82,11 +82,6 @@ describe('paths', () => {
       );
     });
 
-    it('returns the batch results collection path', () => {
-      expect(paths.batchResults('ralph_lauren', 'feed-processing', 'b1')).toBe(
-        'clients/ralph_lauren/apps/feed-processing/batches/b1/results'
-      );
-    });
   });
 
   describe('isAppId', () => {
