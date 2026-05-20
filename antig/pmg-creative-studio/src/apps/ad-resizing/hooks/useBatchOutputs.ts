@@ -18,7 +18,12 @@ const APP_ID = 'ad-resizing';
 interface OutputDoc {
   outputId: string;
   batchId: string;
-  dimension: { width: number; height: number; label?: string; channel?: string };
+  // Canonical unified-schema shape (OutputDocSchema). Backfilled docs and
+  // new dual-writes always carry this.
+  format?: { width: number; height: number; label?: string };
+  // Legacy shape kept for any in-flight doc the dual-writer also stamps
+  // with channel metadata. Dropped from writes in #thegreatmigration no. 11.
+  dimension?: { width: number; height: number; label?: string; channel?: string };
   status: 'pending' | 'complete' | 'error';
   storageRef?: string;
   errorCategory?: 'transient' | 'permanent';
@@ -33,7 +38,11 @@ interface OutputDoc {
  * backend recorded a label that isn't in the local registry.
  */
 function dimensionFromDoc(d: OutputDoc): Dimension {
-  const labelHint = d.dimension.label;
+  // Prefer canonical `format`; fall back to legacy `dimension` only for any
+  // pre-canonical doc still in flight. Channel metadata only exists on the
+  // legacy field, so look it up there if present.
+  const f = d.format ?? d.dimension ?? { width: 0, height: 0 };
+  const labelHint = f.label;
   if (labelHint) {
     for (const ch of CHANNELS) {
       for (const dim of ch.dimensions) {
@@ -41,12 +50,12 @@ function dimensionFromDoc(d: OutputDoc): Dimension {
       }
     }
   }
-  const channelLabel = d.dimension.channel ?? 'Custom';
+  const channelLabel = d.dimension?.channel ?? 'Custom';
   return {
-    id: labelHint ?? `${d.dimension.width}x${d.dimension.height}`,
-    label: labelHint ?? `${d.dimension.width}×${d.dimension.height}`,
-    width: d.dimension.width,
-    height: d.dimension.height,
+    id: labelHint ?? `${f.width}x${f.height}`,
+    label: labelHint ?? `${f.width}×${f.height}`,
+    width: f.width,
+    height: f.height,
     channelId: channelLabel.toLowerCase().replace(/\s+/g, '-'),
     channelLabel,
   };
@@ -106,18 +115,20 @@ export function useBatchOutputs(
       () => setBatchLoading(false),
     );
 
-    const outputsCol = collection(db, paths.outpaintOutputs(clientSlug, APP_ID));
+    const outputsCol = collection(db, paths.outputs(clientSlug, APP_ID));
     const q = query(outputsCol, where('batchId', '==', batchId));
     const unsubOutputs = onSnapshot(
       q,
       (snap) => {
         const docs = snap.docs.map((s) => s.data() as OutputDoc);
-        // Stable order: by dimension.label, then width × height descending.
+        // Stable order: by format.label, then width × height descending.
         docs.sort((a, b) => {
-          const al = a.dimension.label ?? '';
-          const bl = b.dimension.label ?? '';
+          const af = a.format ?? a.dimension ?? { width: 0, height: 0, label: '' };
+          const bf = b.format ?? b.dimension ?? { width: 0, height: 0, label: '' };
+          const al = af.label ?? '';
+          const bl = bf.label ?? '';
           if (al !== bl) return al.localeCompare(bl);
-          return b.dimension.width * b.dimension.height - a.dimension.width * a.dimension.height;
+          return bf.width * bf.height - af.width * af.height;
         });
         setOutputs(docs.map(toGeneratedOutput));
         setOutputsLoading(false);
