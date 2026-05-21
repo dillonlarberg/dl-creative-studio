@@ -92,7 +92,7 @@ function makeManifest(overrides?: {
   };
 
   return {
-    id: 'edit-image',
+    id: 'ad-resizing',
     basePath: 'fake',
     title: 'Fake App',
     steps: [stepA, stepB, stepC],
@@ -254,7 +254,7 @@ describe('WizardShell', () => {
     await waitFor(() =>
       expect(creativeService.createCreative).toHaveBeenCalledWith(
         'acme',
-        'edit-image'
+        'ad-resizing'
       )
     );
     await waitFor(() =>
@@ -262,7 +262,7 @@ describe('WizardShell', () => {
     );
 
     // localStorage should now contain the new id under the canonical key.
-    expect(window.localStorage.getItem('wiz_acme_edit-image')).toBe(
+    expect(window.localStorage.getItem('wiz_acme_ad-resizing')).toBe(
       'creative-new'
     );
 
@@ -272,7 +272,7 @@ describe('WizardShell', () => {
     vi.mocked(creativeService.getCreative).mockResolvedValue({
       id: 'creative-new',
       clientSlug: 'acme',
-      appId: 'edit-image',
+      appId: 'ad-resizing',
       status: 'draft',
       stepData: { foo: 1 },
       currentStep: 0,
@@ -288,7 +288,7 @@ describe('WizardShell', () => {
     // persisted `foo` field is in stepData. Easiest visible probe: navigate to b.
     await screen.findByTestId('step-a-body');
     await waitFor(() =>
-      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'edit-image', 'creative-new')
+      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'ad-resizing', 'creative-new')
     );
 
     // Click set-ready so step a's validate passes (data.ready === true), then
@@ -311,7 +311,7 @@ describe('WizardShell', () => {
     vi.mocked(creativeService.getCreative).mockResolvedValue({
       id: 'abc',
       clientSlug: 'acme',
-      appId: 'edit-image',
+      appId: 'ad-resizing',
       status: 'draft',
       stepData: { foo: 7 },
       currentStep: 0,
@@ -323,7 +323,7 @@ describe('WizardShell', () => {
     renderShell(manifest, ['/wizard?creative=abc']);
 
     await waitFor(() =>
-      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'edit-image', 'abc')
+      expect(creativeService.getCreative).toHaveBeenCalledWith('acme', 'ad-resizing', 'abc')
     );
 
     // Confirm hydration by advancing to b which renders the foo value.

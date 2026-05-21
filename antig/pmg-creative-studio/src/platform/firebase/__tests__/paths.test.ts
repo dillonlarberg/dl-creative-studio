@@ -24,21 +24,21 @@ describe('paths', () => {
 
   describe('app subtree', () => {
     it('returns the app root path', () => {
-      const appId: AppId = 'edit-image';
+      const appId: AppId = 'ad-resizing';
       expect(paths.app('ralph_lauren', appId)).toBe(
-        'clients/ralph_lauren/apps/edit-image'
+        'clients/ralph_lauren/apps/ad-resizing'
       );
     });
 
     it('returns the creatives collection path', () => {
-      expect(paths.creatives('ralph_lauren', 'edit-image')).toBe(
-        'clients/ralph_lauren/apps/edit-image/creatives'
+      expect(paths.creatives('ralph_lauren', 'ad-resizing')).toBe(
+        'clients/ralph_lauren/apps/ad-resizing/creatives'
       );
     });
 
     it('returns a single creative doc path when given an id', () => {
-      expect(paths.creative('ralph_lauren', 'edit-image', 'abc123')).toBe(
-        'clients/ralph_lauren/apps/edit-image/creatives/abc123'
+      expect(paths.creative('ralph_lauren', 'ad-resizing', 'abc123')).toBe(
+        'clients/ralph_lauren/apps/ad-resizing/creatives/abc123'
       );
     });
   });
@@ -49,8 +49,8 @@ describe('paths', () => {
     });
 
     it('returns a typed app-scoped storage path with arbitrary suffix', () => {
-      expect(paths.storage.app('ralph_lauren', 'edit-image', 'uploads/abc.png')).toBe(
-        'clients/ralph_lauren/apps/edit-image/uploads/abc.png'
+      expect(paths.storage.app('ralph_lauren', 'ad-resizing', 'uploads/abc.png')).toBe(
+        'clients/ralph_lauren/apps/ad-resizing/uploads/abc.png'
       );
     });
   });
@@ -71,14 +71,14 @@ describe('paths', () => {
 
   describe('batch paths', () => {
     it('returns the batches collection path', () => {
-      expect(paths.batches('ralph_lauren', 'feed-processing')).toBe(
-        'clients/ralph_lauren/apps/feed-processing/batches'
+      expect(paths.batches('ralph_lauren', 'ad-resizing')).toBe(
+        'clients/ralph_lauren/apps/ad-resizing/batches'
       );
     });
 
     it('returns a single batch doc path', () => {
-      expect(paths.batch('ralph_lauren', 'feed-processing', 'b1')).toBe(
-        'clients/ralph_lauren/apps/feed-processing/batches/b1'
+      expect(paths.batch('ralph_lauren', 'ad-resizing', 'b1')).toBe(
+        'clients/ralph_lauren/apps/ad-resizing/batches/b1'
       );
     });
 
@@ -86,8 +86,11 @@ describe('paths', () => {
 
   describe('isAppId', () => {
     const validIds: AppId[] = [
-      'resize-image', 'edit-image', 'new-image', 'edit-video', 'new-video',
-      'video-cutdown', 'static-creative', 'template-builder', 'feed-processing',
+      'resize-image',
+      'video-cutdown',
+      'template-builder',
+      'batch-variants',
+      'ad-resizing',
     ];
 
     it.each(validIds)('returns true for valid AppId "%s"', (id: AppId) => {
