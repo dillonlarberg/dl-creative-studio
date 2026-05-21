@@ -27,20 +27,6 @@ import type { AppId } from '../platform/firebase/paths';
  * platform color tokens. Data plumbing unchanged.
  */
 
-interface ComingSoonEntry {
-  id: string;
-  title: string;
-  description: string;
-}
-
-const COMING_SOON_SHELF: ComingSoonEntry[] = [
-  {
-    id: 'edit-tweak',
-    title: 'Edit & Tweak',
-    description: 'Fast text and asset swaps on a live template — no HTML round-trips.',
-  },
-];
-
 const ACTIVE_STATUSES: BatchRecord['status'][] = ['pending', 'processing'];
 
 function useActiveBatches(
@@ -164,34 +150,6 @@ export default function DashboardPage() {
         </ul>
       </section>
 
-      {/* Coming-soon module */}
-      <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-card" aria-labelledby="coming-soon-heading">
-        <div className="flex flex-col gap-0.5">
-          <h2 id="coming-soon-heading" className="text-base font-medium text-gray-900">Coming soon</h2>
-          <p className="text-[13px] text-gray-500">Apps next in line as each one lifts cleanly out of isolation.</p>
-        </div>
-        <ul
-          className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2"
-          data-testid="adlabs-coming-soon-shelf"
-        >
-          {COMING_SOON_SHELF.map((entry) => (
-            <li
-              key={entry.id}
-              data-testid={`coming-soon-${entry.id}`}
-              data-disabled="true"
-              className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-gray-400">
-                <Squares2X2Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-gray-700">{entry.title}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{entry.description}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       {/* Active Batch Jobs module — internal-only */}
       {internal && (
