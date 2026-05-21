@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Cloud Functions compiled output — built from functions/src by `tsc` in
+# functions/package.json's `build` script. Firebase Functions deploy runs
+# `npm run build` automatically, so the compiled lib/ doesn't need to be
+# committed and committing it produces noisy diffs on every backend change.
+functions/lib/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
