@@ -18,7 +18,7 @@ interface FakeData {
 }
 
 const manifest: AppManifest<FakeData> = {
-  id: 'edit-image',
+  id: 'ad-resizing',
   basePath: 'fake',
   title: 'Fake App',
   steps: [],

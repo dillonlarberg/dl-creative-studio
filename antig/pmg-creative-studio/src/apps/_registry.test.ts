@@ -8,8 +8,8 @@ import type { AppManifest } from './types';
 
 function fakeManifest(overrides: Partial<AppManifest> = {}): AppManifest {
   return {
-    id: 'edit-image',
-    basePath: 'edit-image',
+    id: 'ad-resizing',
+    basePath: 'ad-resizing',
     title: 'Edit Image',
     steps: [],
     initialStepData: () => ({}),
@@ -20,42 +20,42 @@ function fakeManifest(overrides: Partial<AppManifest> = {}): AppManifest {
 describe('app registry', () => {
   describe('assertValidBasePath', () => {
     it('accepts a simple slug', () => {
-      expect(() => assertValidBasePath('edit-image', 'edit-image')).not.toThrow();
+      expect(() => assertValidBasePath('ad-resizing', 'ad-resizing')).not.toThrow();
     });
 
     it('rejects basePath containing a slash', () => {
-      expect(() => assertValidBasePath('edit-image', 'edit/image')).toThrow(
+      expect(() => assertValidBasePath('ad-resizing', 'edit/image')).toThrow(
         /basePath/i
       );
     });
 
     it('rejects basePath containing whitespace', () => {
-      expect(() => assertValidBasePath('edit-image', 'edit image')).toThrow(
+      expect(() => assertValidBasePath('ad-resizing', 'edit image')).toThrow(
         /basePath/i
       );
     });
 
     it('rejects an empty basePath', () => {
-      expect(() => assertValidBasePath('edit-image', '')).toThrow(/basePath/i);
+      expect(() => assertValidBasePath('ad-resizing', '')).toThrow(/basePath/i);
     });
   });
 
   describe('assertNoBasePathCollisions', () => {
     it('passes when all basePaths are unique', () => {
       const manifests = [
-        fakeManifest({ id: 'edit-image', basePath: 'edit-image' }),
-        fakeManifest({ id: 'new-image', basePath: 'new-image' }),
+        fakeManifest({ id: 'ad-resizing', basePath: 'ad-resizing' }),
+        fakeManifest({ id: 'template-builder', basePath: 'template-builder' }),
       ];
       expect(() => assertNoBasePathCollisions(manifests)).not.toThrow();
     });
 
     it('throws with a clearly-formatted message on collision', () => {
       const manifests = [
-        fakeManifest({ id: 'edit-image', basePath: 'shared' }),
-        fakeManifest({ id: 'new-image', basePath: 'shared' }),
+        fakeManifest({ id: 'ad-resizing', basePath: 'shared' }),
+        fakeManifest({ id: 'template-builder', basePath: 'shared' }),
       ];
       expect(() => assertNoBasePathCollisions(manifests)).toThrow(
-        /collision.*"edit-image".*"new-image".*"shared"/i
+        /collision.*"ad-resizing".*"template-builder".*"shared"/i
       );
     });
   });
@@ -69,7 +69,7 @@ describe('app registry', () => {
     it('runs collision + basePath validation', () => {
       expect(() =>
         buildRegistry([
-          fakeManifest({ id: 'edit-image', basePath: 'oops/bad' }),
+          fakeManifest({ id: 'ad-resizing', basePath: 'oops/bad' }),
         ])
       ).toThrow(/basePath/i);
     });

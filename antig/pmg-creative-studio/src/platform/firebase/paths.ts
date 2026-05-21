@@ -20,21 +20,17 @@
 
 export type AppId =
   | 'resize-image'
-  | 'edit-image'
-  | 'new-image'
-  | 'edit-video'
-  | 'new-video'
   | 'video-cutdown'
-  | 'static-creative'
   | 'template-builder'
-  | 'feed-processing'
   | 'batch-variants'
   | 'ad-resizing';
 
 const VALID_APP_IDS: readonly AppId[] = [
-  'resize-image', 'edit-image', 'new-image', 'edit-video', 'new-video',
-  'video-cutdown', 'static-creative', 'template-builder', 'feed-processing',
-  'batch-variants', 'ad-resizing',
+  'resize-image',
+  'video-cutdown',
+  'template-builder',
+  'batch-variants',
+  'ad-resizing',
 ];
 
 export function isAppId(value: unknown): value is AppId {

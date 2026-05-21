@@ -6,7 +6,6 @@ import type { User } from 'firebase/auth';
 
 import AppLayout from './components/AppLayout';
 import DashboardPage from './pages/DashboardPage';
-import UseCaseWizardPage from './pages/use-cases/UseCaseWizardPage';
 import ClientSelectPage from './pages/ClientSelectPage';
 import LoginPage from './pages/LoginPage';
 import ClientAssetHousePage from './pages/ClientAssetHousePage';
@@ -109,7 +108,6 @@ export default function App() {
         <Route element={user ? <AppLayout /> : <Navigate to="/login" />}>
           {/* Root → AdLabs dashboard for the selected client (or /select-client). */}
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/create" element={<Navigate to="/" replace />} />
           {/* AdLabs route group. Dashboard at /adlabs/:clientSlug/ (Step 1)
               and per-app routes nest under it. Legacy /:clientSlug/template-builder/*
               stays mounted for backwards-compat. */}
@@ -155,7 +153,7 @@ export default function App() {
               </ClientProvider>
             }
           />
-          {/* Legacy per-app routes — must come before the legacy /create/:useCaseId catch. */}
+          {/* Legacy per-app route for backwards-compat with bookmarks. */}
           <Route
             path="/:clientSlug/template-builder/*"
             element={
@@ -164,7 +162,6 @@ export default function App() {
               </ClientProvider>
             }
           />
-          <Route path="/create/:useCaseId" element={<UseCaseWizardPage />} />
           <Route path="/select-client" element={<ClientSelectPage />} />
           <Route path="/client-asset-house" element={<ClientAssetHousePage />} />
         </Route>
