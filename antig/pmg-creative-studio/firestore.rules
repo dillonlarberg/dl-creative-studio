@@ -45,6 +45,18 @@ service cloud.firestore {
       allow read, write: if isAlliStudioUser();
     }
 
+    // collectionGroup queries on the unified `outputs` subcollection power
+    // the cross-app "your generations" view. The recursive per-client rule
+    // above covers per-path reads/writes but does NOT match collectionGroup
+    // queries — Firestore resolves those against /{path=**}/outputs/{...}.
+    // Writes are explicitly denied here so the per-client rule remains the
+    // single write path. Reads are allowlist-gated for now and tighten to
+    // isClientMember(resource.data.clientSlug) once syncClientClaims ships.
+    match /{path=**}/outputs/{outputId} {
+      allow read: if isAlliStudioUser();
+      allow write: if false;
+    }
+
     // Legacy brand-standards collection. The dashboard still reads/writes
     // `clientAssetHouse/{slug}` per the HOTFIX in
     // src/services/clientAssetHouse.ts (data was never migrated to the
