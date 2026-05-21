@@ -56,30 +56,18 @@ export function buildRegistry(manifests: AppManifest[]): readonly AppManifest[] 
   return Object.freeze([...manifests]);
 }
 
-/**
- * Registry-level feature flags. Manifests gated by env flags are included
- * conditionally so that pages reading `getRegistry()` never have to know about
- * the flag — they just see fewer cards. Step 1 of the AdLabs v1 plan uses
- * this to hide Video Cutdown's card on the dashboard until Step 2 ships.
- */
-const FEATURE_VIDEO_CUTDOWN_LIFT =
-  import.meta.env.VITE_FEATURE_VIDEO_CUTDOWN_LIFT === 'true';
-
 const MANIFESTS: AppManifest[] = [
   adResizingManifest as AppManifest,
   templateBuilderManifest as AppManifest,
   batchVariantsManifest as AppManifest,
+  // Preview-status stub. Renders the "Coming soon" WizardShell view until
+  // the real implementation ships. Visible on the dashboard so users can
+  // see it's on the roadmap.
+  videoCutdownManifest as AppManifest,
 ];
 
 // Old resize-image wizard (skeleton) kept routable but off the dashboard.
 void resizeImageManifest;
-
-if (FEATURE_VIDEO_CUTDOWN_LIFT) {
-  // Step 2 stub: video-cutdown is a preview-status placeholder until the
-  // full lift from UseCaseWizardPage ships. Registry stays clean of
-  // half-built apps when the flag is off (default).
-  MANIFESTS.push(videoCutdownManifest as AppManifest);
-}
 
 const REGISTRY = buildRegistry(MANIFESTS);
 
