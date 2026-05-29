@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { AppManifest, StepData, WizardStep } from '../types';
 import { WizardShell } from '../../platform/wizard/WizardShell';
 
-interface PreviewData extends StepData {}
+type PreviewData = StepData;
 
 function makePreviewManifest(): AppManifest<PreviewData> {
   const stub: WizardStep<PreviewData> = {
@@ -14,9 +14,9 @@ function makePreviewManifest(): AppManifest<PreviewData> {
     render: () => <p data-testid="should-not-render">unreachable</p>,
   };
   return {
-    id: 'batch-variants',
-    basePath: 'batch-variants',
-    title: 'Batch Variants',
+    id: 'video-stitch',
+    basePath: 'video-stitch',
+    title: 'Video Stitch',
     status: 'preview',
     steps: [stub],
     initialStepData: () => ({}),
@@ -54,7 +54,7 @@ describe('WizardShell preview status (Step 0.75 tracer)', () => {
     expect(screen.getByTestId('wizard-preview-coming-soon')).toBeInTheDocument();
     expect(screen.getByTestId('wizard-preview-back')).toHaveAttribute('href', '/');
     expect(screen.getByText(/Coming soon/i)).toBeInTheDocument();
-    expect(screen.getByText(/Batch Variants is on the way/i)).toBeInTheDocument();
+    expect(screen.getByText(/Video Stitch is on the way/i)).toBeInTheDocument();
   });
 
   it('Tracer 1b: status="preview" suppresses wizard chrome (no Continue, no checklist, no step body)', () => {

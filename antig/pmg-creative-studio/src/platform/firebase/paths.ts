@@ -21,13 +21,13 @@
 export type AppId =
   | 'video-cutdown'
   | 'template-builder'
-  | 'batch-variants'
+  | 'video-stitch'
   | 'ad-resizing';
 
 const VALID_APP_IDS: readonly AppId[] = [
   'video-cutdown',
   'template-builder',
-  'batch-variants',
+  'video-stitch',
   'ad-resizing',
 ];
 

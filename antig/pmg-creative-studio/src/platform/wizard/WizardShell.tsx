@@ -42,7 +42,7 @@ interface WizardShellProps<S extends StepData = StepData> {
  */
 /**
  * Preview-status stub view. Step 0.75 of the AdLabs v1 plan: lets the dashboard
- * register and route to apps that aren't fully lifted yet (e.g. Batch Variants
+ * register and route to apps that aren't fully lifted yet (e.g. Video Stitch
  * in v1) without forcing them to satisfy the live wizard contract. No Continue
  * button, no checklist, no persistence — just a "Coming soon" panel.
  */

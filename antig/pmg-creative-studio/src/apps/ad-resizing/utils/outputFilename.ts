@@ -1,7 +1,7 @@
 const APP_SLUGS: Record<string, string> = {
   'ad-resizing': 'resize',
   'template-builder': 'template',
-  'batch-variants': 'batch',
+  'video-stitch': 'stitch',
 };
 
 /**
