@@ -68,10 +68,10 @@ export default function DashboardPage() {
   return (
     <>
       <div
-        className="relative left-1/2 -mt-8 mb-4 w-[calc(100vw-4rem)] -translate-x-1/2 border-b border-gray-200 bg-white"
+        className="-mt-8 mb-4 border-b border-gray-200 bg-white"
         data-testid="adlabs-page-header"
       >
-        <div className="mx-auto max-w-[1440px] px-9 py-6">
+        <div className="px-6 py-4">
           <h1 className="text-2xl font-medium text-gray-900">AdLabs</h1>
         </div>
       </div>
