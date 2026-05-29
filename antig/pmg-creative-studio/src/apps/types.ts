@@ -83,7 +83,7 @@ export interface AppManifest<S extends StepData = StepData> {
    * Lifecycle status. 'live' apps render the full wizard chrome (default).
    * 'preview' apps render a "Coming soon" stub view via WizardShell — no
    * Continue button, no checklist, no step persistence. Used by Step 1 of
-   * the AdLabs v1 plan to register Batch Variants as a clickable card on
+   * the AdLabs v1 plan to register Video Stitch as a clickable card on
    * the dashboard before the lift work ships.
    */
   status?: 'live' | 'preview';

@@ -88,7 +88,7 @@ describe('paths', () => {
     const validIds: AppId[] = [
       'video-cutdown',
       'template-builder',
-      'batch-variants',
+      'video-stitch',
       'ad-resizing',
     ];
 

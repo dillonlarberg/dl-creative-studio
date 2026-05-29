@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../utils/cn';
 import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
@@ -8,17 +8,8 @@ import {
     MagnifyingGlassIcon,
     ArrowPathIcon,
     ExclamationTriangleIcon,
-    Cog6ToothIcon,
     QuestionMarkCircleIcon,
     BellIcon,
-    ChevronRightIcon,
-    Squares2X2Icon,
-    ChartBarIcon,
-    ClipboardDocumentListIcon,
-    BoltIcon,
-    UsersIcon,
-    ShoppingBagIcon,
-    PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild, Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/react';
 import { Fragment } from 'react';
@@ -69,38 +60,6 @@ function nameFromEmail(email?: string): string {
         .map((part) => part[0].toUpperCase() + part.slice(1).toLowerCase())
         .join(' ');
 }
-
-// Platform-style nav rail. Only AdLabs is enabled — the other items mirror the
-// Alli platform's section list (Dashboards, Data, Strategy & Planning, Actions,
-// Audiences, Products) as visual context. Settings has Client Asset House as a
-// sub-item, matching how Alli platform groups admin surfaces under Settings.
-type NavItem = {
-    name: string;
-    icon: React.ComponentType<{ className?: string }>;
-    href?: string;
-    disabled?: boolean;
-    children?: { name: string; href: string; matchPrefix?: boolean; disabled?: boolean }[];
-};
-
-const PRIMARY_NAV: NavItem[] = [
-    { name: 'Dashboards', icon: Squares2X2Icon, disabled: true },
-    { name: 'Data', icon: ChartBarIcon, disabled: true },
-    { name: 'Strategy & Planning', icon: ClipboardDocumentListIcon, disabled: true },
-    { name: 'Actions', icon: BoltIcon, disabled: true },
-    { name: 'Audiences', icon: UsersIcon, disabled: true },
-    { name: 'Creative', icon: PhotoIcon, children: [{ name: 'AdLabs', href: '/adlabs/', matchPrefix: true }] },
-    { name: 'Products', icon: ShoppingBagIcon, disabled: true },
-];
-
-const SETTINGS_ITEM: NavItem = {
-    name: 'Settings',
-    icon: Cog6ToothIcon,
-    children: [
-        { name: 'Manage Client', href: '#', disabled: true },
-        { name: 'Cloud Storage', href: '#', disabled: true },
-        { name: 'Client Asset House', href: '/client-asset-house' },
-    ],
-};
 
 export default function AppLayout() {
     const location = useLocation();
@@ -243,23 +202,6 @@ export default function AppLayout() {
         c.name.toLowerCase().includes(search.toLowerCase())
     );
 
-    const isAdLabsActive = !location.pathname.startsWith('/client-asset-house');
-    const isSettingsActive = location.pathname.startsWith('/client-asset-house');
-
-    // Resolve Creative > AdLabs href to the current client so the link lands correctly.
-    const resolvedPrimaryNav = PRIMARY_NAV.map((item) => {
-        if (item.name === 'Creative' && item.children) {
-            return {
-                ...item,
-                children: item.children.map((child) =>
-                    child.name === 'AdLabs'
-                        ? { ...child, href: selectedClient?.slug ? `/adlabs/${selectedClient.slug}/` : '/adlabs/' }
-                        : child
-                ),
-            };
-        }
-        return item;
-    });
 
     return (
         <div className="min-h-screen" style={{ backgroundColor: '#EEF1F7' }}>
@@ -372,36 +314,10 @@ export default function AppLayout() {
                 </div>
             </header>
 
-            {/* Sidebar rail — full height (behind header), icon-only by default, hover-expands to show labels */}
-            <aside
-                className="group fixed inset-y-0 left-0 z-20 flex w-16 flex-col items-stretch overflow-hidden border-r border-gray-200 transition-[width] duration-200 ease-out hover:w-[256px]" style={{ backgroundColor: '#F4F7FC' }}
-                aria-label="Primary navigation"
-            >
-                <nav className="flex-1 overflow-y-auto pt-[60px] pb-2">
-                    <ul className="flex flex-col gap-0.5">
-                        {resolvedPrimaryNav.map((item) => (
-                            <li key={item.name}>
-                                <RailItem
-                                    item={item}
-                                    active={item.name === 'Creative' && isAdLabsActive}
-                                />
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
-                <div className="border-t border-gray-200 py-2">
-                    <ul className="flex flex-col gap-0.5">
-                        <li>
-                            <RailItem item={SETTINGS_ITEM} active={isSettingsActive} />
-                        </li>
-                    </ul>
-                </div>
-            </aside>
-
             {/* Main */}
-            <main className="ml-16 pt-[60px]" style={{ backgroundColor: '#EEF1F7' }}>
+            <main className="pt-[60px]">
                 <div className="relative min-h-[calc(100vh-60px)]">
-                    <div className="relative mx-auto max-w-[1440px] px-9 pt-8 pb-10">
+                    <div className="relative pt-8 pb-10">
                         <Outlet />
                     </div>
                 </div>
@@ -513,96 +429,3 @@ export default function AppLayout() {
     );
 }
 
-/**
- * Sidebar nav item. Icon lives in a fixed-width 64px slot so it stays
- * centered in the collapsed rail. Labels and chevron fade in on hover.
- */
-function RailItem({ item, active }: { item: NavItem; active: boolean }) {
-    const { pathname } = useLocation();
-    const [isOpen, setIsOpen] = useState(active && !!item.children?.length);
-    const Icon = item.icon;
-    const hasChildren = !!item.children?.length;
-
-    // Row — no horizontal padding; icon slot and pr-3 handle all spacing
-    const base = 'flex h-10 w-full items-center text-left transition-colors duration-150';
-    const idle = 'font-normal text-blue-gray-700 hover:bg-blue-gray-50';
-    const disabledCls = 'cursor-not-allowed font-normal text-blue-gray-300';
-    const activeCls = 'bg-blue-gray-50 font-semibold text-blue-gray-900';
-
-    // Icon always centered inside the 64px slot = centered in the collapsed rail
-    const iconSlot = 'flex w-16 shrink-0 items-center justify-center';
-    const iconCls = cn('h-[20px] w-[20px] shrink-0', active ? 'text-blue-600' : 'text-blue-gray-500');
-
-    const labelCls = 'flex-1 truncate text-[13px] opacity-0 transition-opacity duration-150 group-hover:opacity-100';
-    const chevronCls = 'mr-3 h-3.5 w-3.5 shrink-0 text-blue-gray-400 opacity-0 transition-opacity duration-150 group-hover:opacity-100';
-
-    if (item.disabled) {
-        return (
-            <div className={cn(base, disabledCls)} aria-disabled="true">
-                <span className={iconSlot}><Icon className={iconCls} /></span>
-                <span className={labelCls}>{item.name}</span>
-                <ChevronRightIcon className={chevronCls} />
-            </div>
-        );
-    }
-
-    if (hasChildren) {
-        return (
-            <>
-                <button
-                    type="button"
-                    onClick={() => setIsOpen(o => !o)}
-                    className={cn(base, active ? activeCls : idle)}
-                >
-                    <span className={iconSlot}><Icon className={iconCls} /></span>
-                    <span className={labelCls}>{item.name}</span>
-                    <ChevronRightIcon
-                        className={cn(chevronCls, isOpen && 'rotate-90')}
-                    />
-                </button>
-                {isOpen && (
-                    <ul className="hidden flex-col group-hover:flex">
-                        {item.children!.map((child) => {
-                            const isChildActive = !child.disabled && (child.matchPrefix
-                                ? pathname.startsWith(child.href)
-                                : pathname === child.href);
-                            return (
-                                <li key={child.name}>
-                                    {child.disabled ? (
-                                        <span className="flex h-9 w-full cursor-not-allowed items-center pl-16 pr-3 text-[13px] text-blue-gray-300">
-                                            {child.name}
-                                        </span>
-                                    ) : (
-                                        <Link
-                                            to={child.href}
-                                            className={cn(
-                                                'flex h-9 w-full items-center pl-16 pr-3 text-[13px] font-normal transition-colors duration-150',
-                                                isChildActive
-                                                    ? 'bg-blue-gray-50 font-semibold text-blue-600'
-                                                    : 'text-blue-gray-600 hover:bg-blue-gray-50 hover:text-blue-gray-800'
-                                            )}
-                                        >
-                                            {child.name}
-                                        </Link>
-                                    )}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                )}
-            </>
-        );
-    }
-
-    return (
-        <Link
-            to={item.href!}
-            className={cn(base, active ? activeCls : idle)}
-            aria-current={active ? 'page' : undefined}
-        >
-            <span className={iconSlot}><Icon className={iconCls} /></span>
-            <span className={labelCls}>{item.name}</span>
-            <ChevronRightIcon className={chevronCls} />
-        </Link>
-    );
-}

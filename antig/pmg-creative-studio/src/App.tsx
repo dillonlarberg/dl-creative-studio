@@ -12,7 +12,7 @@ import ClientAssetHousePage from './pages/ClientAssetHousePage';
 import { ClientProvider } from './platform/client/ClientProvider';
 import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
 import { WizardShell } from './platform/wizard/WizardShell';
-import batchVariantsManifest from './apps/batch-variants/manifest';
+import videoStitchManifest from './apps/video-stitch/manifest';
 import videoCutdownManifest from './apps/video-cutdown/manifest';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 
@@ -121,10 +121,10 @@ export default function App() {
             }
           />
           <Route
-            path="/adlabs/:clientSlug/batch-variants/*"
+            path="/adlabs/:clientSlug/video-stitch/*"
             element={
               <ClientProvider>
-                <WizardShell manifest={batchVariantsManifest} />
+                <WizardShell manifest={videoStitchManifest} />
               </ClientProvider>
             }
           />

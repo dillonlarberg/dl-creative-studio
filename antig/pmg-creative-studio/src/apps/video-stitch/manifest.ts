@@ -1,7 +1,7 @@
 import type { AppManifest, StepData, WizardStep } from '../types';
 
 /**
- * Batch Variants — preview-status stub manifest (Step 1 of AdLabs v1 plan).
+ * Video Stitch — preview-status stub manifest.
  *
  * Registered to demonstrate the multi-app shell on the dashboard before the
  * full lift work ships. WizardShell renders the preview view (no Continue,
@@ -10,20 +10,20 @@ import type { AppManifest, StepData, WizardStep } from '../types';
  * rendered.
  */
 
-interface BatchVariantsStubData extends StepData {}
+type VideoStitchStubData = StepData;
 
-const stubStep: WizardStep<BatchVariantsStubData> = {
+const stubStep: WizardStep<VideoStitchStubData> = {
   id: 'preview',
   name: 'Preview',
   validate: () => ({ ok: false, reason: 'Not yet available' }),
   render: () => null,
 };
 
-const manifest: AppManifest<BatchVariantsStubData> = {
-  id: 'batch-variants',
-  basePath: 'batch-variants',
-  title: 'Batch Variants',
-  description: 'Generate variants of an approved creative across sizes and copy.',
+const manifest: AppManifest<VideoStitchStubData> = {
+  id: 'video-stitch',
+  basePath: 'video-stitch',
+  title: 'Video Stitch',
+  description: 'Stitch multiple clips into one sequenced cut with transitions and timing controls.',
   status: 'preview',
   // Preview-status apps are not gated — they only show a "Coming soon" view,
   // so the brand-standards check would block users from a harmless surface.

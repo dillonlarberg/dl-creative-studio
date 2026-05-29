@@ -1,6 +1,6 @@
 import type { AppManifest } from './types';
 import templateBuilderManifest from './template-builder/manifest';
-import batchVariantsManifest from './batch-variants/manifest';
+import videoStitchManifest from './video-stitch/manifest';
 import videoCutdownManifest from './video-cutdown/manifest';
 import adResizingManifest from './ad-resizing/manifest';
 
@@ -58,7 +58,7 @@ export function buildRegistry(manifests: AppManifest[]): readonly AppManifest[] 
 const MANIFESTS: AppManifest[] = [
   adResizingManifest as AppManifest,
   templateBuilderManifest as AppManifest,
-  batchVariantsManifest as AppManifest,
+  videoStitchManifest as AppManifest,
   // Preview-status stub. Renders the "Coming soon" WizardShell view until
   // the real implementation ships. Visible on the dashboard so users can
   // see it's on the roadmap.
