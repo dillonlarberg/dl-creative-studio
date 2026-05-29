@@ -19,14 +19,12 @@
  */
 
 export type AppId =
-  | 'resize-image'
   | 'video-cutdown'
   | 'template-builder'
   | 'batch-variants'
   | 'ad-resizing';
 
 const VALID_APP_IDS: readonly AppId[] = [
-  'resize-image',
   'video-cutdown',
   'template-builder',
   'batch-variants',

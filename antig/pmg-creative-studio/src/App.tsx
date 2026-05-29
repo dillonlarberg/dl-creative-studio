@@ -14,7 +14,6 @@ import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
 import { WizardShell } from './platform/wizard/WizardShell';
 import batchVariantsManifest from './apps/batch-variants/manifest';
 import videoCutdownManifest from './apps/video-cutdown/manifest';
-import ResizeImageAppRoot from './apps/resize-image/AppRoot';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 
 /**
@@ -134,14 +133,6 @@ export default function App() {
             element={
               <ClientProvider>
                 <WizardShell manifest={videoCutdownManifest} />
-              </ClientProvider>
-            }
-          />
-          <Route
-            path="/adlabs/:clientSlug/resize-image/*"
-            element={
-              <ClientProvider>
-                <ResizeImageAppRoot />
               </ClientProvider>
             }
           />

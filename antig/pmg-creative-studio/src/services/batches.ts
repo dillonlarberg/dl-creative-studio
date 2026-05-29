@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { paths } from '../platform/firebase/paths';
 import type { AppId, ClientSlug } from '../platform/firebase/paths';
 import { createOutput } from './outputs';
@@ -13,9 +13,7 @@ export interface BatchRecord {
     feedName: string;
     // 'partial' is used by ad-resizing when at least one output succeeded but
     // at least one failed permanently. Template-builder treats it the same as
-    // 'completed' / 'failed' for its UI (DashboardPage's ACTIVE_STATUSES only
-    // surfaces 'pending'|'processing', so 'partial' just falls off the
-    // Active Batch Jobs widget — verified for PR-A).
+    // 'completed' / 'failed' for its UI.
     status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial';
     totalVariations: number;
     completedVariations: number;
@@ -122,15 +120,5 @@ export const batchService = {
         const docSnap = await getDoc(doc(db, paths.batch(clientSlug, appId, batchId)));
         if (docSnap.exists()) return { id: docSnap.id, ...docSnap.data() } as BatchRecord;
         return null;
-    },
-
-    /**
-     * Step 4 of AdLabs v1: read all batches under one app for the dashboard's
-     * Active Batch Jobs section. Caller filters to {pending, processing} and
-     * sorts by createdAt DESC.
-     */
-    async listActiveBatchesForClient(clientSlug: ClientSlug, appId: AppId): Promise<BatchRecord[]> {
-        const snap = await getDocs(collection(db, paths.batches(clientSlug, appId)));
-        return snap.docs.map(d => ({ id: d.id, ...d.data() } as BatchRecord));
     },
 };
