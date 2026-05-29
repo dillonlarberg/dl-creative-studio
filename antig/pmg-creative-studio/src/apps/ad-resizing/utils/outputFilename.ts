@@ -2,7 +2,6 @@ const APP_SLUGS: Record<string, string> = {
   'ad-resizing': 'resize',
   'template-builder': 'template',
   'batch-variants': 'batch',
-  'resize-image': 'resize-img',
 };
 
 /**

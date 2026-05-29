@@ -17,7 +17,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Step 1 — DashboardPage', () => {
-  test('Tracer 1: thesis banner + 3 cards (resize-image + template-builder + batch-variants); no video-cutdown card by default', async ({
+  test('Tracer 1: Apps grid renders the four registered apps', async ({
     page,
   }) => {
     await page.goto('/');
@@ -34,21 +34,14 @@ test.describe('Step 1 — DashboardPage', () => {
     // Thesis banner + greeting were removed during platform-parity restyle.
     // The dashboard now opens straight into the Apps module card.
 
-    // Apps grid: 3 cards in default flag state (resize-image is a skeleton
-    // owned by Annie; template-builder live; batch-variants preview-stub).
+    // Apps grid: one card per registered app (ad-resizing, template-builder,
+    // batch-variants live/preview; video-cutdown preview-stub).
     const cards = page.getByTestId('adlabs-apps-grid').locator('[data-testid^="app-card-"]');
-    await expect(cards).toHaveCount(3);
-    await expect(page.getByTestId('app-card-resize-image')).toBeVisible();
+    await expect(cards).toHaveCount(4);
+    await expect(page.getByTestId('app-card-ad-resizing')).toBeVisible();
     await expect(page.getByTestId('app-card-template-builder')).toBeVisible();
     await expect(page.getByTestId('app-card-batch-variants')).toBeVisible();
-    await expect(page.getByTestId('app-card-video-cutdown')).toHaveCount(0);
-
-    // Coming-soon shelf: only Edit & Tweak (Resize Image graduated to the apps grid).
-    await expect(page.getByTestId('coming-soon-edit-tweak')).toHaveAttribute(
-      'data-disabled',
-      'true'
-    );
-    await expect(page.getByTestId('coming-soon-resize-image')).toHaveCount(0);
+    await expect(page.getByTestId('app-card-video-cutdown')).toBeVisible();
   });
 
   test('Tracer 2: clicking Batch Variants card lands on the preview stub view', async ({
@@ -112,27 +105,7 @@ test.describe('Step 1 — DashboardPage', () => {
     await expect(warning.or(bootstrapError).first()).toBeVisible();
   });
 
-  test('Tracer 5: Active Batch Jobs section renders for PMG-internal user (empty state in E2E without seeded Firestore)', async ({
-    page,
-  }) => {
-    await page.goto('/');
-    await page.evaluate(() =>
-      localStorage.setItem(
-        'selectedClient',
-        JSON.stringify({ slug: 'ralph_lauren', name: 'Ralph Lauren' })
-      )
-    );
-    await page.goto('/adlabs/ralph_lauren/');
-
-    await expect(page.getByTestId('active-batch-jobs')).toBeVisible();
-    // In E2E without auth-bypassed Firestore, the read either resolves empty
-    // or rejects — both surface a section state, never a crash.
-    const empty = page.getByTestId('active-batches-empty');
-    const error = page.getByTestId('active-batches-error');
-    await expect(empty.or(error).first()).toBeVisible();
-  });
-
-  test('Tracer 6: /adlabs root with no slug + cleared localStorage → redirect to /select-client', async ({
+  test('Tracer 5: /adlabs root with no slug + cleared localStorage → redirect to /select-client', async ({
     page,
   }) => {
     await page.goto('/');

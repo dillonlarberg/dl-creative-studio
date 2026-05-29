@@ -86,7 +86,6 @@ describe('paths', () => {
 
   describe('isAppId', () => {
     const validIds: AppId[] = [
-      'resize-image',
       'video-cutdown',
       'template-builder',
       'batch-variants',

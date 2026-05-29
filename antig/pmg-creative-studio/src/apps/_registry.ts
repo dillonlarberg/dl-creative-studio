@@ -2,7 +2,6 @@ import type { AppManifest } from './types';
 import templateBuilderManifest from './template-builder/manifest';
 import batchVariantsManifest from './batch-variants/manifest';
 import videoCutdownManifest from './video-cutdown/manifest';
-import resizeImageManifest from './resize-image/manifest';
 import adResizingManifest from './ad-resizing/manifest';
 
 // Per-app manifests are registered here as they land. Task 6 of PR 3 adds
@@ -65,9 +64,6 @@ const MANIFESTS: AppManifest[] = [
   // see it's on the roadmap.
   videoCutdownManifest as AppManifest,
 ];
-
-// Old resize-image wizard (skeleton) kept routable but off the dashboard.
-void resizeImageManifest;
 
 const REGISTRY = buildRegistry(MANIFESTS);
 
