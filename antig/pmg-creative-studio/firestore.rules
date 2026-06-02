@@ -45,6 +45,19 @@ service cloud.firestore {
       allow read, write: if isAlliStudioUser();
     }
 
+    // Datasource registry — written ONLY by the scanDatasources Cloud Function
+    // (admin SDK, bypasses rules). Apps read; there is no client write path.
+    //
+    // NOTE: the prototype catch-all above currently OR-grants write to
+    // allowlisted users (Firestore unions allows across matching rules; a
+    // second rule cannot deny what another grants). True client-write denial
+    // lands when that catch-all is scoped to explicit subtrees — tracked with
+    // the existing isClientMember TODO. Meanwhile no client code writes here.
+    match /clients/{clientSlug}/datasources/{modelName} {
+      allow read: if isAlliStudioUser();
+      allow write: if false;
+    }
+
     // collectionGroup queries on the unified `outputs` subcollection power
     // the cross-app "your generations" view. The recursive per-client rule
     // above covers per-path reads/writes but does NOT match collectionGroup
