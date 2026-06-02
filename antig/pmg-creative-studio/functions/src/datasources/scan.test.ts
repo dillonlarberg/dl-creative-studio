@@ -61,4 +61,13 @@ describe('scanClientDatasources', () => {
     expect(records.find((r) => r.modelName === 'fiscal_calendar')!.hasImage).toBe(false);
     expect(records.find((r) => r.modelName === 'product_feed')!.hasImage).toBe(true);
   });
+
+  it('classifies video columns', async () => {
+    vi.mocked(alli.listModels).mockResolvedValue([{ name: 'reels_feed', dimensions: ['clip'] }]);
+    vi.mocked(alli.executeQuery).mockResolvedValue([{ clip: 'https://x/a.mp4' }]);
+    const records = await scanClientDatasources('nike_na', 'tok');
+    expect(records[0].hasVideo).toBe(true);
+    expect(records[0].videoColumns).toEqual(['clip']);
+    expect(records[0].hasImage).toBe(false);
+  });
 });
