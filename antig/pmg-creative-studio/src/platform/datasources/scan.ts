@@ -7,7 +7,7 @@ import { authService } from '../../services/auth';
  * Must equal SCAN_VERSION in functions/src/datasources/scan.ts. When that
  * bumps, existing clients re-scan because marker.scanVersion < EXPECTED.
  */
-export const EXPECTED_SCAN_VERSION = 2;
+export const EXPECTED_SCAN_VERSION = 3;
 
 interface ScanResult {
   feedCount: number;

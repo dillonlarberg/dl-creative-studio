@@ -45,14 +45,32 @@ function deriveLabel(row: Record<string, unknown>, imageColumn: string): string 
   return 'Untitled Creative';
 }
 
+// Keep in sync with VIDEO_EXTENSIONS in functions/src/datasources/detect.ts
+// (cross-package duplicate — can't share a module across src/ ↔ functions/).
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.m3u8'];
+
+/** Ad Resize is images-only; this guards video URLs out of the outpaint pipeline. */
+export function isVideoUrl(value: unknown): boolean {
+  const v = String(value ?? '').toLowerCase();
+  return v.startsWith('http') && VIDEO_EXTENSIONS.some((ext) => v.includes(ext));
+}
+
+export interface FeedToCreativesResult {
+  creatives: Creative[];
+  /** Rows skipped because the chosen column held a video URL (Ad Resize is images-only). */
+  skippedVideo: number;
+}
+
 export async function feedToCreatives(
   sampleData: Array<Record<string, unknown>>,
   feedName: string,
   imageColumn: string,
-): Promise<Creative[]> {
-  const filtered = sampleData.filter(row => String(row[imageColumn] ?? '').startsWith('http'));
-  return Promise.all(
-    filtered.map(async (row) => {
+): Promise<FeedToCreativesResult> {
+  const withUrl = sampleData.filter(row => String(row[imageColumn] ?? '').startsWith('http'));
+  const images = withUrl.filter(row => !isVideoUrl(row[imageColumn]));
+  const skippedVideo = withUrl.length - images.length;
+  const creatives = await Promise.all(
+    images.map(async (row) => {
       const imageUrl = String(row[imageColumn]);
       const id = await sha256Prefix(imageUrl);
       return {
@@ -70,4 +88,5 @@ export async function feedToCreatives(
       };
     }),
   );
+  return { creatives, skippedVideo };
 }

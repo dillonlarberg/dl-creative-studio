@@ -2,7 +2,7 @@
 import { logger } from 'firebase-functions';
 import pLimit from 'p-limit';
 import { listModels, getModelMetadata, executeQuery } from './alliClient';
-import { detectImageColumns } from './detect';
+import { detectImageColumns, detectVideoColumns } from './detect';
 
 // How many models to sample concurrently. Bounded so we don't hammer the
 // (flaky, 500-prone) Alli metadata/query endpoints. Mirrors the old client
@@ -14,8 +14,9 @@ const SAMPLE_CONCURRENCY = 5;
  * with EXPECTED_SCAN_VERSION in src/platform/datasources/scan.ts (client).
  * v2: faithful port (smart-proxy CSV fallback + creative_insights ladder) —
  * invalidates the v1 markers written by the broken scan that found no feeds.
+ * v3: also classify video columns (hasVideo/videoColumns).
  */
-export const SCAN_VERSION = 2;
+export const SCAN_VERSION = 3;
 
 export interface DatasourceRecord {
   modelName: string;
@@ -121,6 +122,7 @@ export async function scanClientDatasources(clientSlug: string, token: string): 
         // other model is still recorded (superset list) with no media.
         const rows = isFeedCandidate(model) ? await sampleRows(clientSlug, model, token) : [];
         const imageColumns = detectImageColumns(rows);
+        const videoColumns = detectVideoColumns(rows);
         return {
           modelName: String(model.name),
           label: model.label != null ? String(model.label) : null,
@@ -128,9 +130,9 @@ export async function scanClientDatasources(clientSlug: string, token: string): 
           dimensions: names(model.dimensions),
           measures: names(model.measures),
           hasImage: imageColumns.length > 0,
-          hasVideo: false, // PR 4
+          hasVideo: videoColumns.length > 0,
           imageColumns,
-          videoColumns: [], // PR 4
+          videoColumns,
           // Count of sampled rows whose primary image column holds a URL —
           // drives the picker card's "N images" label.
           imageCount: rows.filter((r) => imageColumns[0] && isHttp(r[imageColumns[0]])).length,

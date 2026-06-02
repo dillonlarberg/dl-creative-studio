@@ -8,7 +8,7 @@ vi.mock('../../../platform/datasources', () => ({
   getScanMarker: (...a: unknown[]) => getScanMarker(...a),
   getDatasources: (...a: unknown[]) => getDatasources(...a),
   scanDatasources: (...a: unknown[]) => scanDatasources(...a),
-  EXPECTED_SCAN_VERSION: 1,
+  EXPECTED_SCAN_VERSION: 3,
 }));
 
 import { useDatasources } from './useDatasources';
@@ -21,7 +21,7 @@ beforeEach(() => {
 
 describe('useDatasources', () => {
   it('reads the registry instantly when the marker is fresh', async () => {
-    getScanMarker.mockResolvedValue({ datasourcesScanVersion: 1, datasourcesFeedCount: 2, datasourcesScannedAt: 1 });
+    getScanMarker.mockResolvedValue({ datasourcesScanVersion: 3, datasourcesFeedCount: 2, datasourcesScannedAt: 1 });
     getDatasources.mockResolvedValue([{ modelName: 'product_feed', hasImage: true, imageColumns: ['hero'], imageCount: 3 }]);
     const { result } = renderHook(() => useDatasources('nike_na'));
     await waitFor(() => expect(result.current.loading).toBe(false));
