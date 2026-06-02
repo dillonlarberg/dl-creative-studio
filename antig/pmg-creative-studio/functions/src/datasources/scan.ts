@@ -12,10 +12,10 @@ const SAMPLE_CONCURRENCY = 5;
 /**
  * Bump when detection logic changes so existing clients re-scan. Kept in sync
  * with EXPECTED_SCAN_VERSION in src/platform/datasources/scan.ts (client).
+ * v2: faithful port (smart-proxy CSV fallback + creative_insights ladder) —
+ * invalidates the v1 markers written by the broken scan that found no feeds.
  */
-export const SCAN_VERSION = 1;
-
-const SAMPLE_LIMIT = 25;
+export const SCAN_VERSION = 2;
 
 export interface DatasourceRecord {
   modelName: string;
@@ -38,7 +38,14 @@ function names(raw: unknown): string[] {
     .filter((s) => s.length > 0);
 }
 
-/** Fetch up to SAMPLE_LIMIT rows for a model, trying discovered dims/measures. */
+/**
+ * Sample rows for a model, trying a progressive ladder of dim/measure combos.
+ * Faithful port of the client's fetchFeedSample (src/platform/datasources/
+ * fetch.ts) — including the `creative_insights_data_export` hardcoded fallback
+ * (its schema isn't discoverable, but those exact fields return image URLs) and
+ * the video-row filter (so a mixed url column still reads as an image column).
+ * The CSV fallback lives in smartExecuteQueryProxy (see alliClient.executeQuery).
+ */
 async function sampleRows(
   clientSlug: string,
   model: Record<string, unknown>,
@@ -56,14 +63,33 @@ async function sampleRows(
       logger.warn('datasource-scan: metadata failed', { modelName, e: String(e) });
     }
   }
-  const attempts: Array<{ dimensions?: string[]; measures?: string[]; limit: number }> = [];
-  if (dims.length || meas.length) attempts.push({ dimensions: dims, measures: meas, limit: SAMPLE_LIMIT });
-  if (dims.length) attempts.push({ dimensions: dims, limit: SAMPLE_LIMIT });
-  if (dims.length) attempts.push({ dimensions: [dims[0]], limit: SAMPLE_LIMIT });
-  for (const body of attempts) {
+
+  const attempts: Array<{ dimensions: string[]; measures: string[] }> = [];
+  if (dims.length || meas.length) attempts.push({ dimensions: dims, measures: meas });
+  if (dims.length) attempts.push({ dimensions: dims, measures: [] });
+  if (modelName === 'creative_insights_data_export') {
+    attempts.unshift({ dimensions: ['ad_id', 'url', 'creative_type', 'brand_visuals'], measures: ['cpm', 'ctr'] });
+    attempts.push({ dimensions: ['ad_id', 'url'], measures: [] });
+    attempts.push({ dimensions: ['ad_id'], measures: [] });
+  } else if (dims.length) {
+    attempts.push({ dimensions: [dims[0]], measures: [] });
+  }
+
+  for (const attempt of attempts) {
+    if (attempt.dimensions.length === 0 && attempt.measures.length === 0) continue;
+    const body: { dimensions?: string[]; measures?: string[] } = {};
+    if (attempt.dimensions.length) body.dimensions = attempt.dimensions;
+    if (attempt.measures.length) body.measures = attempt.measures;
     try {
       const rows = await executeQuery(clientSlug, modelName, body, token);
-      if (rows.length) return rows;
+      if (rows.length === 0) continue;
+      if (modelName === 'creative_insights_data_export') {
+        return rows.filter((r) => {
+          const ct = r.creative_type ?? r.creative_insights_data_export__creative_type;
+          return String(ct ?? '').toLowerCase() !== 'video';
+        });
+      }
+      return rows;
     } catch (e) {
       logger.warn('datasource-scan: query attempt failed', { modelName, e: String(e) });
     }

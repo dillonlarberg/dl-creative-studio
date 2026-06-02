@@ -30,8 +30,7 @@ describe('scanClientDatasources', () => {
   });
 
   it('still records a feed candidate whose sample query throws (no media)', async () => {
-    vi.mocked(alli.listModels).mockResolvedValue([{ name: 'broken_feed' }]);
-    vi.mocked(alli.getModelMetadata).mockResolvedValue({});
+    vi.mocked(alli.listModels).mockResolvedValue([{ name: 'broken_feed', dimensions: ['x'] }]);
     vi.mocked(alli.executeQuery).mockRejectedValue(new Error('400'));
     const records = await scanClientDatasources('nike_na', 'tok');
     expect(records).toHaveLength(1);
