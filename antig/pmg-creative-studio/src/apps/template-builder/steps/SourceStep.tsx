@@ -19,7 +19,7 @@ import {
  * Source step — Connect Data. JSX lifted verbatim from
  * UseCaseWizardPage.tsx lines 2695-2952. Datasource discovery and the
  * `fetchFeedSample` progressive-fallback ladder live in
- * `_internal/handlers.ts`. The mount-effect data fetch lives in this
+ * `src/platform/datasources/fetch.ts`. The mount-effect data fetch lives in this
  * step's body (mirrors monolith lines 712-721, which is itself a
  * per-step effect rather than the global mount-effect at line 478) —
  * keeps the SourceStep self-contained without extending the
