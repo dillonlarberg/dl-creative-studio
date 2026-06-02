@@ -8,6 +8,7 @@ export * from "./alliProxy";
 export * from "./ai";
 export * from "./video";
 export * from "./resize";
+export * from "./datasources";
 
 export const helloWorld = functions.https.onRequest((request, response) => {
 
