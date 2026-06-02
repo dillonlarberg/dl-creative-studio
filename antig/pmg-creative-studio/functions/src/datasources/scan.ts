@@ -21,7 +21,7 @@ export interface DatasourceRecord {
   hasVideo: boolean;
   imageColumns: string[];
   videoColumns: string[];
-  sampleCount: number;
+  imageCount: number;
   scanVersion: number;
 }
 
@@ -82,7 +82,9 @@ export async function scanClientDatasources(clientSlug: string, token: string): 
       hasVideo: false, // PR 4
       imageColumns,
       videoColumns: [], // PR 4
-      sampleCount: rows.filter((r) => imageColumns[0] && isHttp(r[imageColumns[0]])).length,
+      // Count of sampled rows whose primary image column holds a URL — drives
+      // the picker card's "N images" label.
+      imageCount: rows.filter((r) => imageColumns[0] && isHttp(r[imageColumns[0]])).length,
       scanVersion: SCAN_VERSION,
     });
   }

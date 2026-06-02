@@ -11,13 +11,13 @@ function auth(token: string) {
 }
 
 export async function listModels(clientSlug: string, token: string): Promise<Array<Record<string, unknown>>> {
-  const r = await axios.get(`${BASE}/${clientSlug}/models`, { headers: auth(token) });
+  const r = await axios.get(`${BASE}/${clientSlug}/models`, { headers: auth(token), timeout: 30_000 });
   const d = r.data;
   return (d?.models || d?.results || d?.data || d?.payload || (Array.isArray(d) ? d : [])) as Array<Record<string, unknown>>;
 }
 
 export async function getModelMetadata(clientSlug: string, modelName: string, token: string): Promise<Record<string, unknown>> {
-  const r = await axios.get(`${BASE}/${clientSlug}/models/${modelName}`, { headers: auth(token) });
+  const r = await axios.get(`${BASE}/${clientSlug}/models/${modelName}`, { headers: auth(token), timeout: 30_000 });
   return (r.data ?? {}) as Record<string, unknown>;
 }
 
@@ -27,7 +27,7 @@ export async function executeQuery(
   body: { dimensions?: string[]; measures?: string[]; limit?: number },
   token: string,
 ): Promise<Array<Record<string, unknown>>> {
-  const r = await axios.post(`${BASE}/${clientSlug}/models/${modelName}/execute-query`, body, { headers: auth(token) });
+  const r = await axios.post(`${BASE}/${clientSlug}/models/${modelName}/execute-query`, body, { headers: auth(token), timeout: 30_000 });
   const d = r.data;
   return (d?.results || d?.rows || d?.data || (Array.isArray(d) ? d : [])) as Array<Record<string, unknown>>;
 }

@@ -12,6 +12,11 @@ export function diffRemovedIds(existing: string[], current: string[]): string[] 
  * Reconcile the registry: upsert one doc per record, delete docs for models
  * that vanished, and stamp the scan marker on the client doc. Admin SDK, so it
  * bypasses Firestore rules (the only writer of this collection).
+ *
+ * Uses BulkWriter (not a single WriteBatch) so the write scales past the
+ * 500-op-per-batch limit — it chunks + throttles internally. The reconcile is
+ * not transactionally atomic, which is fine: each scan fully overwrites, so a
+ * partial failure self-heals on the next scan.
  */
 export async function writeRegistry(
   clientSlug: string,
@@ -26,14 +31,14 @@ export async function writeRegistry(
   const currentIds = records.map((r) => r.modelName);
   const removed = diffRemovedIds(existingIds, currentIds);
 
-  const batch = db.batch();
+  const writer = db.bulkWriter();
   for (const rec of records) {
-    batch.set(col.doc(rec.modelName), rec); // full overwrite — authoritative
+    void writer.set(col.doc(rec.modelName), rec); // full overwrite — authoritative
   }
   for (const id of removed) {
-    batch.delete(col.doc(id));
+    void writer.delete(col.doc(id));
   }
-  batch.set(
+  void writer.set(
     db.doc(`clients/${clientSlug}`),
     {
       datasourcesScannedAt: FieldValue.serverTimestamp(),
@@ -42,5 +47,5 @@ export async function writeRegistry(
     },
     { merge: true },
   );
-  await batch.commit();
+  await writer.close();
 }

@@ -27,7 +27,7 @@ export interface DatasourceRecord {
   hasVideo: boolean;
   imageColumns: string[];
   videoColumns: string[];
-  sampleCount: number;
+  imageCount: number;
   scanVersion: number;
 }
 

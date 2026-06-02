@@ -37,4 +37,14 @@ describe('scanClientDatasources', () => {
     expect(records).toHaveLength(1);
     expect(records[0].hasImage).toBe(false);
   });
+
+  it('falls back to getModelMetadata when the model record has no schema', async () => {
+    vi.mocked(alli.listModels).mockResolvedValue([{ name: 'sparse' }]);
+    vi.mocked(alli.getModelMetadata).mockResolvedValue({ dimensions: ['hero'], measures: [] });
+    vi.mocked(alli.executeQuery).mockResolvedValue([{ hero: 'https://x/1.jpg' }]);
+    const records = await scanClientDatasources('nike_na', 'tok');
+    expect(alli.getModelMetadata).toHaveBeenCalledWith('nike_na', 'sparse', 'tok');
+    expect(records[0].hasImage).toBe(true);
+    expect(records[0].imageColumns).toEqual(['hero']);
+  });
 });
