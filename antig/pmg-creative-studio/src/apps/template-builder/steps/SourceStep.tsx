@@ -13,7 +13,7 @@ import {
   fetchDataSources,
   fetchFeedSample,
   type FeedSampleErrorInfo,
-} from '../_internal/handlers';
+} from '../../../platform/datasources';
 
 /**
  * Source step — Connect Data. JSX lifted verbatim from
