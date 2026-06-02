@@ -23,12 +23,8 @@ export interface RequirementField {
   value?: string;
 }
 
-export interface SelectedFeed {
-  name: string;
-  dimensions?: Array<string | { name: string }>;
-  measures?: Array<string | { name: string }>;
-  [k: string]: unknown;
-}
+import type { SelectedFeed } from '../../platform/datasources/types';
+export type { SelectedFeed };
 
 export interface TemplateBuilderStepData {
   // --- context step ---

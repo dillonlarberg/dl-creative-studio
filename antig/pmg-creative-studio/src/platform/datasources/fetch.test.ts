@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fetchDataSources, fetchFeedSample, clearFeedCache } from './handlers';
-import { alliService } from '../../../services/alli';
+import { fetchDataSources, fetchFeedSample, clearFeedCache } from './fetch';
+import { alliService } from '../../services/alli';
 
 describe('fetchDataSources', () => {
   beforeEach(() => {

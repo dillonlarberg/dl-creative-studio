@@ -11,10 +11,10 @@ import { Badge, Button, Input as _Input, Tabs } from '@agencypmg/alli-design-sys
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Input = _Input as unknown as React.ComponentType<any>;
 import { cn } from '../../../utils/cn';
-import { fetchDataSources, fetchFeedSample } from '../../template-builder/_internal/handlers';
-import type { SelectedFeed } from '../../template-builder/types';
+import { fetchDataSources, fetchFeedSample } from '../../../platform/datasources';
+import type { SelectedFeed } from '../../../platform/datasources';
 import { detectImageColumns, feedToCreatives } from '../utils/feedToCreatives';
-import { clearFeedCache, getCachedDataSources, getCachedFeedSample } from '../../template-builder/_internal/handlers';
+import { clearFeedCache, getCachedDataSources, getCachedFeedSample } from '../../../platform/datasources';
 import type { MockCreative } from '../types';
 import type { Creative } from '../types';
 import UploadTab from './UploadTab';
