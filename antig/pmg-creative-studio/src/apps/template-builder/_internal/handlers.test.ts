@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { fetchDataSources, fetchFeedSample, clearFeedCache } from './handlers';
+import { fetchDataSources, fetchFeedSample, clearFeedCache } from '../../../platform/datasources/fetch';
 import { alliService } from '../../../services/alli';
 
 describe('fetchDataSources', () => {
