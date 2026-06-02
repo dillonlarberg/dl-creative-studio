@@ -45,6 +45,8 @@ function deriveLabel(row: Record<string, unknown>, imageColumn: string): string 
   return 'Untitled Creative';
 }
 
+// Keep in sync with VIDEO_EXTENSIONS in functions/src/datasources/detect.ts
+// (cross-package duplicate — can't share a module across src/ ↔ functions/).
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.m3u8'];
 
 /** Ad Resize is images-only; this guards video URLs out of the outpaint pipeline. */

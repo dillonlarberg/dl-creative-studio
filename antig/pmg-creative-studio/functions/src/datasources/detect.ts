@@ -4,6 +4,9 @@
 // src/apps/ad-resizing/utils/feedToCreatives.ts (which the client shed).
 
 const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+// Keep in sync with VIDEO_EXTENSIONS in
+// src/apps/ad-resizing/utils/feedToCreatives.ts (cross-package duplicate — the
+// client guard can't import from functions/).
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm', '.m3u8'];
 
 export function isImageUrl(value: unknown): boolean {
