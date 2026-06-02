@@ -1,8 +1,6 @@
 import type { Creative } from '../types';
 import { sha256Prefix } from './sha256';
 
-const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
-
 const DATE_COLUMNS = [
   'created_at', 'updated_at', 'date_modified', 'date_created',
   'last_updated', 'published_at', 'upload_date', 'date', 'timestamp',
@@ -18,20 +16,6 @@ function detectUploadDate(row: Record<string, unknown>): string {
     }
   }
   return '';
-}
-
-export function detectImageColumns(rows: Array<Record<string, unknown>>): string[] {
-  if (rows.length === 0) return [];
-  const sample = rows.slice(0, Math.min(5, rows.length));
-  const columns = Object.keys(rows[0]);
-
-  return columns.filter(col => {
-    const imageCount = sample.filter(row => {
-      const val = String(row[col] ?? '');
-      return val.startsWith('http') && IMAGE_EXTENSIONS.some(ext => val.toLowerCase().includes(ext));
-    }).length;
-    return imageCount >= Math.ceil(sample.length / 2);
-  });
 }
 
 function detectFileType(url: string): 'PNG' | 'JPG' | 'WEBP' {
