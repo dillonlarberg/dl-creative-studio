@@ -66,6 +66,13 @@ export const paths = {
   output: (slug: ClientSlug, appId: AppId, outputId: string) =>
     `${root(slug)}/apps/${appId}/outputs/${outputId}`,
 
+  // App-agnostic per-client datasource registry, written only by the
+  // scanDatasources Cloud Function. Queried by every app (e.g. ad-resizing
+  // filters where hasImage == true). Sits alongside `assets`.
+  datasources: (slug: ClientSlug) => `${root(slug)}/datasources`,
+  datasource: (slug: ClientSlug, modelName: string) =>
+    `${root(slug)}/datasources/${modelName}`,
+
   storage: {
     client: (slug: ClientSlug) => root(slug),
     app: (slug: ClientSlug, appId: AppId, suffix: string) =>
