@@ -77,7 +77,19 @@ export default function FeedConnectScreen({ clientSlug, onConnect, onUploadConne
         setSelectError('That feed returned no image rows. Try another source or rescan.');
         return;
       }
-      const creatives = await feedToCreatives(sample.sampleData, record.modelName, imageColumn);
+      // Ad Resize is images-only: feedToCreatives filters video rows out so they
+      // never reach the outpaint pipeline. If filtering leaves nothing usable,
+      // don't connect to an empty grid — say why.
+      const { creatives, skippedVideo } = await feedToCreatives(sample.sampleData, record.modelName, imageColumn);
+      if (creatives.length === 0) {
+        setPickingFeed(null);
+        setSelectError(
+          skippedVideo > 0
+            ? "This feed's media is video — Ad Resize is images-only for now."
+            : 'That feed returned no usable image rows.',
+        );
+        return;
+      }
       onConnect({ name: record.modelName }, imageColumn, creatives);
     } catch (e) {
       setPickingFeed(null);
