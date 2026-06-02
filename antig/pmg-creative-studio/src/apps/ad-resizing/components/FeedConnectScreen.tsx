@@ -54,15 +54,34 @@ export default function FeedConnectScreen({ clientSlug, onConnect, onUploadConne
   const [pickingFeed, setPickingFeed] = useState<DatasourceRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'alli' | 'upload'>('alli');
   const [selecting, setSelecting] = useState(false);
+  const [selectError, setSelectError] = useState<string | null>(null);
 
   // Fetch rows for the ONE selected feed (the registry stores discovery
   // metadata, not rows), then build creatives from the chosen image column.
+  // fetchFeedSample returns an error ENVELOPE (it doesn't throw) on Alli
+  // failure, so we must inspect metadata.error before connecting — otherwise
+  // a failed feed would land the user on a silently empty grid.
   async function connectFeed(record: DatasourceRecord, imageColumn: string) {
+    setSelectError(null);
     setSelecting(true);
     try {
       const sample = await fetchFeedSample({ clientSlug, feed: { name: record.modelName } });
+      const meta = sample.metadata as { error?: { error?: string } } | null;
+      if (meta?.error) {
+        setPickingFeed(null);
+        setSelectError(meta.error.error ?? 'Could not load this feed. Try another source.');
+        return;
+      }
+      if (sample.sampleData.length === 0) {
+        setPickingFeed(null);
+        setSelectError('That feed returned no image rows. Try another source or rescan.');
+        return;
+      }
       const creatives = await feedToCreatives(sample.sampleData, record.modelName, imageColumn);
       onConnect({ name: record.modelName }, imageColumn, creatives);
+    } catch (e) {
+      setPickingFeed(null);
+      setSelectError((e as Error)?.message ?? 'Could not load this feed. Try another source.');
     } finally {
       setSelecting(false);
     }
@@ -223,6 +242,12 @@ export default function FeedConnectScreen({ clientSlug, onConnect, onUploadConne
                       {feeds.length} feed{feeds.length !== 1 ? 's' : ''} with image columns
                     </p>
                   </div>
+                </div>
+              )}
+
+              {selectError && (
+                <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3.5 py-2.5">
+                  <p className="text-[12px] font-medium text-red-700">{selectError}</p>
                 </div>
               )}
 

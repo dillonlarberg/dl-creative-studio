@@ -35,12 +35,12 @@ export function useDatasources(clientSlug: string): UseDatasources {
       setError(null);
       try {
         const marker = forceScan ? null : await getScanMarker(clientSlug);
+        if (runId.current !== myId) return;
         const stale = !marker || marker.datasourcesScanVersion < EXPECTED_SCAN_VERSION;
         if (stale) {
           setScanning(true);
           await scanDatasources(clientSlug);
           if (runId.current !== myId) return;
-          setScanning(false);
         }
         const records = await getDatasources(clientSlug, { media: 'image' });
         if (runId.current !== myId) return;
@@ -49,10 +49,10 @@ export function useDatasources(clientSlug: string): UseDatasources {
         if (runId.current !== myId) return;
         setError((e as Error)?.message ?? 'Failed to load data sources');
       } finally {
-        if (runId.current === myId) {
-          setLoading(false);
-          setScanning(false);
-        }
+        // Always clear scanning — even if this run was superseded mid-scan
+        // (a client switch) — so the flag can't leak `true` into the new run.
+        setScanning(false);
+        if (runId.current === myId) setLoading(false);
       }
     },
     [clientSlug],
