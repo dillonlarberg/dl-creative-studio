@@ -1,7 +1,13 @@
 // functions/src/datasources/scan.ts
 import { logger } from 'firebase-functions';
+import pLimit from 'p-limit';
 import { listModels, getModelMetadata, executeQuery } from './alliClient';
 import { detectImageColumns } from './detect';
+
+// How many models to sample concurrently. Bounded so we don't hammer the
+// (flaky, 500-prone) Alli metadata/query endpoints. Mirrors the old client
+// BATCH=3 spirit with a little more parallelism for a one-time server scan.
+const SAMPLE_CONCURRENCY = 5;
 
 /**
  * Bump when detection logic changes so existing clients re-scan. Kept in sync
@@ -65,30 +71,48 @@ async function sampleRows(
   return [];
 }
 
+/**
+ * A model worth SAMPLING for media columns. Mirrors the old client-side
+ * fetchDataSources filter. Critical for big warehouses (e.g. apple_services has
+ * 100+ models, mostly non-feed tables whose metadata endpoint 500s): we still
+ * RECORD every model for the superset list, but only sample candidates — else
+ * the scan walks 100+ models sequentially and never finishes.
+ */
+function isFeedCandidate(model: Record<string, unknown>): boolean {
+  const name = String(model.name ?? '');
+  const search = `${name} ${model.description ?? ''} ${model.label ?? ''}`.toLowerCase();
+  return search.includes('feed') || name === 'creative_insights_data_export';
+}
+
 export async function scanClientDatasources(clientSlug: string, token: string): Promise<DatasourceRecord[]> {
-  const models = await listModels(clientSlug, token);
-  const records: DatasourceRecord[] = [];
-  for (const model of models) {
-    if (!model?.name) continue;
-    const rows = await sampleRows(clientSlug, model, token);
-    const imageColumns = detectImageColumns(rows);
-    records.push({
-      modelName: String(model.name),
-      label: model.label != null ? String(model.label) : null,
-      type: model.type != null ? String(model.type) : null,
-      dimensions: names(model.dimensions),
-      measures: names(model.measures),
-      hasImage: imageColumns.length > 0,
-      hasVideo: false, // PR 4
-      imageColumns,
-      videoColumns: [], // PR 4
-      // Count of sampled rows whose primary image column holds a URL — drives
-      // the picker card's "N images" label.
-      imageCount: rows.filter((r) => imageColumns[0] && isHttp(r[imageColumns[0]])).length,
-      scanVersion: SCAN_VERSION,
-    });
-  }
-  return records;
+  const models = (await listModels(clientSlug, token)).filter((m) => m?.name);
+  const limit = pLimit(SAMPLE_CONCURRENCY);
+
+  return Promise.all(
+    models.map((model) =>
+      limit(async (): Promise<DatasourceRecord> => {
+        // Only feed candidates pay the sample+detect cost (network). Every
+        // other model is still recorded (superset list) with no media.
+        const rows = isFeedCandidate(model) ? await sampleRows(clientSlug, model, token) : [];
+        const imageColumns = detectImageColumns(rows);
+        return {
+          modelName: String(model.name),
+          label: model.label != null ? String(model.label) : null,
+          type: model.type != null ? String(model.type) : null,
+          dimensions: names(model.dimensions),
+          measures: names(model.measures),
+          hasImage: imageColumns.length > 0,
+          hasVideo: false, // PR 4
+          imageColumns,
+          videoColumns: [], // PR 4
+          // Count of sampled rows whose primary image column holds a URL —
+          // drives the picker card's "N images" label.
+          imageCount: rows.filter((r) => imageColumns[0] && isHttp(r[imageColumns[0]])).length,
+          scanVersion: SCAN_VERSION,
+        };
+      }),
+    ),
+  );
 }
 
 function isHttp(v: unknown): boolean {
