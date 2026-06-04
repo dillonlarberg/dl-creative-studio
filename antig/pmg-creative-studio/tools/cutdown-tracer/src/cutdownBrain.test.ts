@@ -66,3 +66,27 @@ describe("GeminiCutdownBrain.selectForAngle", () => {
     expect(segs[0].why).toBeTruthy();
   });
 });
+
+const selected: import("./types.js").Segment[] = [
+  { startSec: 2, endSec: 5, score: 0.8, summary: "reveal", role: "reveal", why: "x" },
+  { startSec: 40, endSec: 43, score: 0.6, summary: "react", role: "reaction", why: "y" },
+];
+
+describe("GeminiCutdownBrain.critique", () => {
+  it("returns the revised selection when the model responds well", async () => {
+    const revised = { text: JSON.stringify({ segments: [
+      { startSec: 2, endSec: 5, score: 0.85, summary: "reveal", role: "reveal", why: "kept" },
+    ] }) };
+    const { client } = queuedClient([revised]);
+    const brain = new GeminiCutdownBrain(client);
+    const out = await brain.critique(analysis, "narrative", undefined, selected);
+    expect(out).toHaveLength(1);
+  });
+
+  it("degrades to the input selection if the critique call fails", async () => {
+    const { client } = queuedClient([{ text: "garbage" }, { text: "garbage" }]);
+    const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
+    const out = await brain.critique(analysis, "narrative", undefined, selected);
+    expect(out).toEqual(selected);
+  });
+});

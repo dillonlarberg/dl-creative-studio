@@ -86,6 +86,40 @@ export class GeminiCutdownBrain {
     });
     return orderSegments(angle, segments);
   }
+
+  /**
+   * Bounded single self-check. Re-examines the selection against the angle + brief +
+   * cut-to-cut coherence and may swap/drop/replace picks ONCE. On any failure it
+   * degrades to the input selection rather than aborting the version.
+   */
+  async critique(
+    analysis: VideoAnalysis,
+    angle: Angle,
+    brief: string | undefined,
+    selected: Segment[],
+  ): Promise<Segment[]> {
+    const briefLine = brief ? `Brief: "${brief}". ` : "";
+    const prompt =
+      `Theme: ${analysis.theme}\n` +
+      `Available beats: ${JSON.stringify(analysis.beats)}\n` +
+      `Current ${angle} selection: ${JSON.stringify(selected)}\n\n` +
+      `${briefLine}Critique this selection for coherence (do adjacent cuts relate?) and ` +
+      `${angle} fit. If it is already good, return it unchanged. Otherwise swap/drop/replace ` +
+      `beats (drawn only from the available beats) to improve it. ` +
+      `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] }.`;
+    try {
+      const { segments } = await generateJson(this.ai, {
+        model: this.model,
+        contents: [{ text: prompt }],
+        schema: SegmentsEnvelopeSchema,
+        maxAttempts: this.opts.maxAttempts,
+        backoffMs: this.opts.backoffMs,
+      });
+      return orderSegments(angle, segments);
+    } catch {
+      return selected; // graceful degradation — the version still ships
+    }
+  }
 }
 
 /** Wire the real client from an API key. */
