@@ -11,6 +11,7 @@
     "select-gemini": "tsx scripts/select-gemini.ts",
     "detect-tempo": "tsx scripts/detect-tempo.ts",
     "ingest-music": "tsx scripts/ingest-music.ts",
+    "run-live": "tsx scripts/run-live.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
