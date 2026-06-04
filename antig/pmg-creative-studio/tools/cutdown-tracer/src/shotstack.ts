@@ -93,7 +93,11 @@ export class ShotstackRenderer implements VideoRenderer {
 
   async render(spec: EditSpec): Promise<{ mp4Url: string }> {
     const payload = buildShotstackTimeline(spec);
+    if (process.env.SHOTSTACK_DEBUG) {
+      console.log(`[shotstack] payload:\n${JSON.stringify(payload, null, 2)}`);
+    }
     const { base, id } = await this.submit(payload);
+    console.log(`[shotstack] render id: ${id} (base ${base})`);
     const url = await this.poll(base, id);
     return { mp4Url: url };
   }
@@ -130,10 +134,18 @@ export class ShotstackRenderer implements VideoRenderer {
         headers: { "x-api-key": this.apiKey },
       });
       const json = (await res.json().catch(() => ({}))) as {
-        response?: { status?: string; url?: string; error?: string };
+        response?: { status?: string; url?: string; error?: unknown; data?: unknown };
       };
       const status = json.response?.status;
-      if (status === "failed") throw new Error(`Shotstack render failed: ${json.response?.error ?? "unknown"}`);
+      if (process.env.SHOTSTACK_DEBUG) console.log(`[shotstack] status: ${status ?? "?"}`);
+      if (status === "failed") {
+        // Shotstack's error can be a string or an object — surface it fully (and the id for the dashboard).
+        const detail =
+          typeof json.response?.error === "string"
+            ? json.response.error
+            : JSON.stringify(json.response ?? {});
+        throw new Error(`Shotstack render ${id} failed: ${detail}`);
+      }
       if (status === "done" && json.response?.url) return json.response.url;
     }
   }

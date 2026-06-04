@@ -12,6 +12,7 @@
     "detect-tempo": "tsx scripts/detect-tempo.ts",
     "ingest-music": "tsx scripts/ingest-music.ts",
     "run-live": "tsx scripts/run-live.ts",
+    "shotstack-status": "tsx scripts/shotstack-status.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
