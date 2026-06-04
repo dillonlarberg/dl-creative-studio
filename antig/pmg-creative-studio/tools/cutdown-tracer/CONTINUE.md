@@ -41,7 +41,9 @@ This is **Milestone 0** of the video-stitch v0: one video (15s → no hard cap; 
   - [x] `scripts/detect-tempo.ts` (`npm run detect-tempo <audio>`); `src/librosa.test.ts` (5, subprocess mocked). **Suite 46 ✓.**
   - **Toolchain note:** librosa needs **Python 3.13** venv (3.14 has no numba/llvmlite wheels); `.venv-librosa/` (gitignored); set `PYTHON_BIN`. ffmpeg needed for mp3/m4a; WAV works bare. See README.
   - **⛳ GATE — ✓ SIGNED OFF (2026-06-03):** real seam→python→librosa path verified on synthetic clicks (120→117.45, 90→89.1) AND a real song `fixtures/dtmf.mp3` → **112.35 BPM**. mp3 decoded with no ffmpeg (libsndfile ≥1.1 handles mp3 natively).
-- [~] **Step 5 — real `MusicCatalog` (Firestore) + `ShotstackRenderer` + GCS signed URLs** — SCAFFOLDED against Fakes (suite 65 ✓); awaiting cloud setup
+- [x] **Step 5 — real catalog + renderer + GCS + ffmpeg clips** — ✓ FIRST LIVE RENDER (2026-06-04). `otro_atardecer`: 296.8s source → 4 Gemini moments → 107.67 BPM → 7 cuts/15.000s → Shotstack mp4. Run: `FFMPEG_BIN=$(.venv-librosa/.../imageio ffmpeg) npm run run-live <trackId>`. **⛳ AWAITING HUMAN EYEBALL of the reel.**
+  - Key fix: Shotstack sandbox rejects the full long source → per-clip extraction (ffmpeg cuts each moment to a small clip, uploads only those). Plus clampSegments (Gemini returned out-of-bounds timestamps). ffmpeg = static binary from `imageio-ffmpeg` in `.venv-librosa` (set `FFMPEG_BIN`). Auth = ADC; URLs = getDownloadURL token URLs.
+- [x] (superseded) Step 5 scaffold against Fakes
   - [x] new seam `BlobStore` (uploadAndSign/sign) + `FakeBlobStore`; pipeline now uploads source → signed URL before render (Shotstack must fetch it)
   - [x] `src/shotstack.ts` — pure `buildShotstackTimeline(spec)` (cuts→video clips, music track + tail fade, 1080×1920/15s) + `ShotstackRenderer` (DI fetch, submit/poll, /edit/stage host discovery) + tests (9)
   - [x] `src/firestoreCatalog.ts` — `FirestoreMusicCatalog` (DI Firestore client + signer); `MusicDocSchema` (doc stores `storagePath`, URL signed on read) + tests (5)
