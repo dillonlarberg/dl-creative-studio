@@ -317,7 +317,7 @@ export default function AppLayout() {
             {/* Main */}
             <main className="pt-[60px]">
                 <div className="relative min-h-[calc(100vh-60px)]">
-                    <div className="relative pt-8 pb-10">
+                    <div className="relative px-6 pt-8 pb-10 xl:px-10">
                         <Outlet />
                     </div>
                 </div>

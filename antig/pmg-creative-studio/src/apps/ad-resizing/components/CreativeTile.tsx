@@ -41,14 +41,17 @@ export default function CreativeTile({ creative, selected, onSelect, onDimension
       type="button"
       onClick={() => onSelect(creative)}
       className={cn(
-        'group relative w-full rounded-lg border bg-white text-left shadow-sm transition-all duration-150',
+        'group relative min-w-0 w-full rounded-lg border bg-white text-left shadow-sm transition-all duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2',
         selected
           ? 'border-blue-600 ring-2 ring-blue-600'
           : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
       )}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg bg-gray-100">
+      <div
+        className="relative w-full overflow-hidden rounded-t-lg bg-gray-100"
+        style={{ aspectRatio: `${creative.width} / ${creative.height}` }}
+      >
         <img
           src={creative.thumbnailUrl}
           alt={creative.name}

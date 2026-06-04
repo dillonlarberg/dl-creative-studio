@@ -68,10 +68,10 @@ export default function DashboardPage() {
   return (
     <>
       <div
-        className="-mt-8 mb-4 border-b border-gray-200 bg-white"
+        className="-mx-6 -mt-8 mb-4 border-b border-gray-200 bg-white xl:-mx-10"
         data-testid="adlabs-page-header"
       >
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 xl:px-10">
           <h1 className="text-2xl font-medium text-gray-900">AdLabs</h1>
         </div>
       </div>

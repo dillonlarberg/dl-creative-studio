@@ -17,6 +17,7 @@ import FilterSortBar, { type FormatFilter, type FileTypeFilter, type SortOption 
 import GeneratedFilterBar, { type GenSortOption } from './components/GeneratedFilterBar';
 import DownloadDropdown from './components/DownloadDropdown';
 import FeedConnectScreen from './components/FeedConnectScreen';
+import MasonryGrid from './components/MasonryGrid';
 import SourcePreviewModal from './components/SourcePreviewModal';
 import StepIndicator, { type StepId } from './components/StepIndicator';
 import ConfirmBanner from './components/ConfirmBanner';
@@ -39,6 +40,19 @@ function newOutputId(dimId: string): string {
 }
 
 type Stage = 'browse' | 'results';
+
+function useNumCols(panelOpen: boolean): number {
+  const [w, setW] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener('resize', handler, { passive: true });
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  if (panelOpen) return w >= 1280 ? 3 : 2;
+  if (w >= 1280) return 5;
+  if (w >= 768) return 3;
+  return 2;
+}
 
 function detectFormat(width: number, height: number): 'landscape' | 'square' | 'portrait' {
   const ratio = width / height;
@@ -514,10 +528,11 @@ export default function AdResizingAppRoot() {
     }
   }
 
+  const numCols = useNumCols(!!selectedCreative);
   const activeStep = stage === 'results' && allComplete ? 'download' : stage;
 
   return (
-    <div className="flex flex-col gap-0">
+    <div className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-gray-900/5 min-h-[calc(100vh-132px)]">
       {/* Page header */}
       <div className="mb-5">
         <Link
@@ -665,11 +680,10 @@ export default function AdResizingAppRoot() {
                     </button>
                   </div>
                 ) : (
-                  <div className={cn(
-                    'grid gap-3',
-                    selectedCreative ? 'grid-cols-2 xl:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
-                  )}>
-                    {filteredCreatives.map(creative => (
+                  <MasonryGrid
+                    items={filteredCreatives}
+                    numCols={numCols}
+                    renderItem={(creative) => (
                       <CreativeTile
                         key={creative.id}
                         creative={creative}
@@ -677,8 +691,8 @@ export default function AdResizingAppRoot() {
                         onSelect={handleSelectCreative}
                         onDimensionsResolved={handleDimensionsResolved}
                       />
-                    ))}
-                  </div>
+                    )}
+                  />
                 )}
               </div>
 
