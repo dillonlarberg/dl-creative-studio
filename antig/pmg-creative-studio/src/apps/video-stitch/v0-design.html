@@ -241,6 +241,15 @@
     </div>
   </header>
 
+  <!-- M0 STATUS -->
+  <section id="m0-status">
+    <div class="callout lime reveal">
+      <div class="ic">✅ MILESTONE 0 — TRACER COMPLETE · 2026-06-04</div>
+      <p>The <code>tools/cutdown-tracer/</code> rig renders a real reel end-to-end. First live render: a <b style="color:var(--text)">296.8s office source</b> → <b style="color:var(--text)">4 Gemini-selected moments</b> → <b style="color:var(--text)">107.67 BPM</b> (Firestore <code>sampleMusic</code>) → <b style="color:var(--text)">planCuts → 7 hard cuts / 15.000s</b> → per-clip ffmpeg extraction → GCS signed URLs → <b style="color:var(--text)">Shotstack 1080×1920 mp4</b>. Cuts land on the beat; human-eyeballed ✓. <b style="color:var(--text)">71 offline tests green.</b></p>
+      <p style="margin-top:8px;font-size:13px;color:var(--muted)">All 6 build-order steps done. Two refinements deferred: a working audio tail-fade (Shotstack audio <code>transition</code> didn't apply) and richer moment selection. Architecture/file map: <code>tools/cutdown-tracer/ARCHITECTURE.html</code>. Next: <b style="color:var(--text)">M1 stitch</b> (multi-creative) — see §09.</p>
+    </div>
+  </section>
+
   <!-- SCOPE LOCK -->
   <section id="scope-lock">
     <div class="reveal">
@@ -708,10 +717,12 @@ assign remaining clips → remaining segments:
         <tbody>
           <tr><td><span class="name">Structural analysis</span><br><span class="mono" style="color:var(--muted)">resize P1</span></td><td class="mono">StructuralAnalyzer.analyze()</td><td>Gemini</td><td class="mono">resize-tracer</td><td class="mid">↻ extract to shared</td></tr>
           <tr><td><span class="name">Outpaint</span><br><span class="mono" style="color:var(--muted)">resize P2 · images→9:16</span></td><td class="mono">OutpaintTool.outpaintTo()</td><td>OpenAI gpt-image-2</td><td class="mono">resize-tracer</td><td class="mid">↻ extract first</td></tr>
-          <tr class="win"><td><span class="name">Best-moments cutdown</span><br><span class="mono" style="color:var(--muted)">Milestone 0</span></td><td class="mono">VideoMomentSelector.select()</td><td>Gemini</td><td class="mono">cutdown-tracer ➕</td><td class="yes">★ build first</td></tr>
-          <tr><td><span class="name">Music catalog</span></td><td class="mono">MusicCatalog.search() / .fetch()</td><td>Artlist</td><td class="mono">music-tracer ➕</td><td class="yes">new</td></tr>
-          <tr><td><span class="name">Beat grid / cut-map</span></td><td class="mono">planCuts() · pure fn</td><td>—</td><td class="mono">vitest + timeline viz</td><td class="yes">new · no vendor</td></tr>
-          <tr><td><span class="name">Stitch / render</span></td><td class="mono">VideoRenderer.render()</td><td>Shotstack</td><td class="mono">stitch-tracer ➕</td><td class="yes">new</td></tr>
+          <tr class="win"><td><span class="name">Best-moments cutdown</span><br><span class="mono" style="color:var(--muted)">Milestone 0</span></td><td class="mono">VideoMomentSelector.select()</td><td>Gemini</td><td class="mono">cutdown-tracer ✅</td><td class="yes">✅ live</td></tr>
+          <tr class="win"><td><span class="name">Music catalog</span></td><td class="mono">MusicCatalog.list() / .fetch()</td><td>Firestore <code>sampleMusic</code> (Artlist later)</td><td class="mono">cutdown-tracer ✅</td><td class="yes">✅ live</td></tr>
+          <tr class="win"><td><span class="name">Tempo</span></td><td class="mono">TempoDetector.detect()</td><td>librosa subprocess</td><td class="mono">cutdown-tracer ✅</td><td class="yes">✅ live</td></tr>
+          <tr class="win"><td><span class="name">Beat grid / cut-map</span></td><td class="mono">planCuts() · pure fn</td><td>—</td><td class="mono">vitest ✅</td><td class="yes">✅ tested</td></tr>
+          <tr class="win"><td><span class="name">Clip extraction</span></td><td class="mono">ClipExtractor.extractClips()</td><td>ffmpeg subprocess</td><td class="mono">cutdown-tracer ✅</td><td class="yes">✅ live</td></tr>
+          <tr class="win"><td><span class="name">Render</span></td><td class="mono">VideoRenderer.render() + BlobStore</td><td>Shotstack + GCS</td><td class="mono">cutdown-tracer ✅</td><td class="yes">✅ live</td></tr>
         </tbody>
       </table>
     </div>
@@ -751,7 +762,7 @@ assign remaining clips → remaining segments:
       <h2>Phased</h2>
     </div>
     <div class="v0v1 reveal">
-      <div class="phase active"><div class="p-no now">● v0 · M0 · NOW</div><h4>Cutdown</h4><p>One 70s video → Gemini picks best moments → BPM-grid beat-cut → Shotstack → 15s 9:16 OutputDoc.</p></div>
+      <div class="phase active"><div class="p-no now">✅ v0 · M0 · DONE</div><h4>Cutdown</h4><p>One video → Gemini picks best moments → BPM-grid beat-cut → ffmpeg clips → Shotstack → 15s 9:16. <b style="color:var(--lime)">Tracer renders live (2026-06-04).</b></p></div>
       <div class="phase active"><div class="p-no now">● v0 · M1</div><h4>Stitch</h4><p>Generalize to N creatives: label → outpaint images / pad-crop videos → drag-order → Artlist music → same cut + render. Run the test matrix.</p></div>
       <div class="phase"><div class="p-no">v1</div><h4>Tighten</h4><p>30s output. AI ordering (auto + ✨ Suggest). Epidemic Beats / librosa for tighter cuts. Transitions on beat.</p></div>
       <div class="phase"><div class="p-no">v2 · v3</div><h4>Motion + Publish</h4><p>Optional Veo 3.1 image→video per clip. Then TikTok / IG Reels / YT Shorts posting.</p></div>
