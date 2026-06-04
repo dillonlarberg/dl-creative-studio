@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/schema.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/schema.ts keeps a separate prototype copy.
 import { z } from "zod";
 
 export const P1OutputSchema = z.object({

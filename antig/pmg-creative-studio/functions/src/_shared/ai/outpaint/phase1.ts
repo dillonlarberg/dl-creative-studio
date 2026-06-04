@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/phase1.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/phase1.ts keeps a separate prototype copy.
 import { GoogleGenAI } from "@google/genai";
 import { P1_MODEL } from "./config";
 import { P1OutputSchema, P1_RESPONSE_SCHEMA, type P1Output } from "./schema";

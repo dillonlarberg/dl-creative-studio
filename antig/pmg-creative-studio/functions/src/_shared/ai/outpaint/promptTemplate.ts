@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/promptTemplate.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/promptTemplate.ts keeps a separate prototype copy.
 import type { P1Output } from "./schema";
 import type { PaddedCanvas } from "./canvasPrep";
 
