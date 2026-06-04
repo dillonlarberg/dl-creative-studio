@@ -92,6 +92,11 @@ describe("clampSegments", () => {
     expect(out[0]).toMatchObject({ startSec: 294, endSec: 296 });
   });
 
+  it("preserves segment metadata (why) through clamping", () => {
+    const out = clampSegments([{ startSec: 294, endSec: 305, score: 1, why: "the payoff" }], 296);
+    expect(out[0].why).toBe("the payoff");
+  });
+
   it("drops segments that collapse below the minimum length", () => {
     // starts at 295.9 on a 296s clip → 0.1s < 0.2 min → dropped
     expect(clampSegments([{ startSec: 295.9, endSec: 320, score: 1 }], 296)).toHaveLength(0);
@@ -227,5 +232,6 @@ describe("planCuts — V1 metadata + ordering", () => {
     const cuts = planCuts({ bpm: 120, totalSec: 6, ranked, preserveOrder: true });
     expect(cuts[0].role).toBe("hook");
     expect(cuts[1].role).toBe("reveal");
+    expect(cuts[2].role).toBe("reaction"); // round-robin under preserveOrder keeps input order
   });
 });

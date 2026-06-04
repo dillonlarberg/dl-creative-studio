@@ -1,7 +1,7 @@
 /**
  * planCuts — the pure, deterministic heart of the pipeline (PRD #15–#17).
  *
- *   planCuts({ bpm, totalSec, ranked }) → CutPlan
+ *   planCuts({ bpm, totalSec, ranked }) → PlannedCut[]
  *
  * THE GRID OWNS TIMING, GEMINI OWNS CONTENT:
  *   - A uniform bar-grid derived from the BPM sets the OUTPUT slot boundaries, so
@@ -62,8 +62,9 @@ export function barGridBoundaries(bpm: number, totalSec: number): number[] {
 }
 
 /**
- * Greedily drop overlapping segments, keeping the highest-scored. Returns a new
- * array sorted by score descending (does not mutate the input).
+ * Greedily drop overlapping segments. By default keeps the highest-scored and
+ * returns a new array sorted by score descending; when `preserveOrder` is true,
+ * the input order is kept instead (per-angle playback). Does not mutate the input.
  */
 export function dedupRanked(ranked: Segment[], preserveOrder = false): Segment[] {
   const ordered = preserveOrder ? [...ranked] : [...ranked].sort((a, b) => b.score - a.score);
@@ -134,7 +135,14 @@ export function clampSegments(
     if (s.startSec >= durationSec) continue; // starts past EOF → unusable
     const endSec = roundMs(Math.min(s.endSec, durationSec));
     if (endSec - s.startSec < minLenSec) continue; // collapsed to nothing
-    out.push({ startSec: roundMs(s.startSec), endSec, score: s.score, summary: s.summary, role: s.role, why: s.why });
+    out.push({
+      startSec: roundMs(s.startSec),
+      endSec,
+      score: s.score,
+      summary: s.summary,
+      role: s.role,
+      why: s.why,
+    });
   }
   return out;
 }
