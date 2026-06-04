@@ -26,6 +26,22 @@ Proves the `VideoMomentSelector` surface end-to-end: (1) the key authenticates, 
 
 `verify-shotstack` lands once the Shotstack sandbox key is procured.
 
+## Tempo detection (build-order step 4 — librosa)
+
+The real `TempoDetector` shells out to `scripts/tempo.py` (librosa). Set it up in a
+venv — **use Python 3.13, not 3.14** (numba/llvmlite have no 3.14 wheels yet):
+
+```bash
+/opt/homebrew/bin/python3.13 -m venv .venv-librosa
+.venv-librosa/bin/python -m pip install librosa soundfile numpy
+# point the seam at this interpreter:
+PYTHON_BIN=$(pwd)/.venv-librosa/bin/python npm run detect-tempo ./fixtures/<track>.wav
+```
+
+WAV loads with no extra deps; **compressed formats (mp3/m4a) need `ffmpeg`** on PATH.
+`tempo.py` uses the global tempo estimator (`librosa.feature.rhythm.tempo`), not
+`beat_track` — v0 needs the BPM for a uniform grid, not beat positions (those are v1).
+
 ## Build order
 
 1. `verify-gemini` + `verify-shotstack` smoke tests ← **here**

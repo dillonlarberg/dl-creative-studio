@@ -47,8 +47,17 @@ def main() -> None:
         import numpy as np
 
         y, sr = librosa.load(path, mono=True)
-        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        # librosa >=0.10 returns tempo as an ndarray; normalise to a scalar.
+        # Global tempo estimate from the onset envelope. v0 needs the BPM only
+        # (it drives a UNIFORM bar-grid; real beat *positions* are v1), and
+        # beat_track's tempo can return 0 on sparse/clean signals — the global
+        # estimator is the robust choice here.
+        onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+        try:
+            from librosa.feature.rhythm import tempo as tempo_fn  # librosa >=0.10
+        except Exception:
+            from librosa.beat import tempo as tempo_fn  # older librosa
+        tempo = tempo_fn(onset_envelope=onset_env, sr=sr)
+        # librosa returns tempo as an ndarray; normalise to a scalar.
         bpm = float(np.ravel(tempo)[0])
         if not (bpm > 0):
             raise ValueError(f"non-positive bpm: {bpm}")
