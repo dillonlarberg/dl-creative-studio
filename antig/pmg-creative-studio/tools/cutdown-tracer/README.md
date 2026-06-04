@@ -94,6 +94,30 @@ npm run sign-url <objectPath>                  # print a getDownloadURL for an o
 
 `SHOTSTACK_DEBUG=1` dumps the render payload + poll statuses.
 
+## V1 cutdown brain (3 versions)
+
+The V1 brain returns three angled cut versions for a human to pick:
+
+```ts
+aiCutdown(video, track, { humanInput?, targetSec }) → CutdownPlan[]
+```
+
+- One shared Gemini *video* call (analyze → theme + beats); then per-angle text-only
+  select + critique over the beats (1 + 3 + 3 = 7 calls total).
+- Angles: **Narrative** (chronological) · **Highlights** (impact-ordered) · **Punchy**
+  (strongest-first). A brief (`humanInput`), when present, biases all three.
+- Each `CutdownPlan` carries an AI-written `description` plus per-cut `why`; a bounded
+  per-version self-critique runs before the plan is returned (degrades gracefully on failure).
+
+```bash
+# print 3 versions; add --pick N to render one via Shotstack
+FFMPEG_BIN=… PYTHON_BIN=… npm run run-cutdown <trackId> [video] [--target 15|30|60] [--brief "…"] [--pick N]
+```
+
+Implemented in `src/cutdownBrain.ts` (`GeminiCutdownBrain`), `src/angles.ts` (the three
+fixed angles + ordering logic), and `src/geminiCore.ts` (shared Gemini plumbing). Storyboard
+thumbnails + the web shell are a follow-up (spec checkpoint 5).
+
 ## File map
 
 ```
