@@ -4,7 +4,7 @@
  * planCuts. Returns one CutdownPlan per angle. Client is INJECTED (no-network tests).
  */
 import { GoogleGenAI } from "@google/genai";
-import type { VideoRef } from "./seams.js";
+import type { CutdownBrain, VideoRef } from "./seams.js";
 import { z } from "zod";
 import { VideoAnalysisSchema, SegmentSchema, CutdownPlanSchema, type VideoAnalysis, type Segment, type Angle, type CutdownPlan, type SampleMusicTrack } from "./types.js";
 import { angleGuidance, orderSegments, ANGLES, angleLabel } from "./angles.js";
@@ -12,9 +12,14 @@ import { clampSegments, planCuts } from "./planCuts.js";
 import { type GenAiLike, uploadAndActivate, generateJson } from "./geminiCore.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
-const DEFAULT_BPM = 120; // used when a track has no detected bpm; planCuts needs a tempo for the beat grid
+export const DEFAULT_BPM = 120; // used when a track has no detected bpm; planCuts needs a tempo for the beat grid
 
 const SegmentsEnvelopeSchema = z.object({ segments: z.array(SegmentSchema) });
+
+const CritiqueEnvelopeSchema = z.object({
+  description: z.string().min(1),
+  segments: z.array(SegmentSchema),
+});
 
 export interface CutdownBrainOptions {
   model?: string;
@@ -24,7 +29,7 @@ export interface CutdownBrainOptions {
   backoffMs?: number;
 }
 
-export class GeminiCutdownBrain {
+export class GeminiCutdownBrain implements CutdownBrain {
   constructor(
     private readonly ai: GenAiLike,
     private readonly opts: CutdownBrainOptions = {},
@@ -93,6 +98,8 @@ export class GeminiCutdownBrain {
    * Bounded single self-check. Re-examines the selection against the angle + brief +
    * cut-to-cut coherence and may swap/drop/replace picks ONCE. On any failure it
    * degrades to the input selection rather than aborting the version.
+   * Also produces an AI-written one-line description for the version (falls back to
+   * the deterministic describe() on failure).
    */
   async critique(
     analysis: VideoAnalysis,
@@ -100,28 +107,30 @@ export class GeminiCutdownBrain {
     brief: string | undefined,
     selected: Segment[],
     targetSec: number,
-  ): Promise<Segment[]> {
+  ): Promise<{ description: string; segments: Segment[] }> {
     const briefLine = brief ? `Brief: "${brief}". ` : "";
     const prompt =
       `Theme: ${analysis.theme}\n` +
       `Available beats: ${JSON.stringify(analysis.beats)}\n` +
       `Current ${angle} selection: ${JSON.stringify(selected)}\n\n` +
       `${briefLine}Critique this selection for coherence (do adjacent cuts relate?) and ` +
-      `${angle} fit. If it is already good, return it unchanged. Otherwise swap/drop/replace ` +
+      `${angle} fit. Keep enough beats to fill roughly ${targetSec}s — don't collapse to too few. ` +
+      `If it is already good, return it unchanged. Otherwise swap/drop/replace ` +
       `beats (drawn only from the available beats) to improve it. ` +
-      `Keep enough beats to fill roughly ${targetSec}s — don't collapse to too few. ` +
-      `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] }.`;
+      `Also write a one-line 'description': a punchy pitch (<=15 words) for THIS version's cut. ` +
+      `Return JSON { description, segments: [{ startSec, endSec, score, summary, role, why }] }.`;
     try {
-      const { segments } = await generateJson(this.ai, {
+      const { description, segments } = await generateJson(this.ai, {
         model: this.model,
         contents: [{ text: prompt }],
-        schema: SegmentsEnvelopeSchema,
+        schema: CritiqueEnvelopeSchema,
         maxAttempts: this.opts.maxAttempts,
         backoffMs: this.opts.backoffMs,
       });
-      return orderSegments(angle, segments);
+      return { description, segments: orderSegments(angle, segments) };
     } catch {
-      return selected; // graceful degradation — the version still ships
+      // graceful degradation — keep the selection and fall back to a deterministic pitch
+      return { description: this.describe(angle, analysis, brief), segments: selected };
     }
   }
 
@@ -140,17 +149,14 @@ export class GeminiCutdownBrain {
     const plans: CutdownPlan[] = [];
     for (const angle of ANGLES) {
       const selected = await this.selectForAngle(analysis, angle, opts.humanInput, opts.targetSec);
-      const critiqued = await this.critique(analysis, angle, opts.humanInput, selected, opts.targetSec);
+      // playback order is set by selectForAngle/critique (per-angle); planCuts preserves it.
+      const { description, segments: critiqued } = await this.critique(
+        analysis, angle, opts.humanInput, selected, opts.targetSec,
+      );
       const clamped = clampSegments(critiqued, opts.durationSec);
       if (clamped.length === 0) continue; // this angle yielded nothing usable → drop it
       const cuts = planCuts({ bpm, totalSec: opts.targetSec, ranked: clamped, preserveOrder: true });
-      plans.push(
-        CutdownPlanSchema.parse({
-          angle,
-          description: this.describe(angle, analysis, opts.humanInput),
-          cuts,
-        }),
-      );
+      plans.push(CutdownPlanSchema.parse({ angle, description, cuts }));
     }
     if (plans.length === 0) {
       throw new Error("GeminiCutdownBrain.cutdown: no angle produced a usable plan");

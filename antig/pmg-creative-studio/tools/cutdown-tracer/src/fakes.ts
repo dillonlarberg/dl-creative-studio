@@ -16,6 +16,7 @@ import type {
 import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types.js";
 import { ANGLES, orderSegments } from "./angles.js";
 import { planCuts, clampSegments } from "./planCuts.js";
+import { DEFAULT_BPM } from "./cutdownBrain.js";
 
 /**
  * Returns evenly-spaced segments across an assumed source duration, scored
@@ -144,7 +145,7 @@ export class FakeCutdownBrain implements CutdownBrain {
       role: ["hook", "setup", "build", "reveal", "reaction", "payoff"][i],
       why: `fake reason ${i}`,
     }));
-    const bpm = track.bpm ?? 120;
+    const bpm = track.bpm ?? DEFAULT_BPM;
     return ANGLES.map((angle) => {
       const ordered = orderSegments(angle, clampSegments(beats, opts.durationSec));
       return {

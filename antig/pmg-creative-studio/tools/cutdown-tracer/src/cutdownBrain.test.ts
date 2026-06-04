@@ -55,6 +55,15 @@ const selectJson = (startSecs: number[]) => ({
   }),
 });
 
+const critiqueJson = (startSecs: number[], description = "a tight, coherent cut") => ({
+  text: JSON.stringify({
+    description,
+    segments: startSecs.map((startSec) => ({
+      startSec, endSec: startSec + 3, score: 0.8, summary: "m", role: "reveal", why: "kept",
+    })),
+  }),
+});
+
 const analysis = JSON.parse(analysisJson.text) as import("./types.js").VideoAnalysis;
 
 describe("GeminiCutdownBrain.selectForAngle", () => {
@@ -75,21 +84,20 @@ const selected: import("./types.js").Segment[] = [
 
 describe("GeminiCutdownBrain.critique", () => {
   it("returns the revised selection when the model responds well", async () => {
-    const revised = { text: JSON.stringify({ segments: [
-      { startSec: 2, endSec: 5, score: 0.85, summary: "reveal", role: "reveal", why: "kept" },
-    ] }) };
-    const { client } = queuedClient([revised]);
+    const { client } = queuedClient([critiqueJson([2], "a calm narrative")]);
     const brain = new GeminiCutdownBrain(client);
     const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
-    expect(out).toHaveLength(1);
-    expect(out[0].why).toBe("kept");
+    expect(out.segments).toHaveLength(1);
+    expect(out.segments[0].why).toBe("kept");
+    expect(out.description).toBe("a calm narrative");
   });
 
   it("degrades to the input selection if the critique call fails", async () => {
     const { client } = queuedClient([{ text: "garbage" }, { text: "garbage" }]);
     const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
     const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
-    expect(out).toEqual(selected);
+    expect(out.segments).toEqual(selected);
+    expect(out.description.length).toBeGreaterThan(0);
   });
 });
 
@@ -102,9 +110,9 @@ describe("GeminiCutdownBrain.cutdown", () => {
   it("returns one CutdownPlan per angle from a single analyze + per-angle select+critique", async () => {
     const responses = [
       analysisJson,
-      selectJson([2, 20, 40]), selectJson([2, 20, 40]),   // narrative: select, critique
-      selectJson([2, 40, 20]), selectJson([2, 40, 20]),   // highlights
-      selectJson([40, 2, 20]), selectJson([40, 2, 20]),   // punchy
+      selectJson([2, 20, 40]), critiqueJson([2, 20, 40]),   // narrative: select, critique
+      selectJson([2, 40, 20]), critiqueJson([2, 40, 20]),   // highlights
+      selectJson([40, 2, 20]), critiqueJson([40, 2, 20]),   // punchy
     ];
     const { client, calls } = queuedClient(responses);
     const brain = new GeminiCutdownBrain(client, { pollIntervalMs: 0 });
@@ -122,9 +130,9 @@ describe("GeminiCutdownBrain.cutdown", () => {
   it("throws when no angle yields a usable (in-bounds) plan", async () => {
     const responses = [
       analysisJson,
-      selectJson([2, 20, 40]), selectJson([2, 20, 40]),
-      selectJson([2, 40, 20]), selectJson([2, 40, 20]),
-      selectJson([40, 2, 20]), selectJson([40, 2, 20]),
+      selectJson([2, 20, 40]), critiqueJson([2, 20, 40]),
+      selectJson([2, 40, 20]), critiqueJson([2, 40, 20]),
+      selectJson([40, 2, 20]), critiqueJson([40, 2, 20]),
     ];
     const { client } = queuedClient(responses);
     const brain = new GeminiCutdownBrain(client, { pollIntervalMs: 0 });
