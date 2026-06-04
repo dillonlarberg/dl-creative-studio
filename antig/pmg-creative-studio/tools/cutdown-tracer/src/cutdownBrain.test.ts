@@ -79,14 +79,15 @@ describe("GeminiCutdownBrain.critique", () => {
     ] }) };
     const { client } = queuedClient([revised]);
     const brain = new GeminiCutdownBrain(client);
-    const out = await brain.critique(analysis, "narrative", undefined, selected);
+    const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
     expect(out).toHaveLength(1);
+    expect(out[0].why).toBe("kept");
   });
 
   it("degrades to the input selection if the critique call fails", async () => {
     const { client } = queuedClient([{ text: "garbage" }, { text: "garbage" }]);
     const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
-    const out = await brain.critique(analysis, "narrative", undefined, selected);
+    const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
     expect(out).toEqual(selected);
   });
 });

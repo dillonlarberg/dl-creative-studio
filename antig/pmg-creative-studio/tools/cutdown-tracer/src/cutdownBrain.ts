@@ -97,6 +97,7 @@ export class GeminiCutdownBrain {
     angle: Angle,
     brief: string | undefined,
     selected: Segment[],
+    targetSec: number,
   ): Promise<Segment[]> {
     const briefLine = brief ? `Brief: "${brief}". ` : "";
     const prompt =
@@ -106,6 +107,7 @@ export class GeminiCutdownBrain {
       `${briefLine}Critique this selection for coherence (do adjacent cuts relate?) and ` +
       `${angle} fit. If it is already good, return it unchanged. Otherwise swap/drop/replace ` +
       `beats (drawn only from the available beats) to improve it. ` +
+      `Keep enough beats to fill roughly ${targetSec}s — don't collapse to too few. ` +
       `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] }.`;
     try {
       const { segments } = await generateJson(this.ai, {
