@@ -76,7 +76,7 @@ export class GeminiCutdownBrain {
       `${angleGuidance(angle)} ${briefLine} ` +
       `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] } ` +
       `where 'why' is a short reason this beat earns its place in THIS cut. ` +
-      `Choose enough distinct beats to comfortably fill ${targetSec}s; reuse only if necessary.`;
+      `Choose enough distinct beats to comfortably fill ${targetSec}s. Use each beat at most once unless the duration cannot be reached otherwise.`;
     const { segments } = await generateJson(this.ai, {
       model: this.model,
       contents: [{ text: prompt }],

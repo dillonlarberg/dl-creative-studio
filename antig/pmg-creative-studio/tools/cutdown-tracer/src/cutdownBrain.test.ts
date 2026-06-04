@@ -54,14 +54,7 @@ const selectJson = (startSecs: number[]) => ({
   }),
 });
 
-const analysis = {
-  theme: "a product launch",
-  beats: [
-    { startSec: 2, endSec: 5, score: 0.9, summary: "reveal", role: "reveal" },
-    { startSec: 20, endSec: 23, score: 0.6, summary: "intro", role: "hook" },
-    { startSec: 40, endSec: 43, score: 0.75, summary: "react", role: "reaction" },
-  ],
-};
+const analysis = JSON.parse(analysisJson.text) as import("./types.js").VideoAnalysis;
 
 describe("GeminiCutdownBrain.selectForAngle", () => {
   it("returns angle-ordered segments with a why, text-only (no upload)", async () => {
