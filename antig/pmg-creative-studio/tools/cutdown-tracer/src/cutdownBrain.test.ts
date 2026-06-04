@@ -45,3 +45,31 @@ describe("GeminiCutdownBrain.analyze", () => {
     expect(calls.delete).toBe(1);
   });
 });
+
+const selectJson = (startSecs: number[]) => ({
+  text: JSON.stringify({
+    segments: startSecs.map((startSec) => ({
+      startSec, endSec: startSec + 3, score: 0.8, summary: "m", role: "reveal", why: "fits the angle",
+    })),
+  }),
+});
+
+const analysis = {
+  theme: "a product launch",
+  beats: [
+    { startSec: 2, endSec: 5, score: 0.9, summary: "reveal", role: "reveal" },
+    { startSec: 20, endSec: 23, score: 0.6, summary: "intro", role: "hook" },
+    { startSec: 40, endSec: 43, score: 0.75, summary: "react", role: "reaction" },
+  ],
+};
+
+describe("GeminiCutdownBrain.selectForAngle", () => {
+  it("returns angle-ordered segments with a why, text-only (no upload)", async () => {
+    const { client, calls } = queuedClient([selectJson([2, 40, 20])]);
+    const brain = new GeminiCutdownBrain(client);
+    const segs = await brain.selectForAngle(analysis, "narrative", undefined, 60);
+    expect(calls.upload).toBe(0);
+    expect(segs.map((s) => s.startSec)).toEqual([2, 20, 40]);
+    expect(segs[0].why).toBeTruthy();
+  });
+});

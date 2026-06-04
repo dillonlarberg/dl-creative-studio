@@ -5,10 +5,14 @@
  */
 import { GoogleGenAI } from "@google/genai";
 import type { VideoRef } from "./seams.js";
-import { VideoAnalysisSchema, type VideoAnalysis } from "./types.js";
+import { z } from "zod";
+import { VideoAnalysisSchema, SegmentSchema, type VideoAnalysis, type Segment, type Angle } from "./types.js";
+import { angleGuidance, orderSegments } from "./angles.js";
 import { type GenAiLike, uploadAndActivate, generateJson } from "./geminiCore.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+
+const SegmentsEnvelopeSchema = z.object({ segments: z.array(SegmentSchema) });
 
 export interface CutdownBrainOptions {
   model?: string;
@@ -53,6 +57,34 @@ export class GeminiCutdownBrain {
     } finally {
       try { if (file.name) await this.ai.files.delete({ name: file.name }); } catch { /* ignore */ }
     }
+  }
+
+  /** Text-only: pick the beats that serve this angle (+ brief), then order them for playback. */
+  async selectForAngle(
+    analysis: VideoAnalysis,
+    angle: Angle,
+    brief: string | undefined,
+    targetSec: number,
+  ): Promise<Segment[]> {
+    const briefLine = brief
+      ? `The user's brief is: "${brief}". Every chosen beat must serve this brief.`
+      : `No specific brief — optimize for a compelling general cut.`;
+    const prompt =
+      `Theme: ${analysis.theme}\n` +
+      `Beats (JSON): ${JSON.stringify(analysis.beats)}\n\n` +
+      `Select the subset of these beats for a ~${targetSec}s vertical short. ` +
+      `${angleGuidance(angle)} ${briefLine} ` +
+      `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] } ` +
+      `where 'why' is a short reason this beat earns its place in THIS cut. ` +
+      `Choose enough distinct beats to comfortably fill ${targetSec}s; reuse only if necessary.`;
+    const { segments } = await generateJson(this.ai, {
+      model: this.model,
+      contents: [{ text: prompt }],
+      schema: SegmentsEnvelopeSchema,
+      maxAttempts: this.opts.maxAttempts,
+      backoffMs: this.opts.backoffMs,
+    });
+    return orderSegments(angle, segments);
   }
 }
 
