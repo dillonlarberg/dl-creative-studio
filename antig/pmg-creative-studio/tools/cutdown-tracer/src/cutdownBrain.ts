@@ -6,8 +6,9 @@
 import { GoogleGenAI } from "@google/genai";
 import type { VideoRef } from "./seams.js";
 import { z } from "zod";
-import { VideoAnalysisSchema, SegmentSchema, type VideoAnalysis, type Segment, type Angle } from "./types.js";
-import { angleGuidance, orderSegments } from "./angles.js";
+import { VideoAnalysisSchema, SegmentSchema, CutdownPlanSchema, type VideoAnalysis, type Segment, type Angle, type CutdownPlan, type SampleMusicTrack } from "./types.js";
+import { angleGuidance, orderSegments, ANGLES, angleLabel } from "./angles.js";
+import { clampSegments, planCuts } from "./planCuts.js";
 import { type GenAiLike, uploadAndActivate, generateJson } from "./geminiCore.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
@@ -121,6 +122,50 @@ export class GeminiCutdownBrain {
     } catch {
       return selected; // graceful degradation — the version still ships
     }
+  }
+
+  /**
+   * Full brain: probe-supplied duration clamps model timestamps; analyze once; then
+   * for each fixed angle select → critique → planCuts. Returns one plan per angle.
+   */
+  async cutdown(
+    video: VideoRef,
+    track: SampleMusicTrack,
+    opts: { targetSec: number; durationSec: number; humanInput?: string },
+  ): Promise<CutdownPlan[]> {
+    const analysis = await this.analyze(video, opts.targetSec);
+    const bpm = track.bpm ?? 120;
+
+    const plans: CutdownPlan[] = [];
+    for (const angle of ANGLES) {
+      const selected = await this.selectForAngle(analysis, angle, opts.humanInput, opts.targetSec);
+      const critiqued = await this.critique(analysis, angle, opts.humanInput, selected, opts.targetSec);
+      const clamped = clampSegments(critiqued, opts.durationSec);
+      if (clamped.length === 0) continue; // this angle yielded nothing usable → drop it
+      const cuts = planCuts({ bpm, totalSec: opts.targetSec, ranked: clamped, preserveOrder: true });
+      plans.push(
+        CutdownPlanSchema.parse({
+          angle,
+          description: this.describe(angle, analysis, opts.humanInput),
+          cuts,
+        }),
+      );
+    }
+    if (plans.length === 0) {
+      throw new Error("GeminiCutdownBrain.cutdown: no angle produced a usable plan");
+    }
+    return plans;
+  }
+
+  /** A short, deterministic pitch for a version (the AI 'why' lives per-cut). */
+  private describe(angle: Angle, analysis: VideoAnalysis, brief?: string): string {
+    const base = {
+      narrative: "Tells it in order — setup, turn, payoff.",
+      highlights: "The highest-impact moments, biggest first.",
+      punchy: "Hook-dense and fast; leads with the strongest beat.",
+    }[angle];
+    const briefBit = brief ? ` Tuned to: "${brief}".` : "";
+    return `${angleLabel(angle)} · ${base}${briefBit} (${analysis.theme})`;
   }
 }
 

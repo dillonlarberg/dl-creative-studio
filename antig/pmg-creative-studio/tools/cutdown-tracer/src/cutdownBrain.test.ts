@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { GeminiCutdownBrain } from "./cutdownBrain.js";
 import type { GenAiLike } from "./geminiCore.js";
+import type { SampleMusicTrack } from "./types.js";
 
 /** Fake client that returns queued generateContent responses in order. Reused by later tests. */
 export function queuedClient(responses: unknown[]) {
@@ -89,5 +90,32 @@ describe("GeminiCutdownBrain.critique", () => {
     const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
     const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
     expect(out).toEqual(selected);
+  });
+});
+
+const track: SampleMusicTrack = {
+  trackId: "t", title: "T", url: "fake://t.mp3", format: "mp3",
+  durationSec: 120, bpm: 120, provider: "fake", licenseRef: "x",
+};
+
+describe("GeminiCutdownBrain.cutdown", () => {
+  it("returns one CutdownPlan per angle from a single analyze + per-angle select+critique", async () => {
+    const responses = [
+      analysisJson,
+      selectJson([2, 20, 40]), selectJson([2, 20, 40]),   // narrative: select, critique
+      selectJson([2, 40, 20]), selectJson([2, 40, 20]),   // highlights
+      selectJson([40, 2, 20]), selectJson([40, 2, 20]),   // punchy
+    ];
+    const { client, calls } = queuedClient(responses);
+    const brain = new GeminiCutdownBrain(client, { pollIntervalMs: 0 });
+    const plans = await brain.cutdown({ path: "x.mp4" }, track, { targetSec: 15, durationSec: 120 });
+
+    expect(plans.map((p) => p.angle)).toEqual(["narrative", "highlights", "punchy"]);
+    for (const p of plans) {
+      expect(p.cuts.length).toBeGreaterThan(0);
+      expect(p.description.length).toBeGreaterThan(0);
+    }
+    expect(calls.upload).toBe(1);
+    expect(calls.generate).toBe(7); // 1 analyze + 3 select + 3 critique
   });
 });
