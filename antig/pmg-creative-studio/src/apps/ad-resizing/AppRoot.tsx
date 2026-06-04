@@ -97,6 +97,8 @@ export default function AdResizingAppRoot() {
 
   const [singleView, setSingleView] = useState<{ index: number } | null>(null);
   const [sourcePreviewOpen, setSourcePreviewOpen] = useState(false);
+  const [reiteratingOutput, setReiteratingOutput] = useState<{ id: string; prompt: string } | null>(null);
+  const reiteratingHasPendedRef = useRef(false);
 
   const [filterFormat, setFilterFormat] = useState<FormatFilter>('all');
   const [filterFileType, setFilterFileType] = useState<FileTypeFilter>('all');
@@ -502,6 +504,8 @@ export default function AdResizingAppRoot() {
     if (!activeJobId || !activeJob) return;
     const target = activeJob.outputs.find(o => o.id === outputId);
     if (!target) return;
+    reiteratingHasPendedRef.current = false;
+    setReiteratingOutput({ id: outputId, prompt });
     try {
       await runner.reiterateOutput({
         batchId: activeJobId,
@@ -512,6 +516,7 @@ export default function AdResizingAppRoot() {
       });
     } catch (err) {
       console.error('reiterateOutput failed', err);
+      setReiteratingOutput(null);
       setRunError(err instanceof Error ? err.message : String(err));
     }
   }, [activeJobId, activeJob, runner]);
@@ -523,6 +528,20 @@ export default function AdResizingAppRoot() {
       return next;
     });
   }, []);
+
+  // Clear reiteration tracking only after the output has gone through pending → complete
+  useEffect(() => {
+    if (!reiteratingOutput || !activeJob) return;
+    const output = activeJob.outputs.find(o => o.id === reiteratingOutput.id);
+    if (!output) { setReiteratingOutput(null); return; }
+    if (output.status === 'pending') {
+      reiteratingHasPendedRef.current = true;
+    }
+    if (output.status === 'complete' && reiteratingHasPendedRef.current) {
+      reiteratingHasPendedRef.current = false;
+      setReiteratingOutput(null);
+    }
+  }, [activeJob?.outputs, reiteratingOutput]);
 
   const completedOutputs = activeJob?.outputs.filter(o => o.status === 'complete') ?? [];
   const allComplete = activeJob !== null && activeJob.outputs.length > 0 && activeJob.outputs.every(o => o.status === 'complete');
@@ -991,9 +1010,14 @@ export default function AdResizingAppRoot() {
                             key={output.id}
                             output={output}
                             creativeName={activeJob?.sourceCreative.name}
+                            isReiterated={output.id === reiteratingOutput?.id}
                             onView={() => {
-                              const completedFiltered = filteredOutputs.filter(o => o.status === 'complete');
-                              setSingleView({ index: completedFiltered.findIndex(o => o.id === output.id) });
+                              // Include the reiterated pending output so clicking it reopens the modal
+                              const viewableOutputs = filteredOutputs.filter(
+                                o => o.status === 'complete' || o.id === reiteratingOutput?.id
+                              );
+                              const idx = viewableOutputs.findIndex(o => o.id === output.id);
+                              if (idx >= 0) setSingleView({ index: idx });
                             }}
                             onRetry={() => handleRetry(output.id)}
                             selected={selectedOutputIds.has(output.id)}
@@ -1045,11 +1069,13 @@ export default function AdResizingAppRoot() {
       {/* Single image modal */}
       {singleView !== null && activeJob && (
         <SingleImageModal
-          outputs={filteredOutputs.filter(o => o.status === 'complete')}
+          outputs={filteredOutputs.filter(o => o.status === 'complete' || o.id === reiteratingOutput?.id)}
           initialIndex={singleView.index}
           sourceCreative={activeJob.sourceCreative}
           onClose={() => setSingleView(null)}
           onReiterate={handleReiterate}
+          reiteratingOutputId={reiteratingOutput?.id}
+          reiteratingPrompt={reiteratingOutput?.prompt}
         />
       )}
 

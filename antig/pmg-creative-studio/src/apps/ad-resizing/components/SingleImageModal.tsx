@@ -19,17 +19,25 @@ interface SingleImageModalProps {
   sourceCreative?: MockCreative;
   onClose: () => void;
   onReiterate?: (outputId: string, prompt: string) => void;
+  reiteratingOutputId?: string;
+  reiteratingPrompt?: string;
 }
 
-export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate }: SingleImageModalProps) {
+export default function SingleImageModal({ outputs, initialIndex, sourceCreative, onClose, onReiterate, reiteratingOutputId, reiteratingPrompt }: SingleImageModalProps) {
   const [index, setIndex] = useState(initialIndex);
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [recropText, setRecropText] = useState('');
   const [recropSent, setRecropSent] = useState(false);
+  const [submittedPrompt, setSubmittedPrompt] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [frozenOutput, setFrozenOutput] = useState<GeneratedOutput | null>(null);
   const [loadingCopy] = useState(() => LOADING_COPY[Math.floor(Math.random() * LOADING_COPY.length)]!);
 
-  const output = outputs[index];
+  // While generating, freeze the output so the modal stays open even if AppRoot
+  // filters it out (outputs only includes status==='complete' outputs)
+  const liveOutput = outputs[index];
+  const output = (submitting || recropSent) ? (frozenOutput ?? liveOutput) : liveOutput;
+
   const resolvedUrl = useStorageUrl(output?.storageRef, output?.completedAtMs);
   const displayUrl = output?.imageUrl ?? resolvedUrl ?? undefined;
   const canPrev = index > 0;
@@ -53,7 +61,37 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
     setRecropSent(false);
     setAskAlliOpen(false);
     setSubmitting(false);
+    setSubmittedPrompt('');
+    setFrozenOutput(null);
   }, [index]);
+
+  // When the new image arrives (liveOutput back in the list), unfreeze and close panel
+  useEffect(() => {
+    if (recropSent && liveOutput?.status === 'complete') {
+      setSubmitting(false);
+      setRecropSent(false);
+      setAskAlliOpen(false);
+      setSubmittedPrompt('');
+      setFrozenOutput(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveOutput?.status]);
+
+  // Re-enter loading state when modal is reopened for an output that's still generating
+  useEffect(() => {
+    if (
+      reiteratingOutputId &&
+      output?.id === reiteratingOutputId &&
+      !submitting && !recropSent
+    ) {
+      setFrozenOutput(output);
+      setSubmitting(true);
+      setRecropSent(true);
+      setSubmittedPrompt(reiteratingPrompt ?? '');
+      setAskAlliOpen(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reiteratingOutputId, output?.id]);
 
   if (!output) return null;
 
@@ -74,15 +112,21 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
   function submitRecrop(promptText: string) {
     const trimmed = promptText.trim();
     if (!trimmed || !onReiterate) return;
+    // Freeze before calling onReiterate — AppRoot filters out pending outputs,
+    // which would otherwise cause the modal to unmount mid-generation.
+    setFrozenOutput(output ?? null);
     setSubmitting(true);
-    onReiterate(output.id, trimmed);
+    setRecropSent(true);
+    setSubmittedPrompt(trimmed);
+    onReiterate(output!.id, trimmed);
     setRecropText('');
+    // Stay in loading state — auto-close after 60s as a safety fallback
     setTimeout(() => {
       setSubmitting(false);
+      setRecropSent(false);
       setAskAlliOpen(false);
-      setRecropSent(true);
-      setTimeout(() => setRecropSent(false), 5000);
-    }, 1200);
+      setSubmittedPrompt('');
+    }, 60000);
   }
 
   // Circle that expands to pill on hover — gradient + glow for the magical feel
@@ -96,7 +140,7 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
       >
         <SparklesIcon className="h-4 w-4 shrink-0" />
         <span className="inline-block max-w-0 overflow-hidden whitespace-nowrap text-[12px] font-semibold opacity-0 transition-all duration-200 ease-out group-hover/badge:ml-1.5 group-hover/badge:max-w-[9rem] group-hover/badge:opacity-100">
-          Ask Alli to Recrop
+          Ask Alli to Edit
         </span>
       </button>
     </div>
@@ -186,6 +230,15 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                     />
                   )}
                   {outputOverlay}
+                  {/* Generating overlay — shimmer matches the tile grid's pending style */}
+                  {recropSent && (
+                    <>
+                      <div className="shimmer-tile absolute inset-0 rounded" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-500" />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </>
@@ -201,38 +254,54 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                 />
               )}
               {outputOverlay}
+              {recropSent && (
+                <div className="absolute inset-0 flex items-center justify-center rounded bg-white/60 backdrop-blur-[2px]">
+                  <div className="flex items-center gap-2 rounded-full bg-white px-4 py-2 shadow-md">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-200 border-t-indigo-500" />
+                    <span className="text-[12px] font-medium text-gray-700">Generating new version…</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-
-        {/* Re-crop sent banner */}
-        {recropSent && (
-          <div className="border-t border-green-100 bg-green-50 px-5 py-2.5">
-            <p className="text-[12px] font-medium text-green-700">Re-crop request sent — a new version is being generated.</p>
-          </div>
-        )}
 
         {/* Ask Alli panel */}
         {askAlliOpen && (
           <div className="border-t border-gray-200 bg-white">
             {submitting ? (
-              /* Keyframes defined in index.css — class names: alli-breathe, alli-orbit-a/b/c */
-              <div className="flex flex-col items-center justify-center px-5 py-10 gap-5">
-                <div className="relative flex h-20 w-20 items-center justify-center">
+              /* Loading — compact, well-proportioned */
+              <div className="flex items-center gap-4 px-5 py-4">
+                {/* Orbiting animation — smaller container so it doesn't dominate */}
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center">
                   <div className="alli-breathe">
-                    <SparklesIcon className="h-12 w-12 text-indigo-600" />
+                    <SparklesIcon className="h-7 w-7 text-indigo-600" />
                   </div>
                   <div className="absolute alli-orbit-a">
-                    <SparklesIcon className="h-5 w-5 text-violet-500" />
+                    <SparklesIcon className="h-3 w-3 text-violet-500" />
                   </div>
                   <div className="absolute alli-orbit-b">
-                    <SparklesIcon className="h-3.5 w-3.5 text-indigo-400" />
+                    <SparklesIcon className="h-2.5 w-2.5 text-indigo-400" />
                   </div>
                   <div className="absolute alli-orbit-c">
-                    <SparklesIcon className="h-3 w-3 text-violet-300" />
+                    <SparklesIcon className="h-2 w-2 text-violet-300" />
                   </div>
                 </div>
-                <p className="text-[13px] font-medium text-gray-700">{loadingCopy}</p>
+                {/* Text block */}
+                <div className="flex flex-1 flex-col gap-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-gray-800">{loadingCopy}</p>
+                  {submittedPrompt && (
+                    <p className="truncate text-[11px] text-indigo-500">"{submittedPrompt}"</p>
+                  )}
+                </div>
+                {/* Cancel */}
+                <button
+                  type="button"
+                  onClick={() => { setSubmitting(false); setRecropSent(false); setAskAlliOpen(false); setSubmittedPrompt(''); setFrozenOutput(null); }}
+                  className="shrink-0 text-[11px] text-gray-400 hover:text-gray-600"
+                >
+                  Cancel
+                </button>
               </div>
             ) : (
               <>
@@ -278,18 +347,19 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                     gap: 8,
                   }}>
                     <input
-                      autoFocus
                       type="text"
                       value={recropText}
                       onChange={(e) => setRecropText(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') submitRecrop(recropText); }}
                       placeholder="Enter prompt to recrop image"
+                      className="alli-prompt-input outline-none focus:outline-none"
                       style={{
                         flex: 1,
                         minWidth: 0,
                         background: 'transparent',
                         border: 'none',
                         outline: 'none',
+                        WebkitAppearance: 'none',
                         fontSize: 13,
                         color: '#374151',
                         padding: 0,
@@ -330,26 +400,9 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
-          {onReiterate ? (
-            <button
-              type="button"
-              onClick={openAskAlli}
-              className={cn(
-                'flex items-center gap-1.5 rounded-md border px-3 py-2 text-[13px] font-medium transition-colors',
-                askAlliOpen
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-              )}
-            >
-              <SparklesIcon className="h-3.5 w-3.5" />
-              Ask Alli to Recrop
-            </button>
-          ) : (
-            <div />
-          )}
-          {displayUrl && (
+        {/* Footer — download only */}
+        {displayUrl && (
+          <div className="flex items-center justify-end border-t border-gray-200 px-5 py-3">
             <DownloadDropdown
               openUp
               onDownload={async (fmt) => {
@@ -362,8 +415,8 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                 }
               }}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

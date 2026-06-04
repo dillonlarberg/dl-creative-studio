@@ -180,3 +180,6 @@ body {
 .alli-orbit-a  { animation: alli-orbit-a  3s   ease-in-out infinite; }
 .alli-orbit-b  { animation: alli-orbit-b  2.3s ease-in-out infinite 0.5s; }
 .alli-orbit-c  { animation: alli-orbit-c  2.8s ease-in-out infinite 1s; }
+
+/* Ask Alli prompt input — no focus ring */
+.alli-prompt-input:focus { outline: none; box-shadow: none; }

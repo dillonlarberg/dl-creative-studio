@@ -14,13 +14,14 @@ interface GeneratedTileProps {
   anySelected?: boolean;
   onToggleSelect?: () => void;
   creativeName?: string;
+  isReiterated?: boolean;
 }
 
 function aspectStyle(width: number, height: number): React.CSSProperties {
   return { aspectRatio: `${width} / ${height}` };
 }
 
-export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName }: GeneratedTileProps) {
+export default function GeneratedTile({ output, onView, onRetry, selected = false, anySelected = false, onToggleSelect, creativeName, isReiterated = false }: GeneratedTileProps) {
   const { dimension, status, storageRef, errorCategory, completedAtMs } = output;
   const resolvedUrl = useStorageUrl(storageRef, completedAtMs);
   const imageUrl = output.imageUrl ?? resolvedUrl;
@@ -72,7 +73,18 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
           <>
             <div className="shimmer-tile absolute inset-0" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+              {isReiterated ? (
+                <button
+                  type="button"
+                  onClick={() => onView()}
+                  className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-indigo-600 shadow hover:bg-white"
+                >
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-500" />
+                  View progress
+                </button>
+              ) : (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+              )}
             </div>
           </>
         )}
