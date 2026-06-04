@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon, SparklesIcon } from '@heroicons/react/24/solid';
 import { cn } from '../../../utils/cn';
 import type { GeneratedOutput, MockCreative } from '../types';
 import { downloadImage } from '../utils/downloadImage';
@@ -8,9 +8,9 @@ import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
 const LOADING_COPY = [
-  'Reframing your shot…',
+  'Assembling frames — no thumbtacks required…',
   'Finding the perfect crop…',
-  'Adjusting the composition…',
+  'Reframing your shot…',
 ];
 
 interface SingleImageModalProps {
@@ -49,7 +49,6 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
     return () => document.removeEventListener('keydown', handleKey);
   }, [canPrev, canNext, onClose, askAlliOpen]);
 
-  // Reset panel when navigating to a new output
   useEffect(() => {
     setRecropSent(false);
     setAskAlliOpen(false);
@@ -78,7 +77,6 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
     setSubmitting(true);
     onReiterate(output.id, trimmed);
     setRecropText('');
-    // Show loading briefly then resolve to sent state
     setTimeout(() => {
       setSubmitting(false);
       setAskAlliOpen(false);
@@ -87,12 +85,30 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
     }, 1200);
   }
 
+  // Circle that expands to pill on hover — gradient + glow for the magical feel
+  const outputOverlay = onReiterate && !askAlliOpen ? (
+    <div className="absolute inset-0 pointer-events-none">
+      <button
+        type="button"
+        onClick={openAskAlli}
+        aria-label="Ask Alli to Recrop"
+        className="group/badge pointer-events-auto absolute right-2.5 top-2.5 z-10 inline-flex h-8 items-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 pl-2 pr-2 text-white shadow-lg shadow-indigo-500/40 transition-all duration-200 ease-out hover:pr-4 focus:outline-none"
+      >
+        <SparklesIcon className="h-4 w-4 shrink-0" />
+        <span className="inline-block max-w-0 overflow-hidden whitespace-nowrap text-[12px] font-semibold opacity-0 transition-all duration-200 ease-out group-hover/badge:ml-1.5 group-hover/badge:max-w-[9rem] group-hover/badge:opacity-100">
+          Ask Alli to Recrop
+        </span>
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1F2E]/75 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className={cn('relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl', modalWidth)}>
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <p className="text-[14px] font-semibold text-gray-900">{output.dimension.label}</p>
@@ -116,7 +132,7 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
               type="button"
               onClick={() => setIndex(i => i - 1)}
               aria-label="Previous (←)"
-              className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-50"
+              className="absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-50"
             >
               <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
             </button>
@@ -126,7 +142,7 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
               type="button"
               onClick={() => setIndex(i => i + 1)}
               aria-label="Next (→)"
-              className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-50"
+              className="absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-50"
             >
               <ChevronRightIcon className="h-5 w-5 text-gray-600" />
             </button>
@@ -153,8 +169,8 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
 
               <div className="w-px bg-gray-200" />
 
-              {/* Output panel — hover overlay triggers Ask Alli */}
-              <div className="group relative flex flex-1 flex-col">
+              {/* Output panel */}
+              <div className="relative flex flex-1 flex-col">
                 <div className="border-b border-gray-100 bg-white px-4 py-1.5">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">Output</span>
                   <span className="ml-2 text-[10px] text-gray-400">{output.dimension.width}×{output.dimension.height} · {output.dimension.channelLabel}</span>
@@ -169,25 +185,13 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                       fetchPriority="high"
                     />
                   )}
-                  {/* Hover overlay — Ask Alli to Recrop */}
-                  {!askAlliOpen && onReiterate && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-                      <button
-                        type="button"
-                        onClick={openAskAlli}
-                        className="flex items-center gap-1.5 rounded-full border border-indigo-300 bg-indigo-600 px-4 py-2 text-[13px] font-medium text-white shadow-lg transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                      >
-                        <SparklesIcon className="h-4 w-4" />
-                        Ask Alli to Recrop
-                      </button>
-                    </div>
-                  )}
+                  {outputOverlay}
                 </div>
               </div>
             </>
           ) : (
-            /* Single view (no source) — hover overlay on the whole area */
-            <div className="group relative flex flex-1 items-center justify-center p-6">
+            /* Single view */
+            <div className="relative flex flex-1 items-center justify-center p-6">
               {displayUrl && (
                 <img
                   src={displayUrl}
@@ -196,48 +200,46 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                   fetchPriority="high"
                 />
               )}
-              {!askAlliOpen && onReiterate && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={openAskAlli}
-                    className="flex items-center gap-1.5 rounded-full border border-indigo-300 bg-indigo-600 px-4 py-2 text-[13px] font-medium text-white shadow-lg transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                  >
-                    <SparklesIcon className="h-4 w-4" />
-                    Ask Alli to Recrop
-                  </button>
-                </div>
-              )}
+              {outputOverlay}
             </div>
           )}
         </div>
 
-        {/* Re-crop sent confirmation */}
+        {/* Re-crop sent banner */}
         {recropSent && (
           <div className="border-t border-green-100 bg-green-50 px-5 py-2.5">
             <p className="text-[12px] font-medium text-green-700">Re-crop request sent — a new version is being generated.</p>
           </div>
         )}
 
-        {/* Ask Alli recrop panel */}
+        {/* Ask Alli panel */}
         {askAlliOpen && (
-          <div className="border-t border-indigo-100 bg-white">
+          <div className="border-t border-gray-200 bg-white">
             {submitting ? (
-              /* Loading state */
-              <div className="flex flex-col items-center justify-center px-5 py-8 gap-3">
-                <div className="flex items-center gap-1.5">
-                  <SparklesIcon className="h-5 w-5 animate-pulse text-indigo-500" />
-                  <SparklesIcon className="h-4 w-4 animate-pulse text-indigo-400 [animation-delay:150ms]" />
-                  <SparklesIcon className="h-3 w-3 animate-pulse text-indigo-300 [animation-delay:300ms]" />
+              /* Keyframes defined in index.css — class names: alli-breathe, alli-orbit-a/b/c */
+              <div className="flex flex-col items-center justify-center px-5 py-10 gap-5">
+                <div className="relative flex h-20 w-20 items-center justify-center">
+                  <div className="alli-breathe">
+                    <SparklesIcon className="h-12 w-12 text-indigo-600" />
+                  </div>
+                  <div className="absolute alli-orbit-a">
+                    <SparklesIcon className="h-5 w-5 text-violet-500" />
+                  </div>
+                  <div className="absolute alli-orbit-b">
+                    <SparklesIcon className="h-3.5 w-3.5 text-indigo-400" />
+                  </div>
+                  <div className="absolute alli-orbit-c">
+                    <SparklesIcon className="h-3 w-3 text-violet-300" />
+                  </div>
                 </div>
                 <p className="text-[13px] font-medium text-gray-700">{loadingCopy}</p>
               </div>
             ) : (
               <>
                 {/* Panel header */}
-                <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                <div className="flex items-center justify-between px-5 pt-4 pb-3">
                   <div className="flex items-center gap-1.5">
-                    <SparklesIcon className="h-4 w-4 text-indigo-600" />
+                    <SparklesIcon className="h-3.5 w-3.5 text-indigo-600" />
                     <span className="text-[13px] font-semibold text-indigo-600">Ask Alli</span>
                   </div>
                   <button
@@ -250,24 +252,31 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                   </button>
                 </div>
 
-                {/* Thumbnail + title */}
-                <div className="flex items-start gap-3 px-5 pb-3">
+                {/* Centered thumbnail + prompt label */}
+                <div className="flex flex-col items-center gap-2 px-5 pb-3">
                   {displayUrl && (
                     <img
                       src={displayUrl}
                       alt="Current output"
-                      className="h-14 w-14 shrink-0 rounded border border-gray-200 object-cover shadow-sm"
+                      className="h-20 w-20 rounded-lg border border-gray-200 object-cover shadow-sm"
                     />
                   )}
-                  <div>
-                    <p className="text-[13px] font-medium text-gray-900">Enter a prompt to recrop the image above.</p>
+                  <div className="text-center">
+                    <p className="text-[13px] font-semibold text-gray-900">Enter a prompt to recrop the image above.</p>
                     <p className="mt-0.5 text-[11px] text-gray-500">Describe the adjustment you want.</p>
                   </div>
                 </div>
 
-                {/* Custom prompt input */}
-                <div className="px-5 pb-3">
-                  <div className="flex gap-2">
+                {/* Pure inline-style pill — no Tailwind for any visual property */}
+                <div className="px-5 pb-4">
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#eef0f6',
+                    borderRadius: 9999,
+                    padding: '6px 6px 6px 16px',
+                    gap: 8,
+                  }}>
                     <input
                       autoFocus
                       type="text"
@@ -275,21 +284,44 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                       onChange={(e) => setRecropText(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') submitRecrop(recropText); }}
                       placeholder="Enter prompt to recrop image"
-                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-[13px] placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        fontSize: 13,
+                        color: '#374151',
+                        padding: 0,
+                      }}
                     />
                     <button
                       type="button"
                       disabled={!recropText.trim()}
                       onClick={() => submitRecrop(recropText)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                      style={{
+                        flexShrink: 0,
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: recropText.trim()
+                          ? 'linear-gradient(135deg, #6366f1, #7c3aed)'
+                          : '#c4c6d4',
+                        border: 'none',
+                        cursor: recropText.trim() ? 'pointer' : 'default',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                      }}
                       aria-label="Submit recrop"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg style={{ width: 16, height: 16 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                       </svg>
                     </button>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-gray-400">
+                  <p className="mt-2 text-center text-[10px] text-gray-400">
                     <span className="font-medium">Caution:</span> AI outputs may require additional review before use.
                   </p>
                 </div>
@@ -311,7 +343,7 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
               )}
             >
-              <SparklesIcon className="h-4 w-4" />
+              <SparklesIcon className="h-3.5 w-3.5" />
               Ask Alli to Recrop
             </button>
           ) : (
