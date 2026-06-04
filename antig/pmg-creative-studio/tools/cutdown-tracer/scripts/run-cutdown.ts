@@ -34,16 +34,21 @@ function parseArgs(argv: string[]): {
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
     if (token === "--brief") {
-      brief = argv[++i];
+      const val = argv[++i];
+      if (val === undefined) throw new Error("--brief requires a value");
+      brief = val;
     } else if (token === "--target") {
       const raw = argv[++i];
+      if (raw === undefined) throw new Error("--target requires a value");
       const parsed = Number(raw);
       if (!Number.isFinite(parsed) || parsed <= 0) {
         throw new Error(`--target must be a positive number, got: ${raw}`);
       }
       target = parsed;
     } else if (token === "--pick") {
-      pick = argv[++i];
+      const val = argv[++i];
+      if (val === undefined) throw new Error("--pick requires a value");
+      pick = val;
     } else {
       positionals.push(token);
     }
@@ -119,8 +124,8 @@ async function main(): Promise<void> {
   }
   const chosen = plans[pickIdx];
 
-  const runToken = `cutdown-${trackId}-${pick}`;
-  console.log(`▶ extracting + uploading ${chosen.cuts.length} clip(s) for version [${pick}] (${chosen.angle})…`);
+  const runToken = `cutdown-${trackId}-${pickIdx}`;
+  console.log(`▶ extracting + uploading ${chosen.cuts.length} clip(s) for version [${pickIdx}] (${chosen.angle})…`);
 
   const clipPaths = await deps.clipExtractor.extractClips(videoPath, chosen.cuts, durationSec);
 
@@ -132,7 +137,7 @@ async function main(): Promise<void> {
 
   const spec: EditSpec = {
     clips,
-    musicUrl: url,
+    musicUrl: trackWithUrl.url,
     totalSec: targetSec,
     width: OUTPUT.width,
     height: OUTPUT.height,
@@ -141,10 +146,10 @@ async function main(): Promise<void> {
   console.log("  rendering via Shotstack…\n");
   const { mp4Url } = await deps.renderer.render(spec);
 
-  console.log(`▸ rendered version [${pick}] (${chosen.angle}): ${mp4Url}`);
+  console.log(`▸ rendered version [${pickIdx}] (${chosen.angle}): ${mp4Url}`);
 }
 
 main().catch((e: unknown) => {
-  console.error(e instanceof Error ? `\n✗ FAIL — ${e.message}` : e);
+  console.error(`\n✗ FAIL — ${e instanceof Error ? e.message : String(e)}`);
   process.exit(1);
 });
