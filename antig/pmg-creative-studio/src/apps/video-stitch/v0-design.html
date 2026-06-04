@@ -251,14 +251,14 @@
 
     <div class="callout lime reveal">
       <div class="ic">✓ Done when</div>
-      <p>The <code>cutdown-tracer</code> takes <b style="color:var(--text)">one mp4 (15–180s)</b> + a <b style="color:var(--text)">picked sampleMusic track</b> and renders a <b style="color:var(--text)">15.000s · 1080×1920 · 9:16</b> MP4 — <b style="color:var(--text)">hard cuts</b> on a librosa-detected <b style="color:var(--text)">uniform bar-grid</b>, music baked + tail fade — using <b style="color:var(--text)">real Gemini</b> moment-selection and <b style="color:var(--text)">real Shotstack sandbox</b>, eyeballed in the minimal UI. App wiring is <em>after</em> v0.</p>
+      <p>The <code>cutdown-tracer</code> takes <b style="color:var(--text)">one mp4 (15s → no hard cap)</b> + a <b style="color:var(--text)">picked sampleMusic track</b> and renders a <b style="color:var(--text)">15.000s · 1080×1920 · 9:16</b> MP4 — <b style="color:var(--text)">hard cuts</b> on a librosa-detected <b style="color:var(--text)">uniform bar-grid</b>, music baked + tail fade — using <b style="color:var(--text)">real Gemini</b> moment-selection and <b style="color:var(--text)">real Shotstack sandbox</b>, eyeballed in the minimal UI. App wiring is <em>after</em> v0.</p>
     </div>
 
     <div class="grid g2 reveal" style="margin-top:16px">
       <div class="card" style="border-color:rgba(212,255,63,.35)">
         <h3 style="color:var(--lime)">In · hard constraints</h3>
         <ul class="clean">
-          <li>Single <b>mp4</b>, 15s &lt; dur ≤ 180s; Gemini via <b>Files API</b></li>
+          <li>Single <b>mp4</b>, dur ≥ 15s (no hard cap — long-form OK); Gemini via <b>Files API</b></li>
           <li><b>Gemini</b> → structured <code>[{startSec,endSec,score}]</code> (real, behind a Fake)</li>
           <li><b>librosa</b> subprocess → detected tempo → <b>uniform bar-grid</b></li>
           <li><code>planCuts</code>: grid owns timing, Gemini owns content; total <b>= 15.000s</b></li>

@@ -5,7 +5,7 @@
 - **Full spec, UML architecture, scope lock:** `../../src/apps/video-stitch/v0-design.html`
 - **Session memory:** `~/.claude/.../memory/project_video_stitch_v0_spec.md`
 
-This is **Milestone 0** of the video-stitch v0: one video (15–180s) → AI-selected best moments → beat-snapped uniform grid → **15.000s · 1080×1920 · 9:16** MP4, hard cuts, music baked, rendered by Shotstack. Deliverable is this **local tracer** (mirrors `tools/resize-tracer/`), not a deployed app.
+This is **Milestone 0** of the video-stitch v0: one video (15s → no hard cap; the Gemini Files API handles long sources and planCuts is timestamp-only) → AI-selected best moments → beat-snapped uniform grid → **15.000s · 1080×1920 · 9:16** MP4, hard cuts, music baked, rendered by Shotstack. Deliverable is this **local tracer** (mirrors `tools/resize-tracer/`), not a deployed app.
 
 ## How an autonomous agent should run this build
 - **Branch off `dev`** (no worktrees — branch directly; project convention).
@@ -34,7 +34,7 @@ This is **Milestone 0** of the video-stitch v0: one video (15–180s) → AI-sel
   - [x] `scripts/select-gemini.ts` (`npm run select-gemini <mp4> [bpm]`) — real selection → planCuts eyeball
   - [x] `src/gemini.test.ts` (6) — injected fake client, no-network: lifecycle, validation, retry, give-up, cleanup. **Suite 39 ✓, typecheck clean.**
   - **⛳ GATE — eyeballed on a real long clip (`test_02.mp4`, ≈4:56).** Gemini picked 3 distinct, well-spread moments: 231–236s (1.00), 83–87s (0.95), 160–165s (0.90) — content-driven, not position-driven. planCuts @120 BPM round-robins+slices them across 8 slots, Σ=15.000s. Spine proven on real input. **AWAITING HUMAN SIGN-OFF: are those the actual key moments of the office video?**
-  - Resolved gate findings: (1) slicing — DONE (`bb7f83c`): a reused moment now walks distinct windows instead of repeating. (2) input range — `test_02.mp4` is ~296s, over the PRD's 15–180s v0 ceiling; the tracer handles it fine (Files API + timestamp-only planCuts). **OPEN:** decide whether to relax the documented input ceiling or keep 180s as a product guardrail (no code enforces it yet).
+  - Resolved gate findings: (1) slicing — DONE (`bb7f83c`): a reused moment now walks distinct windows instead of repeating. (2) input range — **RESOLVED: ceiling relaxed** (decision 2026-06-03). v0 input is now `15s → no hard cap`; long-form sources (office recordings, webinars) are in scope. `test_02.mp4` (~4:56) is the **standard fixture**. Spec/PRD updated; no code guardrail.
 - [ ] **Step 4 — real `TempoDetector` (librosa)** — `scripts/tempo.py` (`librosa.beat.beat_track` → `{bpm}` JSON) + `src/librosa.ts` spawning it as a subprocess.
   - **⛳ GATE:** detected BPM sane on a real track → human reviews.
 - [ ] **Step 5 — real `MusicCatalog` (Firestore `sampleMusic`) + real `ShotstackRenderer`** + **GCS long-TTL signed URLs** for source video + music (Shotstack must fetch them).
