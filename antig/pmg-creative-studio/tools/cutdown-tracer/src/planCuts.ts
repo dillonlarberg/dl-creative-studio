@@ -20,7 +20,7 @@
  *
  * No vendor, no interface, no I/O — trivially unit-testable.
  */
-import type { Segment, Cut, CutPlan } from "./types.js";
+import type { Segment, PlannedCut } from "./types.js";
 
 const MS = 1000;
 /** Round seconds to whole milliseconds — kills float drift so Σ len is exact. */
@@ -30,6 +30,8 @@ export interface PlanCutsInput {
   bpm: number;
   totalSec: number;
   ranked: Segment[];
+  /** When true, fill slots in the given order (per-angle playback) instead of by score. */
+  preserveOrder?: boolean;
 }
 
 /**
@@ -63,28 +65,26 @@ export function barGridBoundaries(bpm: number, totalSec: number): number[] {
  * Greedily drop overlapping segments, keeping the highest-scored. Returns a new
  * array sorted by score descending (does not mutate the input).
  */
-export function dedupRanked(ranked: Segment[]): Segment[] {
-  const byScore = [...ranked].sort((a, b) => b.score - a.score);
+export function dedupRanked(ranked: Segment[], preserveOrder = false): Segment[] {
+  const ordered = preserveOrder ? [...ranked] : [...ranked].sort((a, b) => b.score - a.score);
   const kept: Segment[] = [];
-  for (const seg of byScore) {
-    const overlaps = kept.some(
-      (k) => seg.startSec < k.endSec && k.startSec < seg.endSec,
-    );
+  for (const seg of ordered) {
+    const overlaps = kept.some((k) => seg.startSec < k.endSec && k.startSec < seg.endSec);
     if (!overlaps) kept.push(seg);
   }
   return kept;
 }
 
-export function planCuts({ bpm, totalSec, ranked }: PlanCutsInput): CutPlan {
+export function planCuts({ bpm, totalSec, ranked, preserveOrder = false }: PlanCutsInput): PlannedCut[] {
   if (ranked.length === 0) {
     throw new Error("planCuts: ranked segments must not be empty");
   }
 
   const boundaries = barGridBoundaries(bpm, totalSec);
-  const moments = dedupRanked(ranked); // highest score first, no overlaps
+  const moments = dedupRanked(ranked, preserveOrder); // highest score first (or preserved order), no overlaps
   const cursors = new Array<number>(moments.length).fill(0); // secs already consumed per moment
 
-  const cuts: Cut[] = [];
+  const cuts: PlannedCut[] = [];
   for (let i = 0; i < boundaries.length - 1; i++) {
     const len = roundMs(boundaries[i + 1] - boundaries[i]);
     // Fewer moments than slots → reuse round-robin; more → trailing moments dropped.
@@ -99,13 +99,21 @@ export function planCuts({ bpm, totalSec, ranked }: PlanCutsInput): CutPlan {
     const srcIn = roundMs(moment.startSec + offset);
     const srcOut = roundMs(srcIn + len); // trim the source to exactly the slot length
     cursors[mi] = roundMs(offset + len);
-    cuts.push({ srcIn, srcOut, len });
+    cuts.push({
+      srcIn,
+      srcOut,
+      len,
+      summary: moment.summary,
+      role: moment.role,
+      why: moment.why,
+      score: moment.score,
+    });
   }
   return cuts;
 }
 
 /** Σ of all cut lengths — used by callers/tests to assert the exact-duration contract. */
-export function totalLen(plan: CutPlan): number {
+export function totalLen(plan: PlannedCut[]): number {
   return roundMs(plan.reduce((sum, c) => sum + c.len, 0));
 }
 
@@ -126,7 +134,7 @@ export function clampSegments(
     if (s.startSec >= durationSec) continue; // starts past EOF → unusable
     const endSec = roundMs(Math.min(s.endSec, durationSec));
     if (endSec - s.startSec < minLenSec) continue; // collapsed to nothing
-    out.push({ startSec: roundMs(s.startSec), endSec, score: s.score });
+    out.push({ startSec: roundMs(s.startSec), endSec, score: s.score, summary: s.summary, role: s.role, why: s.why });
   }
   return out;
 }

@@ -208,3 +208,24 @@ describe("planCuts", () => {
     expect(() => planCuts({ bpm: 120, totalSec: TOTAL, ranked: [] })).toThrow(/empty/);
   });
 });
+
+describe("planCuts — V1 metadata + ordering", () => {
+  const ranked = [
+    { startSec: 0, endSec: 4, score: 0.5, summary: "intro", role: "hook", why: "sets it up" },
+    { startSec: 10, endSec: 14, score: 0.9, summary: "reveal", role: "reveal", why: "the moment" },
+    { startSec: 20, endSec: 24, score: 0.7, summary: "react", role: "reaction", why: "payoff" },
+  ];
+
+  it("copies source segment metadata onto the cut it fills", () => {
+    const cuts = planCuts({ bpm: 120, totalSec: 6, ranked });
+    expect(cuts[0].role).toBe("reveal");
+    expect(cuts[0].why).toBe("the moment");
+    expect(cuts[0].score).toBe(0.9);
+  });
+
+  it("preserveOrder=true fills slots in the given order, not by score", () => {
+    const cuts = planCuts({ bpm: 120, totalSec: 6, ranked, preserveOrder: true });
+    expect(cuts[0].role).toBe("hook");
+    expect(cuts[1].role).toBe("reveal");
+  });
+});
