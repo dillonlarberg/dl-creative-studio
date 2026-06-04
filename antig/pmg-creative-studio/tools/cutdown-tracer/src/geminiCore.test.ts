@@ -1,8 +1,29 @@
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
-import { extractText, generateJson, type GenAiLike } from "./geminiCore.js";
+import { extractText, generateJson, uploadAndActivate, type GenAiLike } from "./geminiCore.js";
 
 const Schema = z.object({ ok: z.boolean() });
+
+/** Fake genai client with a configurable Files API state queue (no-network). */
+function makeUploadClient(uploadStates: string[]) {
+  const states = [...uploadStates];
+  const calls = { upload: 0, get: 0 };
+  const client: GenAiLike = {
+    models: { generateContent: async () => ({}) },
+    files: {
+      upload: async () => {
+        calls.upload++;
+        return { name: "files/abc", uri: "u", mimeType: "video/mp4", state: states.shift() ?? "ACTIVE" };
+      },
+      get: async () => {
+        calls.get++;
+        return { name: "files/abc", uri: "u", mimeType: "video/mp4", state: states.shift() ?? "ACTIVE" };
+      },
+      delete: async () => ({}),
+    },
+  };
+  return { client, calls };
+}
 
 function clientReturning(...responses: unknown[]): GenAiLike {
   const queue = [...responses];
@@ -44,5 +65,18 @@ describe("geminiCore", () => {
     await expect(
       generateJson(ai, { model: "m", contents: [], schema: Schema, maxAttempts: 2, backoffMs: 0 }),
     ).rejects.toThrow(/failed after 2 attempts/);
+  });
+
+  it("uploadAndActivate polls through PROCESSING until ACTIVE", async () => {
+    const { client, calls } = makeUploadClient(["PROCESSING", "PROCESSING", "ACTIVE"]);
+    const file = await uploadAndActivate(client, "x.mp4", { pollIntervalMs: 0 });
+    expect(String(file.state)).toBe("ACTIVE");
+    expect(calls.upload).toBe(1);
+    expect(calls.get).toBe(2); // one PROCESSING poll before ACTIVE
+  });
+
+  it("uploadAndActivate throws if the file never becomes ACTIVE", async () => {
+    const { client } = makeUploadClient(["FAILED"]);
+    await expect(uploadAndActivate(client, "x.mp4", { pollIntervalMs: 0 })).rejects.toThrow(/not ACTIVE/);
   });
 });

@@ -22,6 +22,7 @@ export interface GenAiLike {
   };
 }
 
+// Exported for reuse and testability (e.g. disabling backoff/poll delays in tests).
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Response-text extraction: resp.text, else join candidate parts (mirrors resize/phase1.ts). */
@@ -42,6 +43,7 @@ export function extractText(resp: unknown): string | null {
 export interface UploadOpts {
   pollIntervalMs?: number;
   uploadTimeoutMs?: number;
+  mimeType?: string;
 }
 
 /** Upload a local file via the Files API and poll until ACTIVE. */
@@ -52,7 +54,8 @@ export async function uploadAndActivate(
 ): Promise<GenAiFile> {
   const pollIntervalMs = opts.pollIntervalMs ?? 4000;
   const uploadTimeoutMs = opts.uploadTimeoutMs ?? 120_000;
-  let file = await ai.files.upload({ file: path, config: { mimeType: "video/mp4" } });
+  const mimeType = opts.mimeType ?? "video/mp4";
+  let file = await ai.files.upload({ file: path, config: { mimeType } });
   const started = Date.now();
   while (String(file.state) === "PROCESSING") {
     if (Date.now() - started > uploadTimeoutMs) {
