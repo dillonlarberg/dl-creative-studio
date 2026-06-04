@@ -13,7 +13,10 @@
  *   - All slot boundaries except the final snap fall on bar multiples.
  *   - Overlapping ranked segments are de-duped before filling (smoke-test finding:
  *     Gemini returns overlapping windows; without dedup, slots repeat the same moment).
- *   - More ranked moments than slots → overflow dropped. Fewer → moments cycle.
+ *   - More ranked moments than slots → overflow dropped. Fewer → moments are reused
+ *     round-robin, and each reuse WALKS THROUGH the moment's footage (distinct
+ *     consecutive windows) rather than repeating the same frames, wrapping back to
+ *     the moment's start only when the next window would run past its end.
  *
  * No vendor, no interface, no I/O — trivially unit-testable.
  */
@@ -79,14 +82,23 @@ export function planCuts({ bpm, totalSec, ranked }: PlanCutsInput): CutPlan {
 
   const boundaries = barGridBoundaries(bpm, totalSec);
   const moments = dedupRanked(ranked); // highest score first, no overlaps
+  const cursors = new Array<number>(moments.length).fill(0); // secs already consumed per moment
 
   const cuts: Cut[] = [];
   for (let i = 0; i < boundaries.length - 1; i++) {
     const len = roundMs(boundaries[i + 1] - boundaries[i]);
-    // Fewer moments than slots → cycle; more → trailing moments are dropped.
-    const moment = moments[i % moments.length];
-    const srcIn = roundMs(moment.startSec);
+    // Fewer moments than slots → reuse round-robin; more → trailing moments dropped.
+    const mi = i % moments.length;
+    const moment = moments[mi];
+
+    // Walk through the moment so a reused moment shows distinct footage. Wrap to
+    // its start when the next window would overrun its end (keeps srcOut in-bounds).
+    let offset = cursors[mi];
+    if (roundMs(moment.startSec + offset + len) > moment.endSec) offset = 0;
+
+    const srcIn = roundMs(moment.startSec + offset);
     const srcOut = roundMs(srcIn + len); // trim the source to exactly the slot length
+    cursors[mi] = roundMs(offset + len);
     cuts.push({ srcIn, srcOut, len });
   }
   return cuts;

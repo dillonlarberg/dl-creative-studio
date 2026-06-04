@@ -117,24 +117,54 @@ describe("planCuts", () => {
     expect(usedStarts.size).toBeLessThanOrEqual(slots);
   });
 
-  it("cycles moments when there are fewer moments than slots", () => {
-    // Only 2 moments, ~8 slots → moments repeat, every slot still filled.
+  it("reuses moments round-robin when there are fewer moments than slots", () => {
+    // Two short (2s) moments, 2s slots → each reuse wraps immediately, so footage
+    // stays at the two moment starts but every slot is still filled to exactly 15s.
     const plan = planCuts({ bpm: 120, totalSec: TOTAL, ranked: ranked(2) });
     expect(plan.length).toBeGreaterThan(2);
     expect(totalLen(plan)).toBe(TOTAL);
-    const distinct = new Set(plan.map((c) => c.srcIn));
-    expect(distinct.size).toBe(2); // cycled between the two
+    expect(new Set(plan.map((c) => c.srcIn))).toEqual(new Set([0, 6]));
   });
 
-  it("de-dups overlapping ranked moments before filling", () => {
+  it("slices one long moment into distinct consecutive windows (no repeated frames)", () => {
+    // A single surviving 10s moment fills all 8 slots → footage should WALK forward:
+    // 0–2, 2–4, 4–6, … rather than repeating 0–2 eight times.
+    const plan = planCuts({
+      bpm: 120,
+      totalSec: TOTAL,
+      ranked: [{ startSec: 0, endSec: 10, score: 1 }],
+    });
+    expect(plan[0]).toMatchObject({ srcIn: 0, srcOut: 2 });
+    expect(plan[1]).toMatchObject({ srcIn: 2, srcOut: 4 });
+    expect(plan[2]).toMatchObject({ srcIn: 4, srcOut: 6 });
+    expect(new Set(plan.map((c) => c.srcIn)).size).toBeGreaterThan(1); // distinct, not repeated
+  });
+
+  it("wraps slicing back to the moment start when a window would overrun its end", () => {
+    // 4s moment, 2s slots → 0–2, 2–4, then wrap: 0–2, 2–4, … always within [0,4].
+    const plan = planCuts({
+      bpm: 120,
+      totalSec: TOTAL,
+      ranked: [{ startSec: 0, endSec: 4, score: 1 }],
+    });
+    for (const c of plan) {
+      expect(c.srcIn).toBeGreaterThanOrEqual(0);
+      expect(c.srcOut).toBeLessThanOrEqual(4); // never reads past the moment's end
+    }
+  });
+
+  it("de-dups overlapping ranked moments before filling — footage stays within the survivor", () => {
     const segs: Segment[] = [
       { startSec: 0, endSec: 8, score: 0.9 },
       { startSec: 1, endSec: 9, score: 0.8 }, // overlaps → dropped
       { startSec: 2, endSec: 10, score: 0.7 }, // overlaps → dropped
     ];
     const plan = planCuts({ bpm: 120, totalSec: TOTAL, ranked: segs });
-    // Only one distinct moment survives dedup → all slots use srcIn 0.
-    expect(new Set(plan.map((c) => c.srcIn))).toEqual(new Set([0]));
+    // Only the highest-scored survivor [0,8] feeds the plan → all footage in-bounds.
+    for (const c of plan) {
+      expect(c.srcIn).toBeGreaterThanOrEqual(0);
+      expect(c.srcOut).toBeLessThanOrEqual(8);
+    }
   });
 
   it("handles a single full-slot plan for a degenerate BPM", () => {
