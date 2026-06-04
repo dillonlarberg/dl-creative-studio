@@ -7,22 +7,6 @@ import { buildOutputFilename } from '../utils/outputFilename';
 import { useStorageUrl } from '../hooks/useStorageUrl';
 import DownloadDropdown from './DownloadDropdown';
 
-// TODO: Replace with AI-generated suggestions (Claude API call with image + target dimensions)
-const STATIC_SUGGESTIONS = [
-  {
-    title: 'Show more product, less background',
-    description: 'Pull back slightly to give the subject more breathing room within the frame.',
-  },
-  {
-    title: 'Tighter crop — center the main subject',
-    description: 'Zoom in and center the focal point for a more impactful composition.',
-  },
-  {
-    title: 'Shift the focal point slightly left',
-    description: 'Apply the rule of thirds — move the subject off-center for visual balance.',
-  },
-];
-
 const LOADING_COPY = [
   'Reframing your shot…',
   'Finding the perfect crop…',
@@ -277,23 +261,8 @@ export default function SingleImageModal({ outputs, initialIndex, sourceCreative
                   )}
                   <div>
                     <p className="text-[13px] font-medium text-gray-900">Enter a prompt to recrop the image above.</p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">Pick a suggestion or describe the adjustment you want.</p>
+                    <p className="mt-0.5 text-[11px] text-gray-500">Describe the adjustment you want.</p>
                   </div>
-                </div>
-
-                {/* Suggestion cards */}
-                <div className="flex flex-col gap-1.5 px-5 pb-3">
-                  {STATIC_SUGGESTIONS.map((s) => (
-                    <button
-                      key={s.title}
-                      type="button"
-                      onClick={() => submitRecrop(s.title)}
-                      className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    >
-                      <p className="text-[12px] font-semibold text-gray-800">{s.title}</p>
-                      <p className="mt-0.5 text-[11px] text-gray-500 leading-relaxed">{s.description}</p>
-                    </button>
-                  ))}
                 </div>
 
                 {/* Custom prompt input */}
