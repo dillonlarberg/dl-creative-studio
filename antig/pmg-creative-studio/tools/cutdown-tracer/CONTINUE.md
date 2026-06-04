@@ -20,14 +20,14 @@ This is **Milestone 0** of the video-stitch v0: one video (15–180s) → AI-sel
   - [x] `npm run verify-shotstack` — sandbox render submit→poll→playable mp4 — ✓ green (host: `/edit/stage`)
 
 ## Build order + ⛳ check-in gates
-- [ ] **Step 2 — tracer green end-to-end on Fakes** (no external deps)
-  - `src/types.ts` — `Segment`, `Cut`, `CutPlan`, `SampleMusicTrack`, `EditSpec` (Zod)
-  - `src/seams.ts` — `VideoMomentSelector`, `TempoDetector`, `MusicCatalog`, `VideoRenderer`
-  - `src/fakes.ts` — `FakeEvenSpacedSelector`, `FakeFixedBpm`, `FakeMusicCatalog`, `FakeEchoRenderer`
-  - `src/planCuts.ts` — **pure**: uniform bar-grid from BPM; **grid owns timing, Gemini owns content**; **dedup overlapping ranked segments** (see smoke-test finding); cuts sum to **exactly 15.000s**
-  - `src/pipeline.ts` — `runPipeline` composes the seams
-  - tests: `planCuts.test.ts` (thorough), `fakes.test.ts` (per-seam contract), `pipeline.test.ts` (all-Fakes e2e)
-  - **⛳ GATE:** `npm test` + `npm run typecheck` green → human reviews.
+- [x] **Step 2 — tracer green end-to-end on Fakes** (no external deps) — ✓ green (32 tests, typecheck clean)
+  - [x] `src/types.ts` — `Segment`, `Cut`, `CutPlan`, `SampleMusicTrack`, `EditSpec` (Zod) + `OUTPUT` contract const
+  - [x] `src/seams.ts` — `VideoMomentSelector`, `TempoDetector`, `MusicCatalog`, `VideoRenderer` (+ `VideoRef`, `PipelineDeps`)
+  - [x] `src/fakes.ts` — `FakeEvenSpacedSelector`, `FakeFixedBpm`, `FakeMusicCatalog`, `FakeEchoRenderer`
+  - [x] `src/planCuts.ts` — **pure**: uniform bar-grid from BPM (`bar=(60/bpm)*4`, interior cuts on bar multiples, final slot snapped to exactly 15.000s, trailing-sliver<½-bar merged); **grid owns timing, content owns fill**; **dedup overlapping ranked segments** (highest score wins); overflow dropped / underflow cycles
+  - [x] `src/pipeline.ts` — `runPipeline` composes the seams (BPM precedence: catalog BPM > TempoDetector fallback); `src/factory.ts` — env-keyed `makeDeps` (USE_FAKES, real branches throw until steps 3–5)
+  - [x] tests: `planCuts.test.ts` (16, thorough), `fakes.test.ts` (8, per-seam contract), `pipeline.test.ts` (8, all-Fakes e2e) + `vitest.config.ts`, `.env.example`
+  - **⛳ GATE — READY FOR HUMAN REVIEW:** `npm test` (32 ✓) + `npm run typecheck` (clean). Sample run @120 BPM = 8 hard cuts (7×2.0s on-grid + 1.0s snap), Σ=15.000s. NOT committed yet.
 - [ ] **Step 3 — real `VideoMomentSelector` (Gemini)** — `src/gemini.ts`, reusing verify-gemini's upload/poll/structured-output. Add a minimal `public/` UI or a `runOnce` script to eyeball.
   - **⛳ GATE:** run against a 70s fixture → human reviews the selected segments.
 - [ ] **Step 4 — real `TempoDetector` (librosa)** — `scripts/tempo.py` (`librosa.beat.beat_track` → `{bpm}` JSON) + `src/librosa.ts` spawning it as a subprocess.

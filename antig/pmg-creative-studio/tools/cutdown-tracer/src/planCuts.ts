@@ -1,0 +1,98 @@
+/**
+ * planCuts — the pure, deterministic heart of the pipeline (PRD #15–#17).
+ *
+ *   planCuts({ bpm, totalSec, ranked }) → CutPlan
+ *
+ * THE GRID OWNS TIMING, GEMINI OWNS CONTENT:
+ *   - A uniform bar-grid derived from the BPM sets the OUTPUT slot boundaries, so
+ *     every cut lands on a bar (= 4 beats) and the reel feels beat-synced.
+ *   - The ranked moments (from Gemini) decide WHAT source footage fills each slot.
+ *
+ * Invariants (pinned by planCuts.test.ts):
+ *   - Σ of every cut's `len` === totalSec, EXACTLY (rounded to whole ms).
+ *   - All slot boundaries except the final snap fall on bar multiples.
+ *   - Overlapping ranked segments are de-duped before filling (smoke-test finding:
+ *     Gemini returns overlapping windows; without dedup, slots repeat the same moment).
+ *   - More ranked moments than slots → overflow dropped. Fewer → moments cycle.
+ *
+ * No vendor, no interface, no I/O — trivially unit-testable.
+ */
+import type { Segment, Cut, CutPlan } from "./types.js";
+
+const MS = 1000;
+/** Round seconds to whole milliseconds — kills float drift so Σ len is exact. */
+const roundMs = (sec: number): number => Math.round(sec * MS) / MS;
+
+export interface PlanCutsInput {
+  bpm: number;
+  totalSec: number;
+  ranked: Segment[];
+}
+
+/**
+ * Build the OUTPUT slot boundaries from the bar-grid: [0, bar, 2·bar, …, totalSec].
+ * The final boundary is always snapped to exactly totalSec. A trailing sliver
+ * shorter than half a bar is merged into the previous slot so we never emit a
+ * near-zero cut. Degenerate BPMs (≤0, non-finite, or bar ≥ totalSec) collapse to
+ * a single full-length slot.
+ */
+export function barGridBoundaries(bpm: number, totalSec: number): number[] {
+  const bar = (60 / bpm) * 4; // seconds per bar (4 beats)
+  if (!Number.isFinite(bar) || bar <= 0 || bar >= totalSec) {
+    return [0, roundMs(totalSec)];
+  }
+
+  const boundaries: number[] = [0];
+  for (let k = 1; k * bar < totalSec; k++) {
+    boundaries.push(roundMs(k * bar));
+  }
+
+  // Merge a trailing sliver (< half a bar) into the previous slot.
+  const last = boundaries[boundaries.length - 1];
+  if (totalSec - last < bar / 2 && boundaries.length > 1) {
+    boundaries.pop();
+  }
+  boundaries.push(roundMs(totalSec));
+  return boundaries;
+}
+
+/**
+ * Greedily drop overlapping segments, keeping the highest-scored. Returns a new
+ * array sorted by score descending (does not mutate the input).
+ */
+export function dedupRanked(ranked: Segment[]): Segment[] {
+  const byScore = [...ranked].sort((a, b) => b.score - a.score);
+  const kept: Segment[] = [];
+  for (const seg of byScore) {
+    const overlaps = kept.some(
+      (k) => seg.startSec < k.endSec && k.startSec < seg.endSec,
+    );
+    if (!overlaps) kept.push(seg);
+  }
+  return kept;
+}
+
+export function planCuts({ bpm, totalSec, ranked }: PlanCutsInput): CutPlan {
+  if (ranked.length === 0) {
+    throw new Error("planCuts: ranked segments must not be empty");
+  }
+
+  const boundaries = barGridBoundaries(bpm, totalSec);
+  const moments = dedupRanked(ranked); // highest score first, no overlaps
+
+  const cuts: Cut[] = [];
+  for (let i = 0; i < boundaries.length - 1; i++) {
+    const len = roundMs(boundaries[i + 1] - boundaries[i]);
+    // Fewer moments than slots → cycle; more → trailing moments are dropped.
+    const moment = moments[i % moments.length];
+    const srcIn = roundMs(moment.startSec);
+    const srcOut = roundMs(srcIn + len); // trim the source to exactly the slot length
+    cuts.push({ srcIn, srcOut, len });
+  }
+  return cuts;
+}
+
+/** Σ of all cut lengths — used by callers/tests to assert the exact-duration contract. */
+export function totalLen(plan: CutPlan): number {
+  return roundMs(plan.reduce((sum, c) => sum + c.len, 0));
+}
