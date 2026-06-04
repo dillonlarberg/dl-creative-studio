@@ -12,6 +12,7 @@ import { clampSegments, planCuts } from "./planCuts.js";
 import { type GenAiLike, uploadAndActivate, generateJson } from "./geminiCore.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_BPM = 120; // used when a track has no detected bpm; planCuts needs a tempo for the beat grid
 
 const SegmentsEnvelopeSchema = z.object({ segments: z.array(SegmentSchema) });
 
@@ -134,7 +135,7 @@ export class GeminiCutdownBrain {
     opts: { targetSec: number; durationSec: number; humanInput?: string },
   ): Promise<CutdownPlan[]> {
     const analysis = await this.analyze(video, opts.targetSec);
-    const bpm = track.bpm ?? 120;
+    const bpm = track.bpm ?? DEFAULT_BPM;
 
     const plans: CutdownPlan[] = [];
     for (const angle of ANGLES) {
@@ -159,13 +160,13 @@ export class GeminiCutdownBrain {
 
   /** A short, deterministic pitch for a version (the AI 'why' lives per-cut). */
   private describe(angle: Angle, analysis: VideoAnalysis, brief?: string): string {
-    const base = {
+    const base: Record<Angle, string> = {
       narrative: "Tells it in order — setup, turn, payoff.",
       highlights: "The highest-impact moments, biggest first.",
       punchy: "Hook-dense and fast; leads with the strongest beat.",
-    }[angle];
+    };
     const briefBit = brief ? ` Tuned to: "${brief}".` : "";
-    return `${angleLabel(angle)} · ${base}${briefBit} (${analysis.theme})`;
+    return `${angleLabel(angle)} · ${base[angle]}${briefBit} (${analysis.theme})`;
   }
 }
 

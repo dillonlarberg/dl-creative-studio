@@ -118,4 +118,18 @@ describe("GeminiCutdownBrain.cutdown", () => {
     expect(calls.upload).toBe(1);
     expect(calls.generate).toBe(7); // 1 analyze + 3 select + 3 critique
   });
+
+  it("throws when no angle yields a usable (in-bounds) plan", async () => {
+    const responses = [
+      analysisJson,
+      selectJson([2, 20, 40]), selectJson([2, 20, 40]),
+      selectJson([2, 40, 20]), selectJson([2, 40, 20]),
+      selectJson([40, 2, 20]), selectJson([40, 2, 20]),
+    ];
+    const { client } = queuedClient(responses);
+    const brain = new GeminiCutdownBrain(client, { pollIntervalMs: 0 });
+    await expect(
+      brain.cutdown({ path: "x.mp4" }, track, { targetSec: 15, durationSec: 1 }),
+    ).rejects.toThrow(/no angle produced/);
+  });
 });
