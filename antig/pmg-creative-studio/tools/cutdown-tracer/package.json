@@ -8,6 +8,7 @@
     "verify-gemini": "tsx scripts/verify-gemini.ts",
     "verify-shotstack": "tsx scripts/verify-shotstack.ts",
     "run-fake": "tsx scripts/run-fake.ts",
+    "select-gemini": "tsx scripts/select-gemini.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

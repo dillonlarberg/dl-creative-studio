@@ -83,8 +83,12 @@ describe("makeDeps factory", () => {
     expect(() => makeDeps({ USE_FAKES: "1" })).not.toThrow();
   });
 
-  it("defers real providers until later build-order steps (USE_FAKES=0)", () => {
-    // Accessing a real seam throws a clear 'not yet' error in v0.
-    expect(() => makeDeps({ USE_FAKES: "0" })).toThrow(/not yet|build-order/);
+  it("wires the real Gemini selector but defers tempo/catalog/renderer (USE_FAKES=0)", () => {
+    // With a key present, the real selector constructs; the not-yet seams (step 4–5) still throw.
+    expect(() => makeDeps({ USE_FAKES: "0", GEMINI_API_KEY: "test-key" })).toThrow(/not yet|build-order/);
+  });
+
+  it("requires GEMINI_API_KEY when going real (USE_FAKES=0)", () => {
+    expect(() => makeDeps({ USE_FAKES: "0" })).toThrow(/GEMINI_API_KEY/);
   });
 });
