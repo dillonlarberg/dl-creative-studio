@@ -5,7 +5,7 @@
  */
 import type { Angle, Segment } from "./types.js";
 
-export const ANGLES: Angle[] = ["narrative", "highlights", "punchy"];
+export const ANGLES = ["narrative", "highlights", "punchy"] as const satisfies readonly Angle[];
 
 /** Human/AI-facing guidance injected into the selection prompt for each angle. */
 export function angleGuidance(angle: Angle): string {
@@ -31,10 +31,9 @@ export function orderSegments(angle: Angle, segs: Segment[]): Segment[] {
     case "narrative":
       return copy.sort((a, b) => a.startSec - b.startSec);
     case "highlights":
+    case "punchy":
+      // Same ordering by design: punchy diverges from highlights in selection
+      // guidance, not playback order. Strongest first is satisfied by score-desc.
       return copy.sort((a, b) => b.score - a.score);
-    case "punchy": {
-      const byScore = copy.sort((a, b) => b.score - a.score);
-      return byScore; // strongest first is already satisfied by score-desc
-    }
   }
 }

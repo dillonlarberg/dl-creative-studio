@@ -28,6 +28,8 @@ describe("angles", () => {
   });
 
   it("punchy puts the single strongest segment first, rest follow by score", () => {
+    // Order matches highlights by design — angles diverge in selection guidance,
+    // not playback ordering. A future divergence here would be a deliberate change.
     const out = orderSegments("punchy", segs);
     expect(out[0].score).toBe(0.95);
     expect(out.map((s) => s.score)).toEqual([0.95, 0.8, 0.6]);
