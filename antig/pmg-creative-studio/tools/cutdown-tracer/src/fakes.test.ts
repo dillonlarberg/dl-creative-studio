@@ -10,8 +10,9 @@ import {
   FakeMusicCatalog,
   FakeEchoRenderer,
   FakeClipExtractor,
+  FakeCutdownBrain,
 } from "./fakes.js";
-import { SegmentSchema, SampleMusicTrackSchema, EditSpecSchema } from "./types.js";
+import { SegmentSchema, SampleMusicTrackSchema, EditSpecSchema, CutdownPlanSchema } from "./types.js";
 import type { EditSpec, CutPlan } from "./types.js";
 
 describe("FakeEvenSpacedSelector (VideoMomentSelector contract)", () => {
@@ -97,5 +98,18 @@ describe("FakeClipExtractor (ClipExtractor contract)", () => {
     expect(paths).toHaveLength(2);
     expect(paths[0]).toContain("clip-0");
     expect(paths[1]).toContain("clip-1");
+  });
+});
+
+describe("FakeCutdownBrain", () => {
+  it("returns 3 schema-valid angled plans with no network", async () => {
+    const brain = new FakeCutdownBrain();
+    const track = {
+      trackId: "t", title: "T", url: "fake://t.mp3", format: "mp3" as const,
+      durationSec: 120, bpm: 120, provider: "fake", licenseRef: "x",
+    };
+    const plans = await brain.cutdown({ path: "x.mp4" }, track, { targetSec: 15, durationSec: 120 });
+    expect(plans.map((p) => p.angle)).toEqual(["narrative", "highlights", "punchy"]);
+    for (const p of plans) expect(() => CutdownPlanSchema.parse(p)).not.toThrow();
   });
 });

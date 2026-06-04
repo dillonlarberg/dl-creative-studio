@@ -11,8 +11,11 @@ import type {
   VideoRenderer,
   BlobStore,
   ClipExtractor,
+  CutdownBrain,
 } from "./seams.js";
-import type { Segment, SampleMusicTrack, EditSpec, CutPlan } from "./types.js";
+import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types.js";
+import { ANGLES, orderSegments } from "./angles.js";
+import { planCuts, clampSegments } from "./planCuts.js";
 
 /**
  * Returns evenly-spaced segments across an assumed source duration, scored
@@ -123,5 +126,32 @@ export class FakeBlobStore implements BlobStore {
   }
   async sign(storagePath: string): Promise<string> {
     return `fake://blob/${storagePath}?sig=fake`;
+  }
+}
+
+/** Deterministic 3-angle plans from evenly-spaced beats. No network. */
+export class FakeCutdownBrain implements CutdownBrain {
+  async cutdown(
+    _video: VideoRef,
+    track: SampleMusicTrack,
+    opts: { targetSec: number; durationSec: number; humanInput?: string },
+  ): Promise<CutdownPlan[]> {
+    const beats: Segment[] = Array.from({ length: 6 }, (_, i) => ({
+      startSec: i * 8,
+      endSec: i * 8 + 3,
+      score: Number((1 - i / 6).toFixed(3)),
+      summary: `beat ${i}`,
+      role: ["hook", "setup", "build", "reveal", "reaction", "payoff"][i],
+      why: `fake reason ${i}`,
+    }));
+    const bpm = track.bpm ?? 120;
+    return ANGLES.map((angle) => {
+      const ordered = orderSegments(angle, clampSegments(beats, opts.durationSec));
+      return {
+        angle,
+        description: `${angle} (fake)${opts.humanInput ? ` · ${opts.humanInput}` : ""}`,
+        cuts: planCuts({ bpm, totalSec: opts.targetSec, ranked: ordered, preserveOrder: true }),
+      };
+    });
   }
 }

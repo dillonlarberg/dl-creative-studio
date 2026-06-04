@@ -6,7 +6,7 @@
  *
  * The pipeline depends only on these interfaces, never on a concrete provider.
  */
-import type { Segment, SampleMusicTrack, EditSpec, CutPlan } from "./types.js";
+import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types.js";
 
 /** A reference to the source video. v0 passes a local path; the real Gemini impl uploads it via the Files API. */
 export interface VideoRef {
@@ -73,6 +73,19 @@ export interface ClipExtractor {
   extractClips(localVideoPath: string, cuts: CutPlan, durationSec: number): Promise<string[]>;
 }
 
+/**
+ * The V1 cutdown brain: from a video + a chosen track, produce N angled cut
+ * versions for a human to pick. Real: Gemini (analyze + per-angle select+critique).
+ * Fake: deterministic angled plans. Brief (`humanInput`) is optional.
+ */
+export interface CutdownBrain {
+  cutdown(
+    video: VideoRef,
+    track: SampleMusicTrack,
+    opts: { targetSec: number; durationSec: number; humanInput?: string },
+  ): Promise<CutdownPlan[]>;
+}
+
 /** The full set of seam implementations the orchestrator composes. */
 export interface PipelineDeps {
   selector: VideoMomentSelector;
@@ -81,4 +94,5 @@ export interface PipelineDeps {
   renderer: VideoRenderer;
   blobStore: BlobStore;
   clipExtractor: ClipExtractor;
+  brain: CutdownBrain;
 }

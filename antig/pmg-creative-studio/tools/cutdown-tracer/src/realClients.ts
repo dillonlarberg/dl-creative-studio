@@ -13,6 +13,7 @@ import { getStorage, getDownloadURL } from "firebase-admin/storage";
 import type { PipelineDeps } from "./seams.js";
 import { makeGeminiSelector } from "./gemini.js";
 import { makeLibrosaTempoDetector } from "./librosa.js";
+import { makeCutdownBrain } from "./cutdownBrain.js";
 import { FirestoreMusicCatalog, type FirestoreLike } from "./firestoreCatalog.js";
 import { GcsBlobStore, type BucketLike } from "./storage.js";
 import { makeShotstackRenderer } from "./shotstack.js";
@@ -47,5 +48,6 @@ export function makeRealDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps
     renderer: makeShotstackRenderer(env.SHOTSTACK_API_KEY ?? ""),
     blobStore,
     clipExtractor: makeFfmpegClipExtractor(),
+    brain: makeCutdownBrain(env.GEMINI_API_KEY ?? ""),
   };
 }

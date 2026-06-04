@@ -14,9 +14,11 @@ import {
   FakeEchoRenderer,
   FakeBlobStore,
   FakeClipExtractor,
+  FakeCutdownBrain,
 } from "./fakes.js";
 import { makeGeminiSelector } from "./gemini.js";
 import { makeLibrosaTempoDetector } from "./librosa.js";
+import { makeCutdownBrain } from "./cutdownBrain.js";
 
 function notYet(seam: string, step: string): never {
   throw new Error(`${seam}: real implementation lands in build-order ${step} (set USE_FAKES=1 for now)`);
@@ -33,6 +35,7 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
       renderer: new FakeEchoRenderer(),
       blobStore: new FakeBlobStore(),
       clipExtractor: new FakeClipExtractor(),
+      brain: new FakeCutdownBrain(),
     };
   }
 
@@ -48,5 +51,6 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
     renderer: notYet("VideoRenderer", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
     blobStore: notYet("BlobStore", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
     clipExtractor: notYet("ClipExtractor", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
+    brain: makeCutdownBrain(env.GEMINI_API_KEY ?? ""),
   };
 }
