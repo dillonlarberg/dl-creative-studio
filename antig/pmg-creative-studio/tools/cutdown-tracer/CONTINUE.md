@@ -40,7 +40,7 @@ This is **Milestone 0** of the video-stitch v0: one video (15s → no hard cap; 
   - [x] `src/librosa.ts` — `LibrosaTempoDetector` (injected `TempoRunner` boundary) + `PythonTempoRunner` (spawns `python3`); factory `USE_FAKES=0` wires it
   - [x] `scripts/detect-tempo.ts` (`npm run detect-tempo <audio>`); `src/librosa.test.ts` (5, subprocess mocked). **Suite 46 ✓.**
   - **Toolchain note:** librosa needs **Python 3.13** venv (3.14 has no numba/llvmlite wheels); `.venv-librosa/` (gitignored); set `PYTHON_BIN`. ffmpeg needed for mp3/m4a; WAV works bare. See README.
-  - **⛳ GATE — ✓ eyeballed (2026-06-03):** real seam→python→librosa path detected 120-BPM click → 117.45, 90-BPM → 89.1 (sane, tracks tempo). **AWAITING HUMAN SIGN-OFF before step 5.** Open: real-track eyeball still pending a music file (synthetic clicks used so far; real music arrives with step-5 catalog).
+  - **⛳ GATE — ✓ eyeballed (2026-06-03):** real seam→python→librosa path verified on synthetic clicks (120→117.45, 90→89.1) AND a real song `fixtures/dtmf.mp3` → **112.35 BPM** (plausible musical tempo). Note: mp3 decoded with no ffmpeg (libsndfile ≥1.1 handles mp3 natively). **AWAITING HUMAN SIGN-OFF before step 5.**
 - [ ] **Step 5 — real `MusicCatalog` (Firestore `sampleMusic`) + real `ShotstackRenderer`** + **GCS long-TTL signed URLs** for source video + music (Shotstack must fetch them).
   - **⛳ GATE:** full live tracer run → human **eyeballs the rendered 15s reel**.
 
