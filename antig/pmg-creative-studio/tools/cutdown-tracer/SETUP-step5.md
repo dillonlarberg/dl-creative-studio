@@ -1,145 +1,112 @@
-# Step 5 setup — Firebase Storage + Firestore + Shotstack
+# Step 5 setup — go live on `automated-creative-e10d7`
 
-This is the one-time setup that lets the tracer do a **real live render**: source video
-hosted in Cloud Storage, music in a `sampleMusic` Firestore catalog, Shotstack pulling
-both via long-TTL signed URLs and returning a 15s 9:16 MP4.
+The Step 5 impls are scaffolded behind seams and green against Fakes. This is the
+one-time cloud setup to do a **real render**: source video hosted in Storage, music in
+a `sampleMusic` Firestore catalog, Shotstack pulling both via fetchable URLs → a 15s
+9:16 MP4.
 
-The code is already scaffolded behind seams (`FirestoreMusicCatalog`, `GcsBlobStore`,
-`ShotstackRenderer`) and green against Fakes. After you finish the steps below, I'll
-install the two SDKs, wire the `make*` constructors into the factory, and run it.
+We reuse the **existing** Firebase project and the repo's conventions
+(`functions/` uses `admin.initializeApp()` + ADC + `getDownloadURL` token URLs), so:
 
-> **What I need back from you:** the items marked **➡️ give me** — a bucket name, a
-> service-account key path, and confirmation the `sampleMusic` docs exist.
+- **No service-account key file.** Local auth is plain **ADC** (`gcloud … login`).
+- **One dependency:** `firebase-admin` (covers Firestore + Storage + `getDownloadURL`).
+- URLs are `getDownloadURL` token URLs (publicly fetchable, non-expiring) — exactly what
+  `functions/src/video.ts` already emits.
 
----
-
-## 1. Pick the Firebase project & bucket
-
-Use an existing Firebase project (the dev one is fine) or create a throwaway. You need
-**Cloud Storage** and **Firestore** enabled on it.
-
-- Firebase console → **Build → Storage** → *Get started* (if not already on).
-- Firebase console → **Build → Firestore Database** → *Create database* (Native mode).
-
-Note the **bucket name** — it looks like `your-project.appspot.com` or
-`your-project.firebasestorage.app` (Storage page shows it at the top, `gs://…`).
-
-**➡️ give me:** the bucket name and the project id.
+| Known values | |
+|---|---|
+| project id | `automated-creative-e10d7` |
+| bucket | `automated-creative-e10d7.firebasestorage.app` |
 
 ---
 
-## 2. Service-account key (for signing + Firestore read)
-
-Signed URLs need a service account **with a private key** (the JSON key is enough — no
-extra IAM dance for local V4 signing).
-
-1. Google Cloud console → **IAM & Admin → Service Accounts** (same project).
-2. Create one (e.g. `cutdown-tracer`) or reuse an existing app SA.
-3. Grant roles:
-   - **Storage Object Admin** (`roles/storage.objectAdmin`) — upload + read objects.
-   - **Cloud Datastore User** (`roles/datastore.user`) — read `sampleMusic`.
-4. **Keys → Add key → Create new key → JSON** → download it.
-5. Save it OUTSIDE git (e.g. `~/.config/cutdown-tracer-sa.json`). **Never commit it.**
-
-**➡️ give me:** the absolute path to that JSON file.
-
----
-
-## 3. Upload music files to the bucket
-
-Put 2–3 short music tracks (mp3/wav/m4a/aac) in the bucket under a `sampleMusic/` prefix.
-
-Console: Storage → *Upload files* into a `sampleMusic` folder. Or CLI:
+## 1. Authenticate locally (ADC)
 
 ```bash
-gcloud storage cp ./drift-90.mp3 gs://YOUR_BUCKET/sampleMusic/drift-90.mp3
-gcloud storage cp ./dtmf.mp3      gs://YOUR_BUCKET/sampleMusic/dtmf.mp3
+gcloud auth application-default login
+gcloud auth application-default set-quota-project automated-creative-e10d7
 ```
 
-The object path after the bucket (e.g. `sampleMusic/drift-90.mp3`) is the **`storagePath`**
-you'll put in Firestore next. (Files stay private — the tracer signs them on read.)
+This is all the admin SDK needs locally; admin bypasses Firestore/Storage security rules,
+so no rules changes are required.
 
----
+## 2. Upload music to the bucket (under `sampleMusic/`)
 
-## 4. Create `sampleMusic/{trackId}` Firestore docs
+Use real tracks (you already have `fixtures/dtmf.mp3`). 2–3 is plenty:
 
-One doc per track. **Document ID = the trackId** you'll pass to the tracer. Fields (this is
-the `MusicDoc` schema the catalog validates):
+```bash
+gcloud storage cp fixtures/dtmf.mp3 \
+  gs://automated-creative-e10d7.firebasestorage.app/sampleMusic/dtmf.mp3
+```
+
+The path after the bucket — `sampleMusic/dtmf.mp3` — is the **`storagePath`** for step 3.
+
+## 3. Create `sampleMusic/{trackId}` Firestore docs
+
+Collection `sampleMusic`, **document id = the trackId** you'll pass to the tracer.
+Fields (the `MusicDoc` schema the catalog validates):
 
 | field | type | required | notes |
 |---|---|---|---|
 | `title` | string | ✓ | display name |
-| `storagePath` | string | ✓ | bucket-relative path from step 3, e.g. `sampleMusic/drift-90.mp3` |
-| `format` | string | ✓ | one of `mp3` \| `wav` \| `m4a` \| `aac` |
-| `durationSec` | number | ✓ | track length in seconds |
-| `bpm` | number | – | **omit on at least one track** so we exercise librosa tempo detection |
-| `firstBeatSec` | number | – | optional downbeat offset |
-| `mood` / `genre` | string | – | optional |
-| `provider` | string | ✓ | e.g. `manual`, `artlist` |
-| `licenseRef` | string | ✓ | any license note/id |
+| `storagePath` | string | ✓ | from step 2, e.g. `sampleMusic/dtmf.mp3` |
+| `format` | string | ✓ | `mp3` \| `wav` \| `m4a` \| `aac` |
+| `durationSec` | number | ✓ | track length |
+| `bpm` | number | – | **omit on ≥1 track** to exercise librosa on real music |
+| `mood` / `genre` / `firstBeatSec` | – | – | optional |
+| `provider` | string | ✓ | e.g. `manual` |
+| `licenseRef` | string | ✓ | any note/id |
 
-Example doc — collection `sampleMusic`, document id `drift-90`:
+Example — collection `sampleMusic`, doc id `dtmf`:
 
 ```json
 {
-  "title": "Drift",
-  "storagePath": "sampleMusic/drift-90.mp3",
+  "title": "DtMF",
+  "storagePath": "sampleMusic/dtmf.mp3",
   "format": "mp3",
   "durationSec": 30,
-  "bpm": 90,
   "provider": "manual",
   "licenseRef": "internal-demo"
 }
 ```
 
-> Tip: make one doc **with** a `bpm` and one **without** — the with-BPM track proves the
-> catalog→grid path; the without-BPM track proves the librosa fallback on real music.
+> Suggestion: create **two** docs — one **with** `bpm` (proves catalog→grid) and one
+> **without** (proves the librosa fallback on a real track).
 
-**➡️ give me:** confirmation the docs exist (and the trackIds).
+## 4. Source video
 
----
+Nothing to do — the tracer uploads `fixtures/test_02.mp4` itself each run and resolves a
+fetchable URL for Shotstack.
 
-## 5. Source video
-
-The office clip (`fixtures/test_02.mp4`) stays local — the tracer **uploads it for you**
-on each run (`GcsBlobStore.uploadAndSign`) and signs it for Shotstack. Nothing to do here
-beyond having the file in `fixtures/`.
-
----
-
-## 6. Shotstack key
-
-Already in `.env` (`verify-shotstack` was green). Use the **sandbox/stage** key — renders
-are free and watermarked, which is fine for v0.
-
----
-
-## 7. `.env` additions
+## 5. `.env`
 
 ```bash
-# Cloud Storage / Firestore
-GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/cutdown-tracer-sa.json
-GCS_BUCKET=your-project.appspot.com
-FIREBASE_PROJECT_ID=your-project-id
+GOOGLE_CLOUD_PROJECT=automated-creative-e10d7
+GCS_BUCKET=automated-creative-e10d7.firebasestorage.app
+USE_FAKES=0
 
-# already present from earlier steps
+# already present
 GEMINI_API_KEY=...
-SHOTSTACK_API_KEY=...        # sandbox/stage key
-USE_FAKES=0                  # flip to go live
+SHOTSTACK_API_KEY=...   # sandbox/stage key
 ```
+
+(librosa still runs from the `.venv-librosa` interpreter — keep `PYTHON_BIN` set when
+invoking, as in step 4. The live run will pass it through.)
 
 ---
 
-## 8. Then I take over
+## Then I take over
 
-Once the above is done, I will:
+Once **(a)** you've run `gcloud auth application-default login`, **(b)** uploaded the
+music, and **(c)** created the `sampleMusic` docs, tell me the **trackIds** and I will:
 
-1. `npm i firebase-admin @google-cloud/storage`
-2. Add the `makeFirestoreCatalog` / `makeGcsBlobStore` / `makeShotstackRenderer` wiring
-   into `factory.ts` (the real branch), reading the env above.
-3. Add a `run-live` script and run the **full live tracer**:
-   `test_02.mp4 + <trackId>` → Gemini moments → librosa/catalog BPM → planCuts →
-   GCS upload + signed URLs → Shotstack render → **a real 15s 9:16 MP4 URL**.
-4. We eyeball the reel together (the Step 5 ⛳ gate).
+1. `npm i firebase-admin`
+2. Wire the factory real branch:
+   - `getFirestore()` → `FirestoreMusicCatalog`
+   - `getStorage().bucket(GCS_BUCKET)` + `getDownloadURL` → `GcsBlobStore`
+   - `makeShotstackRenderer(SHOTSTACK_API_KEY)`
+3. Add `npm run run-live <trackId>` and execute the full live tracer:
+   `test_02.mp4` → Gemini moments → catalog/librosa BPM → planCuts → upload+URLs →
+   Shotstack → **a real 15s 9:16 MP4 URL** we open in the browser (Step 5 ⛳ gate).
 
-The offline suite stays green throughout — the SDKs are only touched in the real branch.
+The offline suite stays green throughout — `firebase-admin` is only touched in the real branch.
