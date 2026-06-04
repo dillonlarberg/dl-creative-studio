@@ -5,6 +5,7 @@ import {
   getDocs,
   query,
   orderBy,
+  where,
   serverTimestamp,
   type Timestamp,
 } from 'firebase/firestore';
@@ -93,8 +94,12 @@ export async function uploadCreative(
   };
 }
 
-export async function listUploads(clientSlug: string): Promise<Creative[]> {
-  const q = query(uploadsCol(clientSlug), orderBy('uploadedAt', 'desc'));
+export async function listUploads(clientSlug: string, uid: string): Promise<Creative[]> {
+  const q = query(
+    uploadsCol(clientSlug),
+    where('uploadedBy', '==', uid),
+    orderBy('uploadedAt', 'desc'),
+  );
   const snap = await getDocs(q);
   return snap.docs.map(d =>
     docToCreative(d.data() as Record<string, unknown> & { uploadedAt: Timestamp }),

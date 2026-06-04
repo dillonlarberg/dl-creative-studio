@@ -4,6 +4,7 @@ import { ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { cn } from '../../../utils/cn';
 import { validateUploadFile } from '../utils/uploadValidation';
 import { uploadCreative, listUploads, retryFirestoreWrite, type UploadMeta } from '../services/uploadService';
+import { auth } from '../../../firebase';
 import UploadedCreativeGrid from './UploadedCreativeGrid';
 import FilterSortBar, { type FormatFilter, type FileTypeFilter, type SortOption } from './FilterSortBar';
 import type { Creative } from '../types';
@@ -58,7 +59,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
 
   useEffect(() => {
     isMountedRef.current = true;
-    listUploads(clientSlug)
+    listUploads(clientSlug, auth.currentUser?.uid ?? '')
       .then(creatives => { if (isMountedRef.current) setUploadedCreatives(creatives); })
       .catch(() => { if (isMountedRef.current) setLoadError('Could not load previous uploads. You can still upload new files.'); });
     return () => {
@@ -192,7 +193,7 @@ export default function UploadTab({ clientSlug, onUploadConnect }: UploadTabProp
             type="button"
             onClick={() => {
               setLoadError(null);
-              listUploads(clientSlug)
+              listUploads(clientSlug, auth.currentUser?.uid ?? '')
                 .then(c => { if (isMountedRef.current) setUploadedCreatives(c); })
                 .catch(() => { if (isMountedRef.current) setLoadError('Could not load previous uploads.'); });
             }}
