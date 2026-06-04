@@ -106,8 +106,9 @@ aiCutdown(video, track, { humanInput?, targetSec }) → CutdownPlan[]
   select + critique over the beats (1 + 3 + 3 = 7 calls total).
 - Angles: **Narrative** (chronological) · **Highlights** (impact-ordered) · **Punchy**
   (strongest-first). A brief (`humanInput`), when present, biases all three.
-- Each `CutdownPlan` carries an AI-written `description` plus per-cut `why`; a bounded
-  per-version self-critique runs before the plan is returned (degrades gracefully on failure).
+- Each `CutdownPlan` carries a `description` (a per-angle pitch built from the AI-derived
+  theme) plus an AI-written per-cut `why`; a bounded per-version self-critique runs before
+  the plan is returned (degrades gracefully on failure).
 
 ```bash
 # print 3 versions; add --pick N to render one via Shotstack
