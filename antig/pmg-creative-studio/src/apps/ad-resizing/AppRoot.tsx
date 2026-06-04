@@ -34,6 +34,14 @@ interface JobSummary {
   startedAt: number;
 }
 
+/** One entry in the multi-photo config queue. Channels/dimensions are saved
+ *  per-photo as the user navigates between them in ResizeConfigPanel. */
+interface ConfigQueueEntry {
+  creative: Creative;
+  channels: string[];
+  dimensions: Set<string>;
+}
+
 
 function newOutputId(dimId: string): string {
   return `${dimId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -68,7 +76,13 @@ export default function AdResizingAppRoot() {
 
   const [stage, setStage] = useState<Stage>('browse');
   const [navConfirmPending, setNavConfirmPending] = useState<StepId | null>(null);
-  const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
+
+  // Multi-select browse state
+  const [browseSelectedIds, setBrowseSelectedIds] = useState<Set<string>>(new Set());
+  // Active config queue (populated when user clicks "Configure & Resize")
+  const [configQueue, setConfigQueue] = useState<ConfigQueueEntry[]>([]);
+  const [configQueueIdx, setConfigQueueIdx] = useState(0);
+
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [selectedDimensions, setSelectedDimensions] = useState<Set<string>>(new Set());
 
@@ -176,7 +190,9 @@ export default function AdResizingAppRoot() {
   useEffect(() => {
     if (prevSlugRef.current && prevSlugRef.current !== clientSlug) {
       setStage('browse');
-      setSelectedCreative(null);
+      setBrowseSelectedIds(new Set());
+      setConfigQueue([]);
+      setConfigQueueIdx(0);
       setSelectedChannels([]);
       setSelectedDimensions(new Set());
       setJobs([]);
@@ -214,7 +230,9 @@ export default function AdResizingAppRoot() {
   function handleFeedConnect(feed: SelectedFeed, _imageColumn: string, creatives: Creative[]) {
     setFeedCreatives(creatives);
     setConnectedFeedLabel(feed.name);
-    setSelectedCreative(null);
+    setBrowseSelectedIds(new Set());
+    setConfigQueue([]);
+    setConfigQueueIdx(0);
     setSelectedChannels([]);
     setSelectedDimensions(new Set());
   }
@@ -222,7 +240,9 @@ export default function AdResizingAppRoot() {
   function handleUploadConnect(creatives: Creative[]) {
     setFeedCreatives(creatives);
     setConnectedFeedLabel('Uploaded Files');
-    setSelectedCreative(null);
+    setBrowseSelectedIds(new Set());
+    setConfigQueue([]);
+    setConfigQueueIdx(0);
     setSelectedChannels([]);
     setSelectedDimensions(new Set());
   }
@@ -247,11 +267,10 @@ export default function AdResizingAppRoot() {
         setFeedCreatives((prev) =>
           prev?.map((c) => { const d = batch.get(c.id); return d ? { ...c, ...d } : c; }) ?? prev,
         );
-        setSelectedCreative((prev) => {
-          if (!prev) return prev;
-          const d = batch.get(prev.id);
-          return d ? { ...prev, ...d } : prev;
-        });
+        // Patch dimension updates into any config queue entries that reference the updated creative
+        setConfigQueue((prev) =>
+          prev.map((e) => { const d = batch.get(e.creative.id); return d ? { ...e, creative: { ...e.creative, ...d } } : e; }),
+        );
       }, 100);
     },
     [],
@@ -260,7 +279,9 @@ export default function AdResizingAppRoot() {
   function handleDisconnectFeed() {
     setFeedCreatives(null);
     setConnectedFeedLabel(null);
-    setSelectedCreative(null);
+    setBrowseSelectedIds(new Set());
+    setConfigQueue([]);
+    setConfigQueueIdx(0);
     setSelectedChannels([]);
     setSelectedDimensions(new Set());
     setAddingToJob(false);
@@ -321,17 +342,36 @@ export default function AdResizingAppRoot() {
     return list;
   }, [feedCreatives, filterFormat, filterFileType, sortBy]);
 
-  const handleSelectCreative = useCallback((creative: Creative) => {
-    if (selectedCreative?.id === creative.id) {
-      setSelectedCreative(null);
-      setSelectedChannels([]);
-      setSelectedDimensions(new Set());
-    } else {
-      setSelectedCreative(creative);
-      setSelectedChannels([]);
-      setSelectedDimensions(new Set());
-    }
-  }, [selectedCreative]);
+  const handleToggleBrowseSelect = useCallback((creative: Creative) => {
+    setBrowseSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(creative.id)) next.delete(creative.id);
+      else next.add(creative.id);
+      return next;
+    });
+  }, []);
+
+  function handleStartConfigQueue() {
+    const ordered = filteredCreatives.filter(c => browseSelectedIds.has(c.id));
+    if (ordered.length === 0) return;
+    const queue: ConfigQueueEntry[] = ordered.map(creative => ({ creative, channels: [], dimensions: new Set() }));
+    setConfigQueue(queue);
+    setConfigQueueIdx(0);
+    setSelectedChannels([]);
+    setSelectedDimensions(new Set());
+  }
+
+  function handleConfigNavigate(newIdx: number) {
+    const snapshot = configQueue.map((e, i) =>
+      i === configQueueIdx
+        ? { ...e, channels: [...selectedChannels], dimensions: new Set(selectedDimensions) }
+        : e,
+    );
+    setConfigQueue(snapshot);
+    setConfigQueueIdx(newIdx);
+    setSelectedChannels(snapshot[newIdx].channels);
+    setSelectedDimensions(snapshot[newIdx].dimensions);
+  }
 
   const handleSetChannels = useCallback((channelIds: string[]) => {
     setSelectedChannels(channelIds);
@@ -369,78 +409,75 @@ export default function AdResizingAppRoot() {
     });
   }, []);
 
-  const handleRun = useCallback(async () => {
-    if (!selectedCreative || selectedDimensions.size === 0 || !clientSlug) return;
+  async function handleRunQueue() {
+    if (!clientSlug || configQueue.length === 0) return;
 
-    const dims = getDeduplicatedDimensions(selectedChannels).filter(d => selectedDimensions.has(d.id));
-    if (dims.length === 0) return;
+    // Merge the live channel/dimension state into the current queue entry
+    const finalQueue = configQueue.map((e, i) =>
+      i === configQueueIdx
+        ? { ...e, channels: [...selectedChannels], dimensions: new Set(selectedDimensions) }
+        : e,
+    );
 
-    const sameCreativeAsActive =
-      !!activeJobId &&
-      selectedCreative.id === jobs.find(j => j.id === activeJobId)?.sourceCreative.id;
-    const shouldAppend = addingToJob || sameCreativeAsActive;
-
-    // Brand-new batches get a fresh batchId; "add more sizes" re-uses the
-    // existing batchId so the per-output Firestore docs merge into the same
-    // job under one BatchRecord.
-    const targetBatchId = shouldAppend ? activeJobId! : newId();
-    const outputIds = dims.map(d => newOutputId(d.id));
-
-    // Stage the UI: seed JobSummary + per-output pending shells immediately
-    // so the user sees the grid before the callable round-trip completes.
-    const pendingOutputs: GeneratedOutput[] = dims.map((dim, i) => ({
-      id: outputIds[i],
-      outputId: outputIds[i],
-      dimension: dim,
-      status: 'pending',
-    }));
-
-    if (shouldAppend) {
+    if (addingToJob && activeJobId && finalQueue.length === 1) {
+      // Append more sizes to the existing batch
+      const entry = finalQueue[0];
+      const dims = getDeduplicatedDimensions(entry.channels).filter(d => entry.dimensions.has(d.id));
+      if (dims.length === 0) return;
+      const outputIds = dims.map(d => newOutputId(d.id));
+      const pendingOutputs: GeneratedOutput[] = dims.map((dim, i) => ({
+        id: outputIds[i], outputId: outputIds[i], dimension: dim, status: 'pending',
+      }));
       setJobs(prev => prev.map(j =>
-        j.id === targetBatchId
-          ? {
-              ...j,
-              dimensions: [...j.dimensions, ...dims],
-              outputsSnapshot: [...j.outputsSnapshot, ...pendingOutputs],
-            }
+        j.id === activeJobId
+          ? { ...j, dimensions: [...j.dimensions, ...dims], outputsSnapshot: [...j.outputsSnapshot, ...pendingOutputs] }
           : j,
       ));
-    } else {
-      const job: JobSummary = {
-        id: targetBatchId,
-        sourceCreative: selectedCreative,
-        dimensions: dims,
-        outputsSnapshot: pendingOutputs,
-        startedAt: Date.now(),
-      };
-      setJobs(prev => [...prev, job]);
-      setActiveJobId(targetBatchId);
+      setStage('results');
+      setConfigQueue([]); setConfigQueueIdx(0);
+      setSelectedChannels([]); setSelectedDimensions(new Set());
+      setAddingToJob(false); setGenFilterChannel('all'); setGenSort('default');
+      try {
+        await runner.runBatch({ batchId: activeJobId, creative: entry.creative, feedName: connectedFeedLabel ?? undefined, dimensions: dims, outputIds });
+      } catch (err) {
+        console.error('runOutpaintBatch failed', err);
+        setRunError(err instanceof Error ? err.message : String(err));
+      }
+      return;
     }
 
+    // Build a new batch per configured photo, fire concurrently
+    const batchRuns = finalQueue
+      .map(entry => {
+        const dims = getDeduplicatedDimensions(entry.channels).filter(d => entry.dimensions.has(d.id));
+        if (dims.length === 0) return null;
+        const batchId = newId();
+        const outputIds = dims.map(d => newOutputId(d.id));
+        const pendingOutputs: GeneratedOutput[] = dims.map((dim, i) => ({
+          id: outputIds[i], outputId: outputIds[i], dimension: dim, status: 'pending',
+        }));
+        const job: JobSummary = { id: batchId, sourceCreative: entry.creative, dimensions: dims, outputsSnapshot: pendingOutputs, startedAt: Date.now() };
+        return { batchId, dims, outputIds, entry, job };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+
+    if (batchRuns.length === 0) return;
+
+    setJobs(prev => [...prev, ...batchRuns.map(r => r.job)]);
+    setActiveJobId(batchRuns[batchRuns.length - 1].batchId);
     setStage('results');
-    setAddingToJob(false);
-    setSelectedCreative(null);
-    setSelectedChannels([]);
-    setSelectedDimensions(new Set());
-    setGenFilterChannel('all');
-    setGenSort('default');
+    setConfigQueue([]); setConfigQueueIdx(0);
+    setBrowseSelectedIds(new Set());
+    setSelectedChannels([]); setSelectedDimensions(new Set());
+    setGenFilterChannel('all'); setGenSort('default');
 
-    try {
-      await runner.runBatch({
-        batchId: targetBatchId,
-        creative: selectedCreative,
-        feedName: connectedFeedLabel ?? undefined,
-        dimensions: dims,
-        outputIds,
-      });
-    } catch (err) {
-      // BatchRecord.status is updated to 'failed' server-side when possible;
-      // the live subscription surfaces per-output error states for the tiles.
-      // Surface a banner so the user isn't left waiting on a silent failure.
-      console.error('runOutpaintBatch failed', err);
-      setRunError(err instanceof Error ? err.message : String(err));
-    }
-  }, [selectedCreative, selectedChannels, selectedDimensions, addingToJob, activeJobId, jobs, clientSlug, runner, connectedFeedLabel]);
+    await Promise.allSettled(
+      batchRuns.map(({ batchId, dims, outputIds, entry }) =>
+        runner.runBatch({ batchId, creative: entry.creative, feedName: connectedFeedLabel ?? undefined, dimensions: dims, outputIds })
+          .catch(err => { console.error('runOutpaintBatch failed for', entry.creative.name, err); setRunError(err instanceof Error ? err.message : String(err)); }),
+      ),
+    );
+  }
 
   const handleRetry = useCallback(async (outputId: string) => {
     if (!activeJobId || !activeJob) return;
@@ -528,7 +565,12 @@ export default function AdResizingAppRoot() {
     }
   }
 
-  const numCols = useNumCols(!!selectedCreative);
+  const numCols = useNumCols(configQueue.length > 0);
+
+  const queueReadyCount = configQueue.reduce((count, e, i) => {
+    const dims = i === configQueueIdx ? selectedDimensions : e.dimensions;
+    return count + (dims.size > 0 ? 1 : 0);
+  }, 0);
   const activeStep = stage === 'results' && allComplete ? 'download' : stage;
 
   return (
@@ -612,7 +654,7 @@ export default function AdResizingAppRoot() {
             </div>
           ) : (
             <>
-              <div className={cn('flex-1 min-w-0 transition-all duration-200', selectedCreative ? 'pr-5' : '')}>
+              <div className={cn('flex-1 min-w-0 transition-all duration-200', configQueue.length > 0 ? 'pr-5' : '')}>
                 {/* Add-to-batch banner */}
                 {addingToJob && activeJob && (
                   <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
@@ -625,7 +667,8 @@ export default function AdResizingAppRoot() {
                       onClick={() => {
                         setAddingToJob(false);
                         setStage('results');
-                        setSelectedCreative(null);
+                        setConfigQueue([]);
+                        setConfigQueueIdx(0);
                         setSelectedChannels([]);
                         setSelectedDimensions(new Set());
                       }}
@@ -687,35 +730,61 @@ export default function AdResizingAppRoot() {
                       <CreativeTile
                         key={creative.id}
                         creative={creative}
-                        selected={selectedCreative?.id === creative.id}
-                        onSelect={handleSelectCreative}
+                        selected={browseSelectedIds.has(creative.id)}
+                        onSelect={handleToggleBrowseSelect}
                         onDimensionsResolved={handleDimensionsResolved}
                       />
                     )}
                   />
                 )}
+
+                {/* Sticky footer: "Configure & Resize (N)" — breaks out of card padding to feel like a docked action bar */}
+                {browseSelectedIds.size > 0 && configQueue.length === 0 && (
+                  <div className="sticky bottom-0 -mx-6 xl:-mx-10 flex items-center justify-between bg-white px-6 xl:px-10 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+                    <span className="text-[13px] text-gray-500">
+                      {browseSelectedIds.size} photo{browseSelectedIds.size !== 1 ? 's' : ''} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleStartConfigQueue}
+                      className="rounded-lg bg-blue-600 px-5 py-2.5 text-[13px] font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                    >
+                      Configure & Resize ({browseSelectedIds.size})
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {selectedCreative && (
-                <div className="sticky top-14 self-start h-[calc(100vh-3.5rem)]">
-                  <ResizeConfigPanel
-                    creative={selectedCreative}
-                    selectedChannels={selectedChannels}
-                    selectedDimensions={selectedDimensions}
-                    onToggleChannel={handleToggleChannel}
-                    onToggleDimension={handleToggleDimension}
-                    onSetChannels={handleSetChannels}
-                    onRun={handleRun}
-                    addMode={addingToJob}
-                    onClose={() => {
-                      setSelectedCreative(null);
-                      setSelectedChannels([]);
-                      setSelectedDimensions(new Set());
-                      if (addingToJob) { setAddingToJob(false); setStage('results'); }
-                    }}
-                  />
-                </div>
-              )}
+              {configQueue.length > 0 && (() => {
+                const currentCreative = configQueue[configQueueIdx].creative;
+                const isMulti = configQueue.length > 1 && !addingToJob;
+                return (
+                  <div className="sticky top-14 self-start h-[calc(100vh-3.5rem)]">
+                    <ResizeConfigPanel
+                      creative={currentCreative}
+                      selectedChannels={selectedChannels}
+                      selectedDimensions={selectedDimensions}
+                      onToggleChannel={handleToggleChannel}
+                      onToggleDimension={handleToggleDimension}
+                      onSetChannels={handleSetChannels}
+                      onRun={handleRunQueue}
+                      addMode={addingToJob}
+                      queuePosition={isMulti ? { current: configQueueIdx + 1, total: configQueue.length } : undefined}
+                      queueReadyCount={isMulti ? queueReadyCount : undefined}
+                      onPrev={isMulti ? () => handleConfigNavigate(configQueueIdx - 1) : undefined}
+                      onNext={isMulti ? () => handleConfigNavigate(configQueueIdx + 1) : undefined}
+                      onClose={() => {
+                        setConfigQueue([]);
+                        setConfigQueueIdx(0);
+                        if (!addingToJob) setBrowseSelectedIds(new Set());
+                        setSelectedChannels([]);
+                        setSelectedDimensions(new Set());
+                        if (addingToJob) { setAddingToJob(false); setStage('results'); }
+                      }}
+                    />
+                  </div>
+                );
+              })()}
             </>
           )
         )}
@@ -837,7 +906,10 @@ export default function AdResizingAppRoot() {
                             onClick={() => {
                               setAddingToJob(true);
                               setStage('browse');
-                              setSelectedCreative(activeJob.sourceCreative);
+                              setConfigQueue([{ creative: activeJob.sourceCreative, channels: [], dimensions: new Set() }]);
+                              setConfigQueueIdx(0);
+                              setSelectedChannels([]);
+                              setSelectedDimensions(new Set());
                             }}
                             className="rounded-lg border border-gray-300 px-4 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-50"
                           >

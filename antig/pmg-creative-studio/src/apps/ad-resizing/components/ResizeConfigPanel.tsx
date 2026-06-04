@@ -7,6 +7,8 @@ import {
   PrinterIcon,
   ComputerDesktopIcon,
   TvIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import { CHANNELS, getDeduplicatedDimensions } from '../data/channels';
@@ -31,6 +33,12 @@ interface ResizeConfigPanelProps {
   onRun: () => void;
   onClose: () => void;
   addMode?: boolean;
+  /** Set when configuring multiple photos in a queue (1-indexed). */
+  queuePosition?: { current: number; total: number };
+  /** Number of photos in the queue that have at least one dimension selected. */
+  queueReadyCount?: number;
+  onNext?: () => void;
+  onPrev?: () => void;
 }
 
 export default function ResizeConfigPanel({
@@ -43,10 +51,17 @@ export default function ResizeConfigPanel({
   onRun,
   onClose,
   addMode = false,
+  queuePosition,
+  queueReadyCount = 0,
+  onNext,
+  onPrev,
 }: ResizeConfigPanelProps) {
   const availableDimensions: Dimension[] = getDeduplicatedDimensions(selectedChannels);
   const canRun = selectedChannels.length > 0 && selectedDimensions.size > 0;
   const allChannelsSelected = selectedChannels.length === CHANNELS.length;
+  const isMultiQueue = !!(queuePosition && queuePosition.total > 1);
+  const isLastInQueue = !queuePosition || queuePosition.current === queuePosition.total;
+  const canGenerate = isMultiQueue ? queueReadyCount > 0 : canRun;
 
   return (
     <div className="flex h-full w-[380px] shrink-0 flex-col border-l border-gray-200 bg-white">
@@ -54,7 +69,13 @@ export default function ResizeConfigPanel({
       <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
         <div>
           <p className="text-[13px] font-semibold text-gray-900">Resize Settings</p>
-          <p className="mt-0.5 text-[11px] text-gray-400">1 creative selected</p>
+          {isMultiQueue && queuePosition ? (
+            <p className="mt-0.5 text-[11px] text-gray-400">
+              Photo {queuePosition.current} of {queuePosition.total}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-[11px] text-gray-400">1 creative selected</p>
+          )}
         </div>
         <button
           type="button"
@@ -67,19 +88,21 @@ export default function ResizeConfigPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Selected creative preview */}
-        <div className="border-b border-gray-200 px-5 py-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Selected Creative</p>
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-20 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100">
-              <img src={creative.thumbnailUrl} alt={creative.name} className="h-full w-full object-cover" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium text-gray-900">{creative.name}</p>
-              <p className="mt-0.5 text-[11px] text-gray-400">
-                {creative.width}×{creative.height} · {creative.fileType}
-              </p>
-            </div>
+        {/* Selected creative preview — full-width so the user can clearly identify the photo */}
+        <div className="border-b border-gray-200">
+          <div className="relative w-full overflow-hidden bg-gray-100" style={{ maxHeight: '200px' }}>
+            <img
+              src={creative.thumbnailUrl}
+              alt={creative.name}
+              className="w-full object-contain"
+              style={{ maxHeight: '200px' }}
+            />
+          </div>
+          <div className="px-5 py-3">
+            <p className="truncate text-[13px] font-medium text-gray-900" title={creative.name}>{creative.name}</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">
+              {creative.width}×{creative.height} · {creative.fileType}
+            </p>
           </div>
         </div>
 
@@ -185,23 +208,58 @@ export default function ResizeConfigPanel({
         </div>
       </div>
 
-      {/* Run footer */}
+      {/* Footer */}
       <div className="border-t border-gray-200 px-5 py-4">
+        {/* Prev / Next navigation — only shown in multi-photo queue */}
+        {isMultiQueue && queuePosition && (
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={queuePosition.current === 1}
+              className={cn(
+                'flex items-center gap-1 rounded-lg border px-3 py-2 text-[12px] font-medium transition-colors',
+                queuePosition.current === 1
+                  ? 'cursor-not-allowed border-gray-100 text-gray-300'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50',
+              )}
+            >
+              <ChevronLeftIcon className="h-3.5 w-3.5" />
+              Prev
+            </button>
+            {!isLastInQueue && (
+              <button
+                type="button"
+                onClick={onNext}
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+              >
+                Next
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Generate button */}
         <button
           type="button"
           onClick={onRun}
-          disabled={!canRun}
+          disabled={!canGenerate}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-[13px] font-semibold transition-colors',
-            canRun
+            canGenerate
               ? 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800'
-              : 'cursor-not-allowed bg-gray-100 text-gray-400'
+              : 'cursor-not-allowed bg-gray-100 text-gray-400',
           )}
         >
           <BoltIcon className="h-4 w-4" />
-          {canRun
-            ? `${addMode ? 'Add' : 'Generate'} ${selectedDimensions.size} size${selectedDimensions.size === 1 ? '' : 's'}`
-            : 'Select a channel to continue'}
+          {isMultiQueue
+            ? (canGenerate
+                ? `Generate All (${queueReadyCount} photo${queueReadyCount === 1 ? '' : 's'} ready)`
+                : 'Configure a photo to continue')
+            : (canRun
+                ? `${addMode ? 'Add' : 'Generate'} ${selectedDimensions.size} size${selectedDimensions.size === 1 ? '' : 's'}`
+                : 'Select a channel to continue')}
         </button>
       </div>
     </div>
