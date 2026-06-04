@@ -97,7 +97,7 @@ describe("GeminiCutdownBrain.critique", () => {
     const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
     const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
     expect(out.segments).toEqual(selected);
-    expect(out.description.length).toBeGreaterThan(0);
+    expect(out.description).toMatch(/Narrative/);
   });
 });
 
@@ -125,6 +125,7 @@ describe("GeminiCutdownBrain.cutdown", () => {
     }
     expect(calls.upload).toBe(1);
     expect(calls.generate).toBe(7); // 1 analyze + 3 select + 3 critique
+    expect(plans[0].description).toBe("a tight, coherent cut");
   });
 
   it("throws when no angle yields a usable (in-bounds) plan", async () => {

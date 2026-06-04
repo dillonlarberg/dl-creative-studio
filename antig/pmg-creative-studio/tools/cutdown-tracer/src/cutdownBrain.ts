@@ -128,8 +128,9 @@ export class GeminiCutdownBrain implements CutdownBrain {
         backoffMs: this.opts.backoffMs,
       });
       return { description, segments: orderSegments(angle, segments) };
-    } catch {
+    } catch (err) {
       // graceful degradation — keep the selection and fall back to a deterministic pitch
+      console.warn(`critique(${angle}): degrading to deterministic description —`, err instanceof Error ? err.message : err);
       return { description: this.describe(angle, analysis, brief), segments: selected };
     }
   }
