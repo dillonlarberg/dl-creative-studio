@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeftIcon, SparklesIcon, CircleStackIcon, ArrowUpTrayIcon, PencilSquareIcon, CheckCircleIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Button } from '@agencypmg/alli-design-system';
@@ -70,6 +71,7 @@ function detectFormat(width: number, height: number): 'landscape' | 'square' | '
 }
 
 export default function AdResizingAppRoot() {
+  usePageTitle('Ad Resize');
   const { clientSlug } = useParams<{ clientSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const runner = useOutpaintRunner(clientSlug ?? '');

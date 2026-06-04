@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePageTitle } from '../hooks/usePageTitle';
 import {
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
@@ -27,6 +28,7 @@ import type { AppManifest } from '../apps/types';
  */
 
 export default function DashboardPage() {
+  usePageTitle();
   const { clientSlug } = useParams<{ clientSlug?: string }>();
   const navigate = useNavigate();
   const { client, isReady, loading, error } = useClientBootstrap({

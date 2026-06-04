@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export default function LoginPage() {
+    usePageTitle('Log in');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();

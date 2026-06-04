@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import {
   Link,
   useLocation,
@@ -102,6 +103,7 @@ export function WizardShell<S extends StepData = StepData>({
   const splatPath = params['*']?.split('/')[0] ?? '';
   const urlStepId = params.stepId ?? (splatPath || undefined);
 
+  usePageTitle(manifest.title);
   const [searchParams] = useSearchParams();
   const resumeId = searchParams.get('creative');
   const navigateRouter = useNavigate();
