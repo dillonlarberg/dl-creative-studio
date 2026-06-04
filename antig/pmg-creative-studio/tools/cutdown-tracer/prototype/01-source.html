@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cutdown · Source</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/theme.js"></script>
+</head>
+<body class="font-sans text-gray-800" style="background-color:#EEF1F7">
+  <div id="chrome"></div>
+
+  <main class="pt-[60px]">
+    <div class="mx-auto max-w-[1100px] px-8 pt-8 pb-16">
+      <div id="pagehead"></div>
+
+      <!-- Tabs: From Alli (datasource) | Upload Files -->
+      <div class="mb-5 flex items-center gap-6 border-b border-gray-200">
+        <button id="tab-alli" type="button" class="flex items-center gap-1.5 border-b-2 border-blue-600 px-0.5 pb-2.5 text-[13px] font-semibold text-gray-900">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375 7.444 2.25 12 2.25s8.25 1.847 8.25 4.125Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.375v11.25c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125V6.375M3.75 12c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125"/></svg>
+          From Alli
+        </button>
+        <button id="tab-upload" type="button" class="flex items-center gap-1.5 border-b-2 border-transparent px-0.5 pb-2.5 text-[13px] font-medium text-gray-500 hover:text-gray-800">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          Upload Files
+        </button>
+      </div>
+
+      <!-- ============ FROM ALLI ============ -->
+      <section id="panel-alli">
+        <!-- Sub-view: data source list -->
+        <div id="view-sources" class="hidden">
+          <div class="mb-4 flex items-center gap-3">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5 text-white"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375 7.444 2.25 12 2.25s8.25 1.847 8.25 4.125Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.375v11.25c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125V6.375M3.75 12c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125"/></svg>
+            </div>
+            <div>
+              <p class="text-[15px] font-semibold text-gray-900">Connect a data source</p>
+              <p id="ds-count" class="text-[12px] text-gray-400"></p>
+            </div>
+          </div>
+          <div id="ds-list" class="max-w-xl space-y-2"></div>
+          <button type="button" class="mt-4 inline-flex items-center gap-1.5 text-[12px] font-medium text-blue-600 hover:text-blue-700">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M2.985 19.644v-4.992h4.992M19.5 9A8.25 8.25 0 0 0 5.69 5.69L2.985 8.4m0 0V4.356m18.03 9.252A8.25 8.25 0 0 1 18.31 18.31l-2.705-2.706m0 0h4.992"/></svg>
+            Rescan feeds
+          </button>
+        </div>
+
+        <!-- Sub-view: video creatives masonry -->
+        <div id="view-grid">
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <button id="back-to-sources" type="button" class="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-500 hover:text-gray-800">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+              <span class="flex items-center gap-1.5 text-gray-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-3.5 w-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375 7.444 2.25 12 2.25s8.25 1.847 8.25 4.125Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.375v11.25c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125V6.375M3.75 12c0 2.278 3.694 4.125 8.25 4.125s8.25-1.847 8.25-4.125"/></svg> <b id="open-ds-name" class="font-medium text-gray-700"></b> · <span id="open-ds-col" class="font-mono text-[12px]"></span></span>
+            </button>
+            <!-- lightweight filter/sort bar (mirrors FilterSortBar) -->
+            <div class="flex items-center gap-2">
+              <span id="grid-count" class="text-[12px] text-gray-400"></span>
+              <button type="button" class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-gray-50">All formats
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+              <button type="button" class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-gray-50">Sort: Newest
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-3 w-3 text-gray-400"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+              </button>
+            </div>
+          </div>
+          <!-- MASONRY (CSS columns → varying-height video tiles) -->
+          <div id="masonry" class="[column-gap:0.75rem] columns-2 sm:columns-3 lg:columns-4"></div>
+        </div>
+      </section>
+
+      <!-- ============ UPLOAD ============ -->
+      <section id="panel-upload" class="hidden">
+        <div class="mx-auto max-w-[640px]">
+          <div class="flex justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white/50 px-6 py-14 transition-colors hover:border-blue-400 hover:bg-gray-50">
+            <div class="text-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" class="mx-auto h-11 w-11 text-blue-gray-300"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+              <div class="mt-4 text-[13px] leading-6 text-gray-600">
+                <span class="cursor-pointer font-semibold text-blue-600 hover:text-blue-500">Upload a video</span>
+                <span class="pl-1">or drag and drop</span>
+              </div>
+              <p class="text-[12px] leading-5 text-gray-500">MP4, MOV · 15s minimum, no max length</p>
+            </div>
+          </div>
+          <p class="mt-3 text-center text-[12px] text-gray-400">We probe the true duration (ffmpeg) on upload so nothing downstream runs past the end.</p>
+        </div>
+      </section>
+
+      <!-- Footer actions -->
+      <div class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+        <div class="flex items-center gap-3">
+          <a href="index.html" class="text-[13px] font-medium text-gray-500 hover:text-gray-700">Cancel</a>
+          <span id="sel-note" class="text-[12px] text-gray-400"></span>
+        </div>
+        <a id="continue-btn" href="02-music.html" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800">
+          Continue to music
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/mock.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    Shell.mount({
+      step: "source",
+      title: "New cutdown",
+      subtitle: "Pick a video to cut down — from a data source or an upload.",
+      back: { href: "index.html", label: "Cutdown home" },
+    });
+
+    const play = '<svg viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4 translate-x-px"><path d="M8 5v14l11-7z"/></svg>';
+    const check = Shell.ICON.check;
+    let selectedId = "v01"; // pre-selected so "Continue" is active
+
+    // ---- data source list (From Alli) ----
+    const dsList = document.getElementById("ds-list");
+    document.getElementById("ds-count").textContent =
+      MOCK.videoDatasources.length + " feeds with video columns";
+    dsList.innerHTML = MOCK.videoDatasources.map((d) => `
+      <button type="button" data-ds="${d.modelName}"
+        class="group flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:border-blue-300 hover:shadow-md active:scale-[0.99]">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 transition-colors group-hover:bg-blue-50">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5 text-gray-400 group-hover:text-blue-500"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] font-medium text-gray-900">${d.modelName}</p>
+          <p class="text-[11px] text-gray-400">${d.videoCount} videos${d.videoColumns.length > 1 ? ` <span class="ml-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700">${d.videoColumns.length} columns</span>` : ""}</p>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4 shrink-0 text-gray-300 group-hover:text-blue-500"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+      </button>`).join("");
+
+    function openDatasource(modelName) {
+      const d = MOCK.datasource(modelName);
+      document.getElementById("open-ds-name").textContent = d.modelName;
+      document.getElementById("open-ds-col").textContent = d.videoColumns[0];
+      document.getElementById("grid-count").textContent = MOCK.videoCreatives.length + " videos";
+      document.getElementById("view-sources").classList.add("hidden");
+      document.getElementById("view-grid").classList.remove("hidden");
+    }
+    dsList.querySelectorAll("[data-ds]").forEach((b) =>
+      b.addEventListener("click", () => openDatasource(b.dataset.ds)));
+    document.getElementById("back-to-sources").addEventListener("click", () => {
+      document.getElementById("view-grid").classList.add("hidden");
+      document.getElementById("view-sources").classList.remove("hidden");
+    });
+
+    // ---- masonry of video creatives ----
+    const masonry = document.getElementById("masonry");
+    masonry.innerHTML = MOCK.videoCreatives.map((c) => `
+      <button type="button" data-vid="${c.id}"
+        class="vid-tile group relative mb-3 block w-full break-inside-avoid overflow-hidden rounded-lg border bg-white text-left shadow-sm transition-all duration-150">
+        <div class="relative w-full overflow-hidden" style="aspect-ratio:${c.width}/${c.height};background-image:${MOCK.frameGradient(c.id)}">
+          <div class="absolute inset-0 flex items-center justify-center opacity-90">
+            <div class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-gray-800 shadow transition-transform group-hover:scale-105">${play}</div>
+          </div>
+          <span class="absolute bottom-1.5 right-1.5 rounded bg-black/65 px-1.5 py-0.5 font-mono text-[10px] text-white">${MOCK.fmtTime(c.durationSec)}</span>
+          <span class="check-badge absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow">${check}</span>
+        </div>
+        <div class="px-2.5 py-2">
+          <p class="truncate text-[12px] font-medium text-gray-900" title="${c.name}">${c.name}</p>
+          <p class="mt-0.5 text-[10px] text-gray-400">${c.width}×${c.height} · ${c.fileType}</p>
+        </div>
+      </button>`).join("");
+
+    function renderSelection() {
+      masonry.querySelectorAll(".vid-tile").forEach((t) => {
+        const on = t.dataset.vid === selectedId;
+        t.classList.toggle("border-blue-600", on);
+        t.classList.toggle("ring-2", on);
+        t.classList.toggle("ring-blue-600", on);
+        t.classList.toggle("border-gray-200", !on);
+        t.classList.toggle("hover:border-blue-300", !on);
+        t.classList.toggle("hover:shadow-md", !on);
+        t.querySelector(".check-badge").classList.toggle("hidden", !on);
+        t.querySelector(".check-badge").classList.toggle("flex", on);
+      });
+      const sel = MOCK.videoCreatives.find((c) => c.id === selectedId);
+      const note = document.getElementById("sel-note");
+      const btn = document.getElementById("continue-btn");
+      if (sel) {
+        note.innerHTML = `Selected: <b class="font-medium text-gray-700">${sel.name}</b> · ${MOCK.fmtTime(sel.durationSec)}`;
+        btn.classList.remove("pointer-events-none", "bg-gray-100", "text-gray-400");
+        btn.classList.add("bg-blue-600", "text-white");
+      } else {
+        note.textContent = "Select a video to continue";
+        btn.classList.add("pointer-events-none", "bg-gray-100", "text-gray-400");
+        btn.classList.remove("bg-blue-600", "text-white");
+      }
+    }
+    masonry.querySelectorAll(".vid-tile").forEach((t) =>
+      t.addEventListener("click", () => { selectedId = t.dataset.vid; renderSelection(); }));
+    renderSelection();
+
+    // ---- tab switching ----
+    function setTab(which) {
+      const alli = which === "alli";
+      document.getElementById("panel-alli").classList.toggle("hidden", !alli);
+      document.getElementById("panel-upload").classList.toggle("hidden", alli);
+      const ta = document.getElementById("tab-alli"), tu = document.getElementById("tab-upload");
+      ta.className = "flex items-center gap-1.5 border-b-2 px-0.5 pb-2.5 text-[13px] " + (alli ? "border-blue-600 font-semibold text-gray-900" : "border-transparent font-medium text-gray-500 hover:text-gray-800");
+      tu.className = "flex items-center gap-1.5 border-b-2 px-0.5 pb-2.5 text-[13px] " + (!alli ? "border-blue-600 font-semibold text-gray-900" : "border-transparent font-medium text-gray-500 hover:text-gray-800");
+    }
+    document.getElementById("tab-alli").addEventListener("click", () => setTab("alli"));
+    document.getElementById("tab-upload").addEventListener("click", () => setTab("upload"));
+  </script>
+</body>
+</html>
