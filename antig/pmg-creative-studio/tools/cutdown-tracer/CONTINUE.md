@@ -40,8 +40,14 @@ This is **Milestone 0** of the video-stitch v0: one video (15s → no hard cap; 
   - [x] `src/librosa.ts` — `LibrosaTempoDetector` (injected `TempoRunner` boundary) + `PythonTempoRunner` (spawns `python3`); factory `USE_FAKES=0` wires it
   - [x] `scripts/detect-tempo.ts` (`npm run detect-tempo <audio>`); `src/librosa.test.ts` (5, subprocess mocked). **Suite 46 ✓.**
   - **Toolchain note:** librosa needs **Python 3.13** venv (3.14 has no numba/llvmlite wheels); `.venv-librosa/` (gitignored); set `PYTHON_BIN`. ffmpeg needed for mp3/m4a; WAV works bare. See README.
-  - **⛳ GATE — ✓ eyeballed (2026-06-03):** real seam→python→librosa path verified on synthetic clicks (120→117.45, 90→89.1) AND a real song `fixtures/dtmf.mp3` → **112.35 BPM** (plausible musical tempo). Note: mp3 decoded with no ffmpeg (libsndfile ≥1.1 handles mp3 natively). **AWAITING HUMAN SIGN-OFF before step 5.**
-- [ ] **Step 5 — real `MusicCatalog` (Firestore `sampleMusic`) + real `ShotstackRenderer`** + **GCS long-TTL signed URLs** for source video + music (Shotstack must fetch them).
+  - **⛳ GATE — ✓ SIGNED OFF (2026-06-03):** real seam→python→librosa path verified on synthetic clicks (120→117.45, 90→89.1) AND a real song `fixtures/dtmf.mp3` → **112.35 BPM**. mp3 decoded with no ffmpeg (libsndfile ≥1.1 handles mp3 natively).
+- [~] **Step 5 — real `MusicCatalog` (Firestore) + `ShotstackRenderer` + GCS signed URLs** — SCAFFOLDED against Fakes (suite 65 ✓); awaiting cloud setup
+  - [x] new seam `BlobStore` (uploadAndSign/sign) + `FakeBlobStore`; pipeline now uploads source → signed URL before render (Shotstack must fetch it)
+  - [x] `src/shotstack.ts` — pure `buildShotstackTimeline(spec)` (cuts→video clips, music track + tail fade, 1080×1920/15s) + `ShotstackRenderer` (DI fetch, submit/poll, /edit/stage host discovery) + tests (9)
+  - [x] `src/firestoreCatalog.ts` — `FirestoreMusicCatalog` (DI Firestore client + signer); `MusicDocSchema` (doc stores `storagePath`, URL signed on read) + tests (5)
+  - [x] `src/storage.ts` — `GcsBlobStore` (DI bucket; upload + V4 signed URLs, 6-day TTL ≤7-day cap) + tests (4)
+  - [x] factory fake branch wires `FakeBlobStore`; real branch keeps catalog/renderer/blobStore `notYet` pending `firebase-admin`/`@google-cloud/storage` + creds
+  - [ ] **REMAINING (needs human + cloud):** see `SETUP-step5.md` — bucket, SA key, upload music, create `sampleMusic` docs, `.env`. Then: `npm i firebase-admin @google-cloud/storage`, add `make*` wiring to factory real branch, add `run-live` script.
   - **⛳ GATE:** full live tracer run → human **eyeballs the rendered 15s reel**.
 
 ## Output contract (hard)

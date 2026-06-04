@@ -46,10 +46,24 @@ export interface VideoRenderer {
   render(spec: EditSpec): Promise<{ mp4Url: string }>;
 }
 
+/**
+ * Object host for assets the cloud renderer must fetch. Forced by the
+ * architecture: Shotstack fetches the source video (and music) from a URL after
+ * queueing, so they must live at a long-TTL signed (or public) URL — Firestore is
+ * metadata only. Real: Cloud Storage for Firebase. Fake: canned `fake://` URLs.
+ */
+export interface BlobStore {
+  /** Upload a local file and return a long-TTL signed read URL the renderer can fetch. */
+  uploadAndSign(localPath: string, destName?: string): Promise<string>;
+  /** Sign an object already in the bucket (e.g. a catalog track's storagePath). */
+  sign(storagePath: string): Promise<string>;
+}
+
 /** The full set of seam implementations the orchestrator composes. */
 export interface PipelineDeps {
   selector: VideoMomentSelector;
   tempo: TempoDetector;
   catalog: MusicCatalog;
   renderer: VideoRenderer;
+  blobStore: BlobStore;
 }

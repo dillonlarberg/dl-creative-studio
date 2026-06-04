@@ -12,6 +12,7 @@ import {
   FakeFixedBpm,
   FakeMusicCatalog,
   FakeEchoRenderer,
+  FakeBlobStore,
 } from "./fakes.js";
 import { makeGeminiSelector } from "./gemini.js";
 import { makeLibrosaTempoDetector } from "./librosa.js";
@@ -29,15 +30,20 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
       tempo: new FakeFixedBpm(),
       catalog: new FakeMusicCatalog(),
       renderer: new FakeEchoRenderer(),
+      blobStore: new FakeBlobStore(),
     };
   }
 
   // Real providers — wired one step at a time so the path stays runnable as it grows.
-  // Steps 3–4: real selector (Gemini) + real tempo (librosa). Step 5 still defers.
+  // Steps 3–4: real selector (Gemini) + real tempo (librosa). Step 5 impls exist
+  // (FirestoreMusicCatalog/ShotstackRenderer/GcsBlobStore) but their SDK-backed
+  // `make*` constructors land once creds + `firebase-admin`/`@google-cloud/storage`
+  // are installed — see SETUP-step5.md.
   return {
     selector: makeGeminiSelector(env.GEMINI_API_KEY ?? ""),
     tempo: makeLibrosaTempoDetector(),
-    catalog: notYet("MusicCatalog", "step 5 (Firestore sampleMusic)"),
-    renderer: notYet("VideoRenderer", "step 5 (Shotstack)"),
+    catalog: notYet("MusicCatalog", "step 5 (Firestore sampleMusic — see SETUP-step5.md)"),
+    renderer: notYet("VideoRenderer", "step 5 (Shotstack — see SETUP-step5.md)"),
+    blobStore: notYet("BlobStore", "step 5 (GCS signed URLs — see SETUP-step5.md)"),
   };
 }

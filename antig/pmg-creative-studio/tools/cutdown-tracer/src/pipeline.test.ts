@@ -10,6 +10,7 @@ import {
   FakeFixedBpm,
   FakeMusicCatalog,
   FakeEchoRenderer,
+  FakeBlobStore,
 } from "./fakes.js";
 import { EditSpecSchema, OUTPUT } from "./types.js";
 import { totalLen } from "./planCuts.js";
@@ -20,6 +21,7 @@ const fakeDeps = (): PipelineDeps => ({
   tempo: new FakeFixedBpm(),
   catalog: new FakeMusicCatalog(),
   renderer: new FakeEchoRenderer(),
+  blobStore: new FakeBlobStore(),
 });
 
 describe("runPipeline (all Fakes, no network)", () => {
@@ -38,6 +40,12 @@ describe("runPipeline (all Fakes, no network)", () => {
     expect(spec.width).toBe(1080);
     expect(spec.height).toBe(1920);
     expect(spec.totalSec).toBe(15);
+  });
+
+  it("uploads the source to the BlobStore and uses the signed URL (not the local path)", async () => {
+    const { spec } = await runPipeline("fixtures/test_01.mp4", "pulse-120", fakeDeps());
+    expect(spec.sourceUrl).toMatch(/^fake:\/\/blob\//); // signed URL, fetchable by the renderer
+    expect(spec.sourceUrl).not.toBe("fixtures/test_01.mp4"); // never the bare local path
   });
 
   it("encodes the cut count into the (fake) render URL — plan reached the renderer intact", async () => {

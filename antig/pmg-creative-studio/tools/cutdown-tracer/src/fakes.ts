@@ -9,6 +9,7 @@ import type {
   TempoDetector,
   MusicCatalog,
   VideoRenderer,
+  BlobStore,
 } from "./seams.js";
 import type { Segment, SampleMusicTrack, EditSpec } from "./types.js";
 
@@ -96,5 +97,16 @@ export class FakeMusicCatalog implements MusicCatalog {
 export class FakeEchoRenderer implements VideoRenderer {
   async render(spec: EditSpec): Promise<{ mp4Url: string }> {
     return { mp4Url: `fake://render/${spec.cuts.length}-cuts.mp4` };
+  }
+}
+
+/** Returns canned `fake://` URLs instead of touching Cloud Storage. No network. */
+export class FakeBlobStore implements BlobStore {
+  async uploadAndSign(localPath: string, destName?: string): Promise<string> {
+    const name = destName ?? localPath.split("/").pop() ?? "source";
+    return `fake://blob/${name}?sig=fake`;
+  }
+  async sign(storagePath: string): Promise<string> {
+    return `fake://blob/${storagePath}?sig=fake`;
   }
 }

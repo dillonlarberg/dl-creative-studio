@@ -3,11 +3,13 @@
  * independently-proven seam or the pure planCuts function (PRD #22). No vendor
  * logic lives here.
  *
- *   select moments → fetch track → detect/read BPM → planCuts → render → mp4Url
+ *   upload source → select moments → fetch track → detect/read BPM → planCuts → render
  *
- * BPM precedence: a track's catalog BPM wins (cheap, hand/known); the TempoDetector
- * is the fallback when the catalog has none. This keeps librosa off the path for
- * tracks that already carry a reliable BPM.
+ * The source video is uploaded to the BlobStore first so the cloud renderer has a
+ * fetchable signed URL (forced by the architecture — Shotstack pulls assets after
+ * queueing). BPM precedence: a track's catalog BPM wins (cheap, hand/known); the
+ * TempoDetector is the fallback when the catalog has none — keeping librosa off the
+ * path for tracks that already carry a reliable BPM.
  */
 import type { PipelineDeps } from "./seams.js";
 import type { CutPlan, EditSpec, Segment } from "./types.js";
@@ -28,7 +30,10 @@ export async function runPipeline(
   trackId: string,
   deps: PipelineDeps,
 ): Promise<PipelineResult> {
-  const { selector, tempo, catalog, renderer } = deps;
+  const { selector, tempo, catalog, renderer, blobStore } = deps;
+
+  // Host the source where the cloud renderer can fetch it (long-TTL signed URL).
+  const sourceUrl = await blobStore.uploadAndSign(videoFile);
 
   const segments = await selector.select({ path: videoFile }, { budgetSec: OUTPUT.totalSec });
   const track = await catalog.fetch(trackId);
@@ -37,7 +42,7 @@ export async function runPipeline(
   const plan = planCuts({ bpm, totalSec: OUTPUT.totalSec, ranked: segments });
 
   const spec: EditSpec = {
-    sourceUrl: videoFile,
+    sourceUrl,
     cuts: plan,
     musicUrl: track.url,
     totalSec: OUTPUT.totalSec,
