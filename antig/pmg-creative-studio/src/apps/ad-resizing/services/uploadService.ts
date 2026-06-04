@@ -4,7 +4,6 @@ import {
   setDoc,
   getDocs,
   query,
-  orderBy,
   where,
   serverTimestamp,
   type Timestamp,
@@ -95,15 +94,11 @@ export async function uploadCreative(
 }
 
 export async function listUploads(clientSlug: string, uid: string): Promise<Creative[]> {
-  const q = query(
-    uploadsCol(clientSlug),
-    where('uploadedBy', '==', uid),
-    orderBy('uploadedAt', 'desc'),
-  );
+  const q = query(uploadsCol(clientSlug), where('uploadedBy', '==', uid));
   const snap = await getDocs(q);
-  return snap.docs.map(d =>
-    docToCreative(d.data() as Record<string, unknown> & { uploadedAt: Timestamp }),
-  );
+  return snap.docs
+    .map(d => docToCreative(d.data() as Record<string, unknown> & { uploadedAt: Timestamp }))
+    .sort((a, b) => new Date(b.uploadedAt ?? 0).getTime() - new Date(a.uploadedAt ?? 0).getTime());
 }
 
 export async function retryFirestoreWrite(
