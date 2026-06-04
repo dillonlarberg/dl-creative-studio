@@ -105,6 +105,9 @@ export default function GeneratedTile({ output, onView, onRetry, selected = fals
             {canRetry ? (
               <>
                 <p className="text-[11px] font-medium text-red-500">Generation failed</p>
+                {output.errorMessage && (
+                  <p className="text-[10px] text-red-400 leading-tight max-h-12 overflow-y-auto">{output.errorMessage}</p>
+                )}
                 {onRetry && (
                   <button
                     type="button"

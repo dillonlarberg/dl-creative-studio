@@ -84,7 +84,15 @@ function emitEvent(
     | "batch_failed",
   fields: Record<string, unknown>,
 ): void {
-  logger.info("resize_event", { event, ...fields });
+  // Use "errorDetail" instead of "message" to avoid collision with Cloud Logging's
+  // top-level message field, which would otherwise overwrite classified.message
+  // in output_error events and make the actual OpenAI/Gemini error invisible in logs.
+  const { message: errorDetail, ...rest } = fields;
+  logger.info("resize_event", {
+    event,
+    ...rest,
+    ...(errorDetail !== undefined ? { errorDetail } : {}),
+  });
 }
 
 interface OutputRequest {
