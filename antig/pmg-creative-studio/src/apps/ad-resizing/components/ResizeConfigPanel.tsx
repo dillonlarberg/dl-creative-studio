@@ -88,19 +88,21 @@ export default function ResizeConfigPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {/* Selected creative preview */}
-        <div className="border-b border-gray-200 px-5 py-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Selected Creative</p>
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-20 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100">
-              <img src={creative.thumbnailUrl} alt={creative.name} className="h-full w-full object-cover" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium text-gray-900">{creative.name}</p>
-              <p className="mt-0.5 text-[11px] text-gray-400">
-                {creative.width}×{creative.height} · {creative.fileType}
-              </p>
-            </div>
+        {/* Selected creative preview — full-width so the user can clearly identify the photo */}
+        <div className="border-b border-gray-200">
+          <div className="relative w-full overflow-hidden bg-gray-100" style={{ maxHeight: '200px' }}>
+            <img
+              src={creative.thumbnailUrl}
+              alt={creative.name}
+              className="w-full object-contain"
+              style={{ maxHeight: '200px' }}
+            />
+          </div>
+          <div className="px-5 py-3">
+            <p className="truncate text-[13px] font-medium text-gray-900" title={creative.name}>{creative.name}</p>
+            <p className="mt-0.5 text-[11px] text-gray-400">
+              {creative.width}×{creative.height} · {creative.fileType}
+            </p>
           </div>
         </div>
 

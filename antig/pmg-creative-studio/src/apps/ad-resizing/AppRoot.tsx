@@ -738,9 +738,9 @@ export default function AdResizingAppRoot() {
                   />
                 )}
 
-                {/* Sticky footer: "Configure & Resize (N)" — shown when photos are selected but config panel isn't open */}
+                {/* Sticky footer: "Configure & Resize (N)" — breaks out of card padding to feel like a docked action bar */}
                 {browseSelectedIds.size > 0 && configQueue.length === 0 && (
-                  <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-100 bg-white px-1 pt-3 pb-1">
+                  <div className="sticky bottom-0 -mx-6 xl:-mx-10 flex items-center justify-between bg-white px-6 xl:px-10 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
                     <span className="text-[13px] text-gray-500">
                       {browseSelectedIds.size} photo{browseSelectedIds.size !== 1 ? 's' : ''} selected
                     </span>
