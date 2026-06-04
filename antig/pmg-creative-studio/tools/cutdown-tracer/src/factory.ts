@@ -14,6 +14,7 @@ import {
   FakeEchoRenderer,
 } from "./fakes.js";
 import { makeGeminiSelector } from "./gemini.js";
+import { makeLibrosaTempoDetector } from "./librosa.js";
 
 function notYet(seam: string, step: string): never {
   throw new Error(`${seam}: real implementation lands in build-order ${step} (set USE_FAKES=1 for now)`);
@@ -32,10 +33,10 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
   }
 
   // Real providers — wired one step at a time so the path stays runnable as it grows.
-  // Step 3: the moment selector is real (Gemini). Steps 4–5 still defer.
+  // Steps 3–4: real selector (Gemini) + real tempo (librosa). Step 5 still defers.
   return {
     selector: makeGeminiSelector(env.GEMINI_API_KEY ?? ""),
-    tempo: notYet("TempoDetector", "step 4 (librosa)"),
+    tempo: makeLibrosaTempoDetector(),
     catalog: notYet("MusicCatalog", "step 5 (Firestore sampleMusic)"),
     renderer: notYet("VideoRenderer", "step 5 (Shotstack)"),
   };

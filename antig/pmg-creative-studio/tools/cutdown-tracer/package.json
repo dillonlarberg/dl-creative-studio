@@ -9,6 +9,7 @@
     "verify-shotstack": "tsx scripts/verify-shotstack.ts",
     "run-fake": "tsx scripts/run-fake.ts",
     "select-gemini": "tsx scripts/select-gemini.ts",
+    "detect-tempo": "tsx scripts/detect-tempo.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
