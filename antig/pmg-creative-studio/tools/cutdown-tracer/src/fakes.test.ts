@@ -9,9 +9,10 @@ import {
   FakeFixedBpm,
   FakeMusicCatalog,
   FakeEchoRenderer,
+  FakeClipExtractor,
 } from "./fakes.js";
 import { SegmentSchema, SampleMusicTrackSchema, EditSpecSchema } from "./types.js";
-import type { EditSpec } from "./types.js";
+import type { EditSpec, CutPlan } from "./types.js";
 
 describe("FakeEvenSpacedSelector (VideoMomentSelector contract)", () => {
   it("returns well-formed, in-bounds, schema-valid segments", async () => {
@@ -70,8 +71,7 @@ describe("FakeMusicCatalog (MusicCatalog contract)", () => {
 describe("FakeEchoRenderer (VideoRenderer contract)", () => {
   it("accepts an EditSpec and returns an mp4Url", async () => {
     const spec: EditSpec = EditSpecSchema.parse({
-      sourceUrl: "fake://src/clip.mp4",
-      cuts: [{ srcIn: 0, srcOut: 2, len: 2 }],
+      clips: [{ url: "fake://blob/clip-0.mp4", len: 2 }],
       musicUrl: "fake://music/pulse-120.mp3",
       totalSec: 15,
       width: 1080,
@@ -80,5 +80,22 @@ describe("FakeEchoRenderer (VideoRenderer contract)", () => {
     const { mp4Url } = await new FakeEchoRenderer().render(spec);
     expect(mp4Url).toMatch(/^fake:\/\/render\//);
     expect(mp4Url).toContain("1-cuts");
+  });
+});
+
+describe("FakeClipExtractor (ClipExtractor contract)", () => {
+  it("reports a positive duration", async () => {
+    expect(await new FakeClipExtractor(296).probeDurationSec("x.mp4")).toBe(296);
+  });
+
+  it("returns one local clip path per cut, in order", async () => {
+    const cuts: CutPlan = [
+      { srcIn: 0, srcOut: 2, len: 2 },
+      { srcIn: 10, srcOut: 12, len: 2 },
+    ];
+    const paths = await new FakeClipExtractor().extractClips("x.mp4", cuts, 300);
+    expect(paths).toHaveLength(2);
+    expect(paths[0]).toContain("clip-0");
+    expect(paths[1]).toContain("clip-1");
   });
 });

@@ -67,10 +67,21 @@ export const SampleMusicTrackSchema = z.object({
 });
 export type SampleMusicTrack = z.infer<typeof SampleMusicTrackSchema>;
 
+/**
+ * One pre-extracted clip the renderer plays in sequence: a fetchable URL plus its
+ * output length. Each clip is already trimmed to a single moment (Shotstack only
+ * ever fetches a few seconds of video — the full long source would exceed the
+ * renderer's source limits).
+ */
+export const ClipRefSchema = z.object({
+  url: z.string().min(1),
+  len: z.number().positive(),
+});
+export type ClipRef = z.infer<typeof ClipRefSchema>;
+
 /** The render request handed to `VideoRenderer`. All asset refs must be URLs a cloud renderer can fetch. */
 export const EditSpecSchema = z.object({
-  sourceUrl: z.string().min(1),
-  cuts: CutPlanSchema,
+  clips: z.array(ClipRefSchema).min(1),
   musicUrl: z.string().min(1),
   totalSec: z.number().positive(),
   width: z.number().int().positive(),

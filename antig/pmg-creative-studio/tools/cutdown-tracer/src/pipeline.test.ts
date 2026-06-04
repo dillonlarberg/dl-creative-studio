@@ -11,6 +11,7 @@ import {
   FakeMusicCatalog,
   FakeEchoRenderer,
   FakeBlobStore,
+  FakeClipExtractor,
 } from "./fakes.js";
 import { EditSpecSchema, OUTPUT } from "./types.js";
 import { totalLen } from "./planCuts.js";
@@ -22,6 +23,7 @@ const fakeDeps = (): PipelineDeps => ({
   catalog: new FakeMusicCatalog(),
   renderer: new FakeEchoRenderer(),
   blobStore: new FakeBlobStore(),
+  clipExtractor: new FakeClipExtractor(),
 });
 
 describe("runPipeline (all Fakes, no network)", () => {
@@ -42,10 +44,25 @@ describe("runPipeline (all Fakes, no network)", () => {
     expect(spec.totalSec).toBe(15);
   });
 
-  it("uploads the source to the BlobStore and uses the signed URL (not the local path)", async () => {
-    const { spec } = await runPipeline("fixtures/test_01.mp4", "pulse-120", fakeDeps());
-    expect(spec.sourceUrl).toMatch(/^fake:\/\/blob\//); // signed URL, fetchable by the renderer
-    expect(spec.sourceUrl).not.toBe("fixtures/test_01.mp4"); // never the bare local path
+  it("extracts per-cut clips, uploads each, and references signed URLs (not local paths)", async () => {
+    const { spec, plan } = await runPipeline("fixtures/test_01.mp4", "pulse-120", fakeDeps());
+    expect(spec.clips).toHaveLength(plan.length); // one clip per cut
+    for (const clip of spec.clips) {
+      expect(clip.url).toMatch(/^fake:\/\/blob\//); // fetchable by the renderer
+      expect(clip.len).toBeGreaterThan(0);
+    }
+    // clip lengths mirror the plan's slot lengths
+    expect(spec.clips.map((c) => c.len)).toEqual(plan.map((c) => c.len));
+  });
+
+  it("clamps out-of-bounds moments to the source duration before planning", async () => {
+    // Source is 8s; a selector that returns a moment past EOF must not blow up the plan.
+    const deps = fakeDeps();
+    deps.clipExtractor = new FakeClipExtractor(8); // 8s source
+    const { plan, durationSec } = await runPipeline("fixtures/test_01.mp4", "pulse-120", deps);
+    expect(durationSec).toBe(8);
+    expect(totalLen(plan)).toBe(OUTPUT.totalSec);
+    for (const cut of plan) expect(cut.srcIn).toBeLessThan(8); // never seeks past EOF
   });
 
   it("encodes the cut count into the (fake) render URL — plan reached the renderer intact", async () => {

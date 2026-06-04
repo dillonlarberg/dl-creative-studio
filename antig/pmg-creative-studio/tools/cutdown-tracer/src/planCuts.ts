@@ -108,3 +108,25 @@ export function planCuts({ bpm, totalSec, ranked }: PlanCutsInput): CutPlan {
 export function totalLen(plan: CutPlan): number {
   return roundMs(plan.reduce((sum, c) => sum + c.len, 0));
 }
+
+/**
+ * Clamp ranked segments to the real source duration. Models can return moments
+ * past the end of the video (observed: Gemini returned 345s on a 296s clip);
+ * trimming past EOF makes the renderer reject the asset. Drops segments that start
+ * at/after the end, clips overshooting ends back to the duration, and drops any
+ * that collapse below `minLenSec`. Pure; does not mutate the input.
+ */
+export function clampSegments(
+  segments: Segment[],
+  durationSec: number,
+  minLenSec = 0.2,
+): Segment[] {
+  const out: Segment[] = [];
+  for (const s of segments) {
+    if (s.startSec >= durationSec) continue; // starts past EOF → unusable
+    const endSec = roundMs(Math.min(s.endSec, durationSec));
+    if (endSec - s.startSec < minLenSec) continue; // collapsed to nothing
+    out.push({ startSec: roundMs(s.startSec), endSec, score: s.score });
+  }
+  return out;
+}

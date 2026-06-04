@@ -10,8 +10,9 @@ import type {
   MusicCatalog,
   VideoRenderer,
   BlobStore,
+  ClipExtractor,
 } from "./seams.js";
-import type { Segment, SampleMusicTrack, EditSpec } from "./types.js";
+import type { Segment, SampleMusicTrack, EditSpec, CutPlan } from "./types.js";
 
 /**
  * Returns evenly-spaced segments across an assumed source duration, scored
@@ -92,11 +93,25 @@ export class FakeMusicCatalog implements MusicCatalog {
 
 /**
  * Echoes the spec back as a canned URL — no real Shotstack call. The URL encodes
- * the cut count so the e2e test can assert the plan flowed through unchanged.
+ * the clip count so the e2e test can assert the plan flowed through unchanged.
  */
 export class FakeEchoRenderer implements VideoRenderer {
   async render(spec: EditSpec): Promise<{ mp4Url: string }> {
-    return { mp4Url: `fake://render/${spec.cuts.length}-cuts.mp4` };
+    return { mp4Url: `fake://render/${spec.clips.length}-cuts.mp4` };
+  }
+}
+
+/**
+ * Returns canned local clip paths without invoking ffmpeg. `probeDurationSec`
+ * reports a configurable duration (default 300s, a ~5-min office clip).
+ */
+export class FakeClipExtractor implements ClipExtractor {
+  constructor(private readonly durationSec = 300) {}
+  async probeDurationSec(_localVideoPath: string): Promise<number> {
+    return this.durationSec;
+  }
+  async extractClips(_localVideoPath: string, cuts: CutPlan, _durationSec: number): Promise<string[]> {
+    return cuts.map((_, i) => `/tmp/fake-clips/clip-${i}.mp4`);
   }
 }
 

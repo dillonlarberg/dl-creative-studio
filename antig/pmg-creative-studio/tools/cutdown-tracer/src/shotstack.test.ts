@@ -8,12 +8,11 @@ import { buildShotstackTimeline, ShotstackRenderer, type FetchLike } from "./sho
 import { EditSpecSchema, type EditSpec } from "./types.js";
 
 const spec: EditSpec = EditSpecSchema.parse({
-  sourceUrl: "https://signed/source.mp4",
   musicUrl: "https://signed/music.mp3",
-  cuts: [
-    { srcIn: 10, srcOut: 12, len: 2 },
-    { srcIn: 30, srcOut: 32, len: 2 },
-    { srcIn: 0, srcOut: 1, len: 1 },
+  clips: [
+    { url: "https://signed/clip-0.mp4", len: 2 },
+    { url: "https://signed/clip-1.mp4", len: 2 },
+    { url: "https://signed/clip-2.mp4", len: 1 },
   ],
   totalSec: 5,
   width: 1080,
@@ -21,13 +20,13 @@ const spec: EditSpec = EditSpecSchema.parse({
 });
 
 describe("buildShotstackTimeline", () => {
-  it("maps cuts to sequential video clips trimmed at each srcIn", () => {
+  it("maps each pre-trimmed clip to a sequential video clip (trim 0)", () => {
     const tl = buildShotstackTimeline(spec) as any;
     const clips = tl.timeline.tracks[0].clips;
     expect(clips).toHaveLength(3);
-    expect(clips[0]).toMatchObject({ start: 0, length: 2, asset: { src: spec.sourceUrl, trim: 10 } });
-    expect(clips[1]).toMatchObject({ start: 2, length: 2, asset: { trim: 30 } });
-    expect(clips[2]).toMatchObject({ start: 4, length: 1, asset: { trim: 0 } });
+    expect(clips[0]).toMatchObject({ start: 0, length: 2, asset: { src: "https://signed/clip-0.mp4", trim: 0 } });
+    expect(clips[1]).toMatchObject({ start: 2, length: 2, asset: { src: "https://signed/clip-1.mp4", trim: 0 } });
+    expect(clips[2]).toMatchObject({ start: 4, length: 1, asset: { src: "https://signed/clip-2.mp4", trim: 0 } });
   });
 
   it("lays the music on its own track across the timeline with a tail fade", () => {

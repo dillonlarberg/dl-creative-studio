@@ -21,20 +21,21 @@ export const STAGE_BASES = [
 const round3 = (n: number): number => Math.round(n * 1000) / 1000;
 
 /**
- * Map an EditSpec to a Shotstack render payload. Hard cuts only (no transitions —
- * they blur the beat hit and eat the duration budget); music baked across the
- * whole timeline with a tail fade.
+ * Map an EditSpec to a Shotstack render payload. Each clip is already trimmed to a
+ * single moment, so clips play start-to-end and tile the timeline. Hard cuts only
+ * (no transitions — they blur the beat hit and eat the duration budget); music
+ * baked across the whole timeline with a tail fade.
  */
 export function buildShotstackTimeline(spec: EditSpec): Record<string, unknown> {
   let start = 0;
-  const videoClips = spec.cuts.map((cut) => {
-    const clip = {
-      asset: { type: "video", src: spec.sourceUrl, trim: round3(cut.srcIn) },
+  const videoClips = spec.clips.map((clip) => {
+    const out = {
+      asset: { type: "video", src: clip.url, trim: 0 },
       start: round3(start),
-      length: round3(cut.len),
+      length: round3(clip.len),
     };
-    start = round3(start + cut.len);
-    return clip;
+    start = round3(start + clip.len);
+    return out;
   });
 
   const audioClip = {

@@ -6,7 +6,7 @@
  *
  * The pipeline depends only on these interfaces, never on a concrete provider.
  */
-import type { Segment, SampleMusicTrack, EditSpec } from "./types.js";
+import type { Segment, SampleMusicTrack, EditSpec, CutPlan } from "./types.js";
 
 /** A reference to the source video. v0 passes a local path; the real Gemini impl uploads it via the Files API. */
 export interface VideoRef {
@@ -59,6 +59,20 @@ export interface BlobStore {
   sign(storagePath: string): Promise<string>;
 }
 
+/**
+ * Cuts the source video into one small clip per planned cut, locally. The cloud
+ * renderer's per-source limits won't accept a long full source, so we send it only
+ * the selected moments. Also reports the true source duration so the orchestrator
+ * can clamp model-supplied timestamps to it. Real: ffmpeg subprocess. Fake: returns
+ * canned local paths.
+ */
+export interface ClipExtractor {
+  /** True source duration in seconds (used to clamp out-of-bounds segments). */
+  probeDurationSec(localVideoPath: string): Promise<number>;
+  /** Extract each cut to a local clip file; returns one local path per cut, in order. */
+  extractClips(localVideoPath: string, cuts: CutPlan, durationSec: number): Promise<string[]>;
+}
+
 /** The full set of seam implementations the orchestrator composes. */
 export interface PipelineDeps {
   selector: VideoMomentSelector;
@@ -66,4 +80,5 @@ export interface PipelineDeps {
   catalog: MusicCatalog;
   renderer: VideoRenderer;
   blobStore: BlobStore;
+  clipExtractor: ClipExtractor;
 }

@@ -37,17 +37,23 @@ async function main(): Promise<void> {
   console.log(`  (uploading source + selecting moments + rendering — this can take a minute or two)\n`);
 
   const deps = makeRealDeps();
-  const result = await runPipeline(videoPath, trackId, deps);
+  const result = await runPipeline(videoPath, trackId, deps, { runToken: runId });
 
   // Persist artifacts for inspection (PRD: per-run artifacts).
   await fs.writeFile(path.join(outDir, "segments.json"), JSON.stringify(result.segments, null, 2));
   await fs.writeFile(path.join(outDir, "plan.json"), JSON.stringify(result.plan, null, 2));
   await fs.writeFile(
     path.join(outDir, "result.json"),
-    JSON.stringify({ runId, trackId, videoPath, bpm: result.bpm, mp4Url: result.mp4Url, spec: result.spec }, null, 2),
+    JSON.stringify(
+      { runId, trackId, videoPath, durationSec: result.durationSec, bpm: result.bpm, mp4Url: result.mp4Url, spec: result.spec },
+      null,
+      2,
+    ),
   );
 
-  console.log(`  ${result.segments.length} moment(s) · bpm ${result.bpm} · ${result.plan.length} cuts`);
+  console.log(
+    `  source ${result.durationSec}s · ${result.segments.length} moment(s) · bpm ${result.bpm} · ${result.plan.length} cuts`,
+  );
   console.log(`  artifacts: out/${runId}/`);
   console.log(`\n✓ RENDERED — open this (Shotstack sandbox = watermarked):\n  ${result.mp4Url}`);
 }

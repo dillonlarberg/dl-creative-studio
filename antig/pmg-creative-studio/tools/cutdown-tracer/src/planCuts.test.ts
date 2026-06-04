@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { planCuts, barGridBoundaries, dedupRanked, totalLen } from "./planCuts.js";
+import { planCuts, barGridBoundaries, dedupRanked, totalLen, clampSegments } from "./planCuts.js";
 import { CutSchema } from "./types.js";
 import type { Segment } from "./types.js";
 
@@ -73,6 +73,36 @@ describe("dedupRanked", () => {
 
   it("keeps all segments when none overlap", () => {
     expect(dedupRanked(ranked(5))).toHaveLength(5);
+  });
+});
+
+describe("clampSegments", () => {
+  it("drops segments that start at or past the source end", () => {
+    const segs: Segment[] = [
+      { startSec: 10, endSec: 12, score: 0.9 },
+      { startSec: 300, endSec: 305, score: 1 }, // past EOF (296s clip)
+    ];
+    const out = clampSegments(segs, 296);
+    expect(out).toHaveLength(1);
+    expect(out[0].startSec).toBe(10);
+  });
+
+  it("clips an overshooting end back to the duration", () => {
+    const out = clampSegments([{ startSec: 294, endSec: 305, score: 1 }], 296);
+    expect(out[0]).toMatchObject({ startSec: 294, endSec: 296 });
+  });
+
+  it("drops segments that collapse below the minimum length", () => {
+    // starts at 295.9 on a 296s clip → 0.1s < 0.2 min → dropped
+    expect(clampSegments([{ startSec: 295.9, endSec: 320, score: 1 }], 296)).toHaveLength(0);
+  });
+
+  it("passes through in-bounds segments unchanged and does not mutate input", () => {
+    const segs: Segment[] = [{ startSec: 4, endSec: 6, score: 0.5 }];
+    const copy = JSON.parse(JSON.stringify(segs));
+    const out = clampSegments(segs, 296);
+    expect(out).toEqual(segs);
+    expect(segs).toEqual(copy);
   });
 });
 

@@ -13,6 +13,7 @@ import {
   FakeMusicCatalog,
   FakeEchoRenderer,
   FakeBlobStore,
+  FakeClipExtractor,
 } from "./fakes.js";
 import { makeGeminiSelector } from "./gemini.js";
 import { makeLibrosaTempoDetector } from "./librosa.js";
@@ -31,6 +32,7 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
       catalog: new FakeMusicCatalog(),
       renderer: new FakeEchoRenderer(),
       blobStore: new FakeBlobStore(),
+      clipExtractor: new FakeClipExtractor(),
     };
   }
 
@@ -42,8 +44,9 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
   return {
     selector: makeGeminiSelector(env.GEMINI_API_KEY ?? ""),
     tempo: makeLibrosaTempoDetector(),
-    catalog: notYet("MusicCatalog", "step 5 (Firestore sampleMusic — see SETUP-step5.md)"),
-    renderer: notYet("VideoRenderer", "step 5 (Shotstack — see SETUP-step5.md)"),
-    blobStore: notYet("BlobStore", "step 5 (GCS signed URLs — see SETUP-step5.md)"),
+    catalog: notYet("MusicCatalog", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
+    renderer: notYet("VideoRenderer", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
+    blobStore: notYet("BlobStore", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
+    clipExtractor: notYet("ClipExtractor", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
   };
 }
