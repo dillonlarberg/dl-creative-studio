@@ -758,6 +758,12 @@ export default function AdResizingAppRoot() {
               {configQueue.length > 0 && (() => {
                 const currentCreative = configQueue[configQueueIdx].creative;
                 const isMulti = configQueue.length > 1 && !addingToJob;
+                const configuredStates = isMulti
+                  ? configQueue.map((e, i) => {
+                      const dims = i === configQueueIdx ? selectedDimensions : e.dimensions;
+                      return dims.size > 0;
+                    })
+                  : undefined;
                 return (
                   <div className="sticky top-14 self-start h-[calc(100vh-3.5rem)]">
                     <ResizeConfigPanel
@@ -771,8 +777,10 @@ export default function AdResizingAppRoot() {
                       addMode={addingToJob}
                       queuePosition={isMulti ? { current: configQueueIdx + 1, total: configQueue.length } : undefined}
                       queueReadyCount={isMulti ? queueReadyCount : undefined}
+                      configuredStates={configuredStates}
                       onPrev={isMulti ? () => handleConfigNavigate(configQueueIdx - 1) : undefined}
                       onNext={isMulti ? () => handleConfigNavigate(configQueueIdx + 1) : undefined}
+                      onNavigateTo={isMulti ? handleConfigNavigate : undefined}
                       onClose={() => {
                         setConfigQueue([]);
                         setConfigQueueIdx(0);

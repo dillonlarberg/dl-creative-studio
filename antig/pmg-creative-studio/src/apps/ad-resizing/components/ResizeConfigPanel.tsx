@@ -9,6 +9,7 @@ import {
   TvIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '../../../utils/cn';
 import { CHANNELS, getDeduplicatedDimensions } from '../data/channels';
@@ -37,8 +38,11 @@ interface ResizeConfigPanelProps {
   queuePosition?: { current: number; total: number };
   /** Number of photos in the queue that have at least one dimension selected. */
   queueReadyCount?: number;
+  /** Per-photo completion state — true when that photo has ≥1 dimension selected. */
+  configuredStates?: boolean[];
   onNext?: () => void;
   onPrev?: () => void;
+  onNavigateTo?: (idx: number) => void;
 }
 
 export default function ResizeConfigPanel({
@@ -53,8 +57,10 @@ export default function ResizeConfigPanel({
   addMode = false,
   queuePosition,
   queueReadyCount = 0,
+  configuredStates,
   onNext,
   onPrev,
+  onNavigateTo,
 }: ResizeConfigPanelProps) {
   const availableDimensions: Dimension[] = getDeduplicatedDimensions(selectedChannels);
   const canRun = selectedChannels.length > 0 && selectedDimensions.size > 0;
@@ -97,7 +103,65 @@ export default function ResizeConfigPanel({
               className="w-full object-contain"
               style={{ maxHeight: '200px' }}
             />
+            {isMultiQueue && (
+              <>
+                <button
+                  type="button"
+                  onClick={onPrev}
+                  disabled={queuePosition?.current === 1}
+                  className={cn(
+                    'absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-all',
+                    queuePosition?.current === 1
+                      ? 'cursor-not-allowed opacity-30'
+                      : 'opacity-70 hover:opacity-100 hover:bg-white hover:shadow-md',
+                  )}
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeftIcon className="h-4 w-4 text-gray-700" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onNext}
+                  disabled={isLastInQueue}
+                  className={cn(
+                    'absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 shadow-sm backdrop-blur-sm transition-all',
+                    isLastInQueue
+                      ? 'cursor-not-allowed opacity-30'
+                      : 'opacity-70 hover:opacity-100 hover:bg-white hover:shadow-md',
+                  )}
+                  aria-label="Next photo"
+                >
+                  <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+                </button>
+              </>
+            )}
           </div>
+          {/* Step pills — one per photo, filled = configured, clickable to jump */}
+          {isMultiQueue && configuredStates && queuePosition && (
+            <div className="flex items-center justify-center gap-1.5 border-b border-gray-100 px-5 py-2.5">
+              {configuredStates.map((isDone, idx) => {
+                const isCurrent = queuePosition.current - 1 === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onNavigateTo?.(idx)}
+                    className={cn(
+                      'flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold transition-colors',
+                      isCurrent
+                        ? 'bg-blue-600 text-white ring-2 ring-offset-1 ring-blue-200'
+                        : isDone
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
+                    )}
+                    aria-label={`Go to photo ${idx + 1}${isDone ? ' (configured)' : ''}`}
+                  >
+                    {isDone && !isCurrent ? <CheckIcon className="h-3 w-3" /> : idx + 1}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="px-5 py-3">
             <p className="truncate text-[13px] font-medium text-gray-900" title={creative.name}>{creative.name}</p>
             <p className="mt-0.5 text-[11px] text-gray-400">
