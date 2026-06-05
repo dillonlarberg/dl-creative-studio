@@ -113,7 +113,8 @@ aiCutdown(video, track, { humanInput?, targetSec }) → CutdownPlan[]
 
 ```bash
 # print 3 versions; add --pick N to render one via Shotstack
-FFMPEG_BIN=… PYTHON_BIN=… npm run run-cutdown <trackId> [video] [--target 15|30|60] [--brief "…"] [--pick N]
+# (the `--` makes npm forward the flags to the script instead of consuming them)
+FFMPEG_BIN=… PYTHON_BIN=… npm run run-cutdown -- <trackId> [video] [--target 15|30|60] [--brief "…"] [--pick N]
 ```
 
 Implemented in `src/cutdownBrain.ts` (`GeminiCutdownBrain`), `src/angles.ts` (the three

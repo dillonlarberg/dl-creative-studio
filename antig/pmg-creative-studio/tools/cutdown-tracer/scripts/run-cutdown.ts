@@ -3,15 +3,16 @@
  * versions (narrative / highlights / punchy) via the CutdownBrain, then lets
  * you render one with --pick N.
  *
- * Usage:
- *   npm run run-cutdown <trackId> [videoPath] [--brief "..."] [--target 15|30|60] [--pick N]
+ * Usage (note the `--` so npm forwards the flags to the script, not to npm):
+ *   npm run run-cutdown -- <trackId> [videoPath] [--brief "..."] [--target 15|30|60] [--pick N]
  *
  * Examples:
- *   npm run run-cutdown otro_atardecer
- *   npm run run-cutdown otro_atardecer fixtures/test_02.mp4 --target 30
- *   npm run run-cutdown otro_atardecer --brief "focus on the sunset shots" --pick 1
+ *   npm run run-cutdown -- otro_atardecer
+ *   npm run run-cutdown -- otro_atardecer fixtures/test_02.mp4 --target 30
+ *   npm run run-cutdown -- otro_atardecer --brief "focus on the sunset shots" --pick 1
  */
 import "dotenv/config";
+import { existsSync } from "node:fs";
 import { makeRealDeps } from "../src/realClients.js";
 import { OUTPUT, type ClipRef, type EditSpec } from "../src/types.js";
 
@@ -67,8 +68,18 @@ async function main(): Promise<void> {
   const videoPath = positionals[1] ?? "fixtures/test_02.mp4";
 
   if (!trackId) {
-    console.error("✗ usage: npm run run-cutdown <trackId> [videoPath] [--brief \"...\"] [--target 15|30|60] [--pick N]");
+    console.error("✗ usage: npm run run-cutdown -- <trackId> [videoPath] [--brief \"...\"] [--target 15|30|60] [--pick N]");
     process.exit(1);
+  }
+
+  // Fail fast with an actionable message if the video path is wrong — the most
+  // common cause is forgetting the `--` separator, which makes npm drop the flags
+  // and shift a flag value (e.g. "15") into the videoPath slot.
+  if (!existsSync(videoPath)) {
+    throw new Error(
+      `video not found: "${videoPath}". If you launched via npm, include the "--" separator so flags reach the script:\n` +
+        `  npm run run-cutdown -- <trackId> [videoPath] [--target N] [--brief "..."] [--pick N]`,
+    );
   }
 
   const deps = makeRealDeps();
