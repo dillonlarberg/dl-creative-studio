@@ -44,4 +44,45 @@ describe("GcsBlobStore", () => {
     expect(uploads).toHaveLength(0);
     expect(url).toContain(encodeURIComponent("sampleMusic/pulse-120.mp3"));
   });
+
+  it("retries a transient upload failure (ETIMEDOUT), then succeeds", async () => {
+    let attempts = 0;
+    const bucket: BucketLike = {
+      upload: async () => {
+        attempts++;
+        if (attempts === 1) throw new Error("read ETIMEDOUT");
+        return {};
+      },
+    };
+    const store = new GcsBlobStore(bucket, resolver, { prefix: "src", retryBackoffMs: 0 });
+    const url = await store.uploadAndSign("/tmp/clip.mp4", "clip-1.mp4");
+    expect(attempts).toBe(2); // failed once, retried, succeeded
+    expect(url).toContain(encodeURIComponent("src/clip-1.mp4"));
+  });
+
+  it("gives up after maxAttempts on persistent transient failure", async () => {
+    let attempts = 0;
+    const bucket: BucketLike = {
+      upload: async () => {
+        attempts++;
+        throw new Error("read ETIMEDOUT");
+      },
+    };
+    const store = new GcsBlobStore(bucket, resolver, { maxAttempts: 2, retryBackoffMs: 0 });
+    await expect(store.uploadAndSign("/tmp/clip.mp4")).rejects.toThrow(/ETIMEDOUT/);
+    expect(attempts).toBe(2);
+  });
+
+  it("does NOT retry a non-transient error (fails fast)", async () => {
+    let attempts = 0;
+    const bucket: BucketLike = {
+      upload: async () => {
+        attempts++;
+        throw new Error("403 Forbidden: insufficient permissions");
+      },
+    };
+    const store = new GcsBlobStore(bucket, resolver, { maxAttempts: 3, retryBackoffMs: 0 });
+    await expect(store.uploadAndSign("/tmp/clip.mp4")).rejects.toThrow(/Forbidden/);
+    expect(attempts).toBe(1); // no retries for a permission error
+  });
 });
