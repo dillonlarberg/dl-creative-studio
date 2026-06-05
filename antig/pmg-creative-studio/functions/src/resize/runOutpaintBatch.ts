@@ -31,15 +31,16 @@ import {
   runPhase1Once,
   runPhase2ForTarget,
   detectSourceSpec,
-} from "./pipeline";
+  type P1Output,
+  type TargetSpec,
+  type P2Quality,
+} from "../_shared/ai/outpaint";
 import {
   stageSourceIfMissing,
   uploadOutput,
   uploadIntermediate,
 } from "./storage";
 import { classifyError } from "./errorClassifier";
-import type { P1Output } from "./schema";
-import type { TargetSpec, P2Quality } from "./config";
 
 // Per-resize-feature secrets so this callable can rotate independently
 // of the legacy GEMINI_API_KEY shared with functions/src/ai.ts. To rotate:

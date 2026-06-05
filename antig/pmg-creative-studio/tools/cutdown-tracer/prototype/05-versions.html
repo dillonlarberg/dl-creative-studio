@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cutdown · Versions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/theme.js"></script>
+</head>
+<body class="font-sans text-gray-800" style="background-color:#EEF1F7">
+  <div id="chrome"></div>
+
+  <main class="pt-[60px]">
+    <div class="mx-auto max-w-[1100px] px-8 pt-8 pb-16">
+      <div id="pagehead"></div>
+
+      <!-- Context strip -->
+      <div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+        <div id="contextStrip" class="flex flex-wrap items-center gap-3 text-[12px] text-gray-500"></div>
+      </div>
+
+      <!-- Shared AI read -->
+      <p id="sharedRead" class="mt-3 text-[12px] text-gray-500"></p>
+
+      <!-- Version cards -->
+      <div id="versionGrid" class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3"></div>
+
+      <!-- Footer actions -->
+      <div class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+        <div class="flex items-center gap-3">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-50">
+            ⟳ Re-roll all 3
+          </button>
+          <button type="button" class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-200">
+            <span class="not-italic">Brief:</span>
+            <span class="italic">"Focus on the product demo…"</span>
+            <span aria-hidden="true">✎</span>
+          </button>
+        </div>
+        <a id="renderBtn" href="06-render.html" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-700 active:bg-blue-800">
+          <span id="renderBtnLabel">Render this version</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/mock.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    Shell.mount({
+      step: "versions",
+      title: "Pick a version",
+      subtitle: "Three complete cuts, same footage, different angle. Compare the storyboards and pick one.",
+      back: { href: "03-brief.html", label: "Brief" },
+    });
+
+    const checkSvg =
+      '<svg viewBox="0 0 20 20" fill="currentColor" class="h-3 w-3 text-white"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 1 1 1.4-1.4l2.8 2.79 6.8-6.79a1 1 0 0 1 1.4 0Z" clip-rule="evenodd"/></svg>';
+
+    const dot = '<span class="text-gray-300">·</span>';
+
+    function truncate(str, n) {
+      return str.length > n ? str.slice(0, n - 1).trimEnd() + "…" : str;
+    }
+
+    // ---- Context strip ----
+    (function buildContext() {
+      const track = MOCK.track(MOCK.selectedTrackId);
+      const el = document.getElementById("contextStrip");
+      el.innerHTML = [
+        `<span><span class="font-medium text-gray-700">Source</span> ${MOCK.source.name} · ${MOCK.fmtTime(MOCK.source.durationSec)}</span>`,
+        dot,
+        `<span><span class="font-medium text-gray-700">Track</span> ${track.title} · ${track.bpm} BPM</span>`,
+        dot,
+        `<span><span class="font-medium text-gray-700">Target</span> ${MOCK.targetSec}s · 9:16</span>`,
+        dot,
+        `<span class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] text-gray-500">
+           <span class="italic">Brief: "Focus on the product demo…"</span>
+           <button type="button" class="text-gray-400 hover:text-blue-600" aria-label="Edit brief">✎</button>
+         </span>`,
+      ].join("");
+    })();
+
+    // ---- Shared AI read ----
+    document.getElementById("sharedRead").textContent =
+      "Shared read: " + truncate(MOCK.analysis.theme, 110);
+
+    // ---- Version cards ----
+    const grid = document.getElementById("versionGrid");
+    let selectedAngle = "highlights";
+
+    function cardHTML(plan) {
+      const meta = MOCK.ANGLE_META[plan.angle];
+      const cuts = plan.cuts;
+
+      const frames = cuts
+        .map(
+          (cut, i) => `
+        <div class="flex-1 min-w-0">
+          <div class="storyboard-frame relative aspect-[9/16] overflow-hidden rounded-md border border-gray-200" data-seed="${plan.angle}-${i}">
+            <span class="absolute bottom-1 left-1 rounded bg-black/65 px-1 py-0.5 font-mono text-[9px] text-white">${MOCK.fmtTime(cut.srcIn)}</span>
+          </div>
+          <p class="mt-1 truncate text-center text-[8px] text-gray-400">${cut.role}</p>
+        </div>`
+        )
+        .join("");
+
+      const cutRows = cuts
+        .map(
+          (cut) => `
+        <div class="flex items-start gap-2 text-[11px]">
+          <span class="shrink-0 font-mono text-gray-400">${MOCK.fmtTime(cut.srcIn)}–${MOCK.fmtTime(cut.srcOut)}</span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-gray-700">${cut.summary}</span>
+              <span class="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500">${cut.role}</span>
+              <span class="ml-auto shrink-0 font-mono text-[10px] text-gray-400">${cut.score.toFixed(2)}</span>
+            </div>
+            <p class="mt-0.5 italic leading-snug text-gray-400">${cut.why}</p>
+          </div>
+        </div>`
+        )
+        .join("");
+
+      return `
+      <button type="button" data-angle="${plan.angle}" class="version-card group relative flex flex-col rounded-lg border bg-white p-4 text-left shadow-sm transition-all duration-150">
+        <!-- Header row -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-[14px] font-semibold text-gray-900">${meta.label}</span>
+            <span class="angle-tag rounded-full px-2 py-0.5 text-[10px] font-medium">${meta.tag}</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="pick-cue text-[10px] font-medium"></span>
+            <span class="radio-indicator"></span>
+          </div>
+        </div>
+
+        <!-- Meta line -->
+        <p class="mt-1 font-mono text-[11px] text-gray-500">${cuts.length} cuts · 0:${MOCK.targetSec} · 108bpm</p>
+
+        <!-- Storyboard strip -->
+        <div class="mt-3 flex gap-1.5">${frames}</div>
+
+        <!-- AI description -->
+        <blockquote class="mt-3 rounded-md border-l-2 border-blue-300 bg-blue-50/60 px-3 py-2 text-[12px] italic leading-relaxed text-gray-700">
+          <span class="mb-1 block text-[9px] font-semibold not-italic uppercase tracking-wider text-blue-500">AI pitch</span>
+          ${plan.description}
+        </blockquote>
+
+        <!-- Cut list -->
+        <p class="mt-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Cut list</p>
+        <div class="space-y-2">${cutRows}</div>
+      </button>`;
+    }
+
+    grid.innerHTML = MOCK.plans.map(cardHTML).join("");
+
+    // Paint storyboard frame gradients.
+    document.querySelectorAll(".storyboard-frame").forEach((el) => {
+      el.style.backgroundImage = MOCK.frameGradient(el.dataset.seed);
+    });
+
+    function applySelection() {
+      document.querySelectorAll(".version-card").forEach((card) => {
+        const angle = card.dataset.angle;
+        const selected = angle === selectedAngle;
+        card.classList.toggle("border-blue-600", selected);
+        card.classList.toggle("ring-2", selected);
+        card.classList.toggle("ring-blue-600", selected);
+        card.classList.toggle("border-gray-200", !selected);
+        card.classList.toggle("hover:border-blue-300", !selected);
+        card.classList.toggle("hover:shadow-md", !selected);
+
+        // Tag badge color: blue when selected, gray otherwise.
+        const tag = card.querySelector(".angle-tag");
+        tag.className =
+          "angle-tag rounded-full px-2 py-0.5 text-[10px] font-medium " +
+          (selected ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500");
+
+        // Radio indicator.
+        const radio = card.querySelector(".radio-indicator");
+        if (selected) {
+          radio.className = "radio-indicator flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 shadow";
+          radio.innerHTML = checkSvg;
+        } else {
+          radio.className = "radio-indicator h-5 w-5 rounded-full border-2 border-gray-300";
+          radio.innerHTML = "";
+        }
+
+        // Pick cue.
+        const cue = card.querySelector(".pick-cue");
+        if (selected) {
+          cue.textContent = "● picked";
+          cue.className = "pick-cue text-[10px] font-medium text-blue-600";
+        } else {
+          cue.textContent = "○ pick";
+          cue.className = "pick-cue text-[10px] font-medium text-gray-400";
+        }
+      });
+
+      // Update primary button label.
+      const label = MOCK.ANGLE_META[selectedAngle].label;
+      document.getElementById("renderBtnLabel").textContent = "Render " + label;
+    }
+
+    grid.querySelectorAll(".version-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        selectedAngle = card.dataset.angle;
+        applySelection();
+      });
+    });
+
+    applySelection();
+  </script>
+</body>
+</html>

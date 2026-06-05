@@ -1,0 +1,59 @@
+# cutdown-tracer — autonomous continuation brief
+
+**Plan of record (reference these every session):**
+- **PRD:** dillonlarberg/dl-creative-studio#78
+- **Full spec, UML architecture, scope lock:** `../../src/apps/video-stitch/v0-design.html`
+- **Session memory:** `~/.claude/.../memory/project_video_stitch_v0_spec.md`
+
+This is **Milestone 0** of the video-stitch v0: one video (15s → no hard cap; the Gemini Files API handles long sources and planCuts is timestamp-only) → AI-selected best moments → beat-snapped uniform grid → **15.000s · 1080×1920 · 9:16** MP4, hard cuts, music baked, rendered by Shotstack. Deliverable is this **local tracer** (mirrors `tools/resize-tracer/`), not a deployed app.
+
+## How an autonomous agent should run this build
+- **Branch off `dev`** (no worktrees — branch directly; project convention).
+- Work autonomously **between** the gates below. **STOP at each ⛳ gate and wait for the human to review that tracer test before continuing.**
+- Keep every unit behind its **interface seam** (`src/seams.ts`) with a **Fake** (`src/fakes.ts`) so `npm test` runs **no-network, no-env**. Mirror `tools/resize-tracer/` conventions.
+- Reuse the in-repo `@google/genai` call shape from `functions/src/resize/phase1.ts` (`responseMimeType` + `responseSchema`).
+- **Never commit** `.env` or `node_modules`.
+
+## Status
+- [x] **Step 1 — external surfaces proven against real keys**
+  - [x] `npm run verify-gemini ./fixtures/<clip>.mp4` — Files API upload→ACTIVE + structured `[{startSec,endSec,score}]` — ✓ green
+  - [x] `npm run verify-shotstack` — sandbox render submit→poll→playable mp4 — ✓ green (host: `/edit/stage`)
+
+## Build order + ⛳ check-in gates
+- [x] **Step 2 — tracer green end-to-end on Fakes** (no external deps) — ✓ green (32 tests, typecheck clean)
+  - [x] `src/types.ts` — `Segment`, `Cut`, `CutPlan`, `SampleMusicTrack`, `EditSpec` (Zod) + `OUTPUT` contract const
+  - [x] `src/seams.ts` — `VideoMomentSelector`, `TempoDetector`, `MusicCatalog`, `VideoRenderer` (+ `VideoRef`, `PipelineDeps`)
+  - [x] `src/fakes.ts` — `FakeEvenSpacedSelector`, `FakeFixedBpm`, `FakeMusicCatalog`, `FakeEchoRenderer`
+  - [x] `src/planCuts.ts` — **pure**: uniform bar-grid from BPM (`bar=(60/bpm)*4`, interior cuts on bar multiples, final slot snapped to exactly 15.000s, trailing-sliver<½-bar merged); **grid owns timing, content owns fill**; **dedup overlapping ranked segments** (highest score wins); overflow dropped / underflow cycles
+  - [x] `src/pipeline.ts` — `runPipeline` composes the seams (BPM precedence: catalog BPM > TempoDetector fallback); `src/factory.ts` — env-keyed `makeDeps` (USE_FAKES, real branches throw until steps 3–5)
+  - [x] tests: `planCuts.test.ts` (16, thorough), `fakes.test.ts` (8, per-seam contract), `pipeline.test.ts` (8, all-Fakes e2e) + `vitest.config.ts`, `.env.example`
+  - **⛳ GATE — READY FOR HUMAN REVIEW:** `npm test` (32 ✓) + `npm run typecheck` (clean). Sample run @120 BPM = 8 hard cuts (7×2.0s on-grid + 1.0s snap), Σ=15.000s. NOT committed yet.
+- [x] **Step 3 — real `VideoMomentSelector` (Gemini)** — code green; eyeballed live
+  - [x] `src/gemini.ts` — `GeminiMomentSelector implements VideoMomentSelector`; DI'd genai client (mirrors resize `runPhase1(ai,…)`), upload→poll-until-ACTIVE→structured output→validate→retry/backoff→best-effort cleanup; `makeGeminiSelector(apiKey)` wires the real client
+  - [x] factory: `USE_FAKES=0` now wires the real Gemini selector (tempo/catalog/renderer still deferred)
+  - [x] `scripts/select-gemini.ts` (`npm run select-gemini <mp4> [bpm]`) — real selection → planCuts eyeball
+  - [x] `src/gemini.test.ts` (6) — injected fake client, no-network: lifecycle, validation, retry, give-up, cleanup. **Suite 39 ✓, typecheck clean.**
+  - **⛳ GATE — ✓ SIGNED OFF (2026-06-03).** Eyeballed on `test_02.mp4` (≈4:56): Gemini picked 3 distinct, well-spread, content-driven moments — 231–236s (1.00), 83–87s (0.95), 160–165s (0.90). Human confirmed picks are good. `test_02.mp4` is the standard fixture.
+  - Resolved gate findings: (1) slicing — DONE (`bb7f83c`): a reused moment now walks distinct windows instead of repeating. (2) input range — **RESOLVED: ceiling relaxed** (decision 2026-06-03). v0 input is now `15s → no hard cap`; long-form sources (office recordings, webinars) are in scope. `test_02.mp4` (~4:56) is the **standard fixture**. Spec/PRD updated; no code guardrail.
+- [x] **Step 4 — real `TempoDetector` (librosa)** — code green; eyeballed live
+  - [x] `scripts/tempo.py` — librosa global tempo estimator (`librosa.feature.rhythm.tempo`, NOT `beat_track` — its tempo returns 0 on sparse/clean signals; v0 needs BPM only, not beat positions) → `{bpm}` JSON; http(s) sources downloaded to temp first
+  - [x] `src/librosa.ts` — `LibrosaTempoDetector` (injected `TempoRunner` boundary) + `PythonTempoRunner` (spawns `python3`); factory `USE_FAKES=0` wires it
+  - [x] `scripts/detect-tempo.ts` (`npm run detect-tempo <audio>`); `src/librosa.test.ts` (5, subprocess mocked). **Suite 46 ✓.**
+  - **Toolchain note:** librosa needs **Python 3.13** venv (3.14 has no numba/llvmlite wheels); `.venv-librosa/` (gitignored); set `PYTHON_BIN`. ffmpeg needed for mp3/m4a; WAV works bare. See README.
+  - **⛳ GATE — ✓ SIGNED OFF (2026-06-03):** real seam→python→librosa path verified on synthetic clicks (120→117.45, 90→89.1) AND a real song `fixtures/dtmf.mp3` → **112.35 BPM**. mp3 decoded with no ffmpeg (libsndfile ≥1.1 handles mp3 natively).
+- [x] **Step 5 — real catalog + renderer + GCS + ffmpeg clips** — ✓ FIRST LIVE RENDER (2026-06-04). `otro_atardecer`: 296.8s source → 4 Gemini moments → 107.67 BPM → 7 cuts/15.000s → Shotstack mp4. Run: `FFMPEG_BIN=$(.venv-librosa/.../imageio ffmpeg) npm run run-live <trackId>`. **⛳ AWAITING HUMAN EYEBALL of the reel.**
+  - Key fix: Shotstack sandbox rejects the full long source → per-clip extraction (ffmpeg cuts each moment to a small clip, uploads only those). Plus clampSegments (Gemini returned out-of-bounds timestamps). ffmpeg = static binary from `imageio-ffmpeg` in `.venv-librosa` (set `FFMPEG_BIN`). Auth = ADC; URLs = getDownloadURL token URLs.
+- [x] (superseded) Step 5 scaffold against Fakes
+  - [x] new seam `BlobStore` (uploadAndSign/sign) + `FakeBlobStore`; pipeline now uploads source → signed URL before render (Shotstack must fetch it)
+  - [x] `src/shotstack.ts` — pure `buildShotstackTimeline(spec)` (cuts→video clips, music track + tail fade, 1080×1920/15s) + `ShotstackRenderer` (DI fetch, submit/poll, /edit/stage host discovery) + tests (9)
+  - [x] `src/firestoreCatalog.ts` — `FirestoreMusicCatalog` (DI Firestore client + signer); `MusicDocSchema` (doc stores `storagePath`, URL signed on read) + tests (5)
+  - [x] `src/storage.ts` — `GcsBlobStore` (DI bucket; upload + V4 signed URLs, 6-day TTL ≤7-day cap) + tests (4)
+  - [x] factory fake branch wires `FakeBlobStore`; real branch keeps catalog/renderer/blobStore `notYet` pending `firebase-admin`/`@google-cloud/storage` + creds
+  - [ ] **REMAINING (needs human + cloud):** see `SETUP-step5.md` — bucket, SA key, upload music, create `sampleMusic` docs, `.env`. Then: `npm i firebase-admin @google-cloud/storage`, add `make*` wiring to factory real branch, add `run-live` script.
+  - **⛳ GATE:** full live tracer run → human **eyeballs the rendered 15s reel**.
+
+## Output contract (hard)
+15.000s · 1080×1920 · 9:16 · **hard cuts only** · music baked + tail fade · render = Shotstack (sandbox watermark OK for v0).
+
+## Out of scope — do NOT build in v0
+Multi-creative stitch / outpaint / ordering (M1) · Cloud Function + `OutputDoc` + auth + multi-tenant + React studio · Artlist API + vibe→Gemini mapping · real beat-*detection* cutting · transitions · 30s · librosa-as-Cloud-Run · paid Shotstack · Veo motion · social posting.

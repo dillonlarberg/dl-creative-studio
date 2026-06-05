@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cutdown-tracer · architecture</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1a1d23; --muted:#6b7280; --line:#e3e6ea;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    --seam:#2563eb;   --seam-bg:#eef3ff;
+    --pure:#0f9d58;   --pure-bg:#e9f7ef;
+    --prov:#b4690e;   --prov-bg:#fdf3e3;
+    --fake:#7c3aed;   --fake-bg:#f3edfe;
+    --vo:#0e7490;     --vo-bg:#e6f6fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+    -webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+  header h1{font-size:30px;margin:0 0 4px;letter-spacing:-.02em}
+  header .sub{color:var(--muted);margin:0 0 18px;font-size:15px}
+  code,.mono{font-family:var(--mono);font-size:.86em}
+  h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    margin:48px 0 16px;font-weight:600;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .tag{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid transparent;font-weight:600}
+  .t-seam{color:var(--seam);background:var(--seam-bg);border-color:#cfdcff}
+  .t-pure{color:var(--pure);background:var(--pure-bg);border-color:#c4ead3}
+  .t-prov{color:var(--prov);background:var(--prov-bg);border-color:#f0dcb6}
+  .t-fake{color:var(--fake);background:var(--fake-bg);border-color:#ddccf8}
+  .t-vo{color:var(--vo);background:var(--vo-bg);border-color:#bfe6ef}
+
+  /* ── runtime flow ── */
+  .flow{display:flex;flex-direction:column;gap:0}
+  .step{display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:stretch}
+  .rail{display:flex;flex-direction:column;align-items:center}
+  .num{width:30px;height:30px;border-radius:50%;background:var(--seam);color:#fff;display:grid;
+    place-items:center;font-family:var(--mono);font-size:13px;font-weight:700;flex:none}
+  .num.pure{background:var(--pure)}
+  .connector{width:2px;flex:1;background:var(--line);min-height:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .card .title{font-weight:650;font-size:15px;margin:0 0 2px}
+  .card .call{font-family:var(--mono);font-size:12.5px;color:var(--seam);background:var(--seam-bg);
+    display:inline-block;padding:2px 8px;border-radius:6px;margin:4px 0 8px}
+  .card .call.pure{color:var(--pure);background:var(--pure-bg)}
+  .card p{margin:6px 0 0;font-size:13.5px;color:#374151}
+  .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+  .file{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .out{font-family:var(--mono);font-size:11.5px;color:var(--vo);background:var(--vo-bg);
+    padding:2px 7px;border-radius:5px;border:1px solid #bfe6ef}
+  .arrow-note{font-size:11px;color:var(--muted);font-family:var(--mono);margin:2px 0 2px 48px}
+
+  /* ── seam grid ── */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}.step{grid-template-columns:28px 1fr}}
+  .seamcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .seamcard h3{margin:0 0 2px;font-size:15px;font-family:var(--mono)}
+  .seamcard .sig{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:0 0 10px;display:block}
+  .row{display:flex;gap:8px;font-size:12.5px;margin:5px 0;align-items:baseline}
+  .row .k{width:64px;color:var(--muted);flex:none;font-family:var(--mono);font-size:11px}
+  .row .v{font-family:var(--mono);font-size:12px}
+
+  /* ── wiring ── */
+  .wire{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .wirebox{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .wirebox.real{border-color:#f0dcb6;background:#fffdf8}
+  .wirebox.fake{border-color:#ddccf8;background:#fdfbff}
+  .wirebox h3{margin:0 0 6px;font-size:14px;font-family:var(--mono)}
+  .wirebox ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:#374151}
+  .wirebox li{margin:3px 0}
+  .compose{background:var(--panel);border:1px dashed var(--seam);border-radius:12px;padding:12px 16px;
+    text-align:center;font-family:var(--mono);font-size:13px;color:var(--seam)}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:#fafbfc}
+  td .mono{color:var(--seam)}
+  tr:last-child td{border-bottom:none}
+  .foot{margin-top:40px;color:var(--muted);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>cutdown-tracer — system map</h1>
+    <p class="sub">video-stitch v0 · Milestone 0 · how each file & interface talk to each other. One long video + a track → a 15s 9:16 reel rendered by Shotstack.</p>
+    <div class="legend">
+      <span class="tag t-seam">interface seam</span>
+      <span class="tag t-prov">real impl · provider</span>
+      <span class="tag t-fake">fake (offline)</span>
+      <span class="tag t-pure">pure function</span>
+      <span class="tag t-vo">value object</span>
+    </div>
+  </header>
+
+  <!-- ───────────── RUNTIME FLOW ───────────── -->
+  <h2>Runtime flow — <code>runPipeline(videoFile, trackId, deps)</code> · <span class="mono" style="text-transform:none;letter-spacing:0">pipeline.ts</span></h2>
+  <div class="flow">
+
+    <div class="step">
+      <div class="rail"><div class="num">1</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Probe source duration</div>
+        <span class="call">clipExtractor.probeDurationSec(videoFile)</span>
+        <p>ffmpeg reads the true length so we can clamp out-of-bounds model timestamps and bound extraction.</p>
+        <div class="meta"><span class="tag t-seam">ClipExtractor</span><span class="tag t-prov">ffmpeg</span><span class="file">ffmpeg.ts</span><span class="out">→ durationSec</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num">2</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Select the best moments</div>
+        <span class="call">selector.select({path}, {budgetSec:15})</span>
+        <p>Gemini ingests the video (Files API → poll ACTIVE) and returns ranked <code>{startSec,endSec,score}</code> via a structured-output schema.</p>
+        <div class="meta"><span class="tag t-seam">VideoMomentSelector</span><span class="tag t-prov">Gemini</span><span class="file">gemini.ts</span><span class="out">→ Segment[]</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num pure">3</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Clamp segments to the real duration</div>
+        <span class="call pure">clampSegments(segments, durationSec)</span>
+        <p>Pure. Drops/clips moments past EOF (models can return timestamps beyond the video's end).</p>
+        <div class="meta"><span class="tag t-pure">pure</span><span class="file">planCuts.ts</span><span class="out">→ Segment[]</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num">4</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Fetch the track + resolve BPM</div>
+        <span class="call">catalog.fetch(trackId)</span> &nbsp;<span class="file">then</span>&nbsp; <span class="call">tempo.detect(url)</span>
+        <p>Catalog returns a signed music URL + BPM from Firestore. If the doc has no BPM, librosa detects it. <b>Catalog BPM wins; tempo is the fallback.</b></p>
+        <div class="meta"><span class="tag t-seam">MusicCatalog</span><span class="tag t-prov">Firestore</span><span class="tag t-seam">TempoDetector</span><span class="tag t-prov">librosa</span><span class="file">firestoreCatalog.ts · librosa.ts</span><span class="out">→ musicUrl, bpm</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num pure">5</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Plan the cuts on a beat grid</div>
+        <span class="call pure">planCuts({bpm, totalSec:15, ranked})</span>
+        <p>Pure. <b>Grid owns timing, content owns fill:</b> a uniform bar grid (<code>bar = 60/bpm·4</code>) sets slot boundaries; ranked moments fill them (deduped, sliced when reused). Σ&nbsp;=&nbsp;exactly&nbsp;15.000s.</p>
+        <div class="meta"><span class="tag t-pure">pure</span><span class="file">planCuts.ts</span><span class="out">→ CutPlan [{srcIn,srcOut,len}]</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num">6</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Extract each moment into a small clip</div>
+        <span class="call">clipExtractor.extractClips(videoFile, plan, durationSec)</span>
+        <p>ffmpeg cuts one short H.264 clip per cut (audio stripped). The renderer can't ingest a long source — it only ever receives a few seconds of video.</p>
+        <div class="meta"><span class="tag t-seam">ClipExtractor</span><span class="tag t-prov">ffmpeg</span><span class="file">ffmpeg.ts</span><span class="out">→ local clip paths[]</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num">7</div><div class="connector"></div></div>
+      <div class="card">
+        <div class="title">Host each clip for the renderer</div>
+        <span class="call">blobStore.uploadAndSign(clipPath, name)</span>
+        <p>Uploads each clip to Cloud Storage and returns a fetchable <code>getDownloadURL</code> token URL (Shotstack pulls assets after queueing).</p>
+        <div class="meta"><span class="tag t-seam">BlobStore</span><span class="tag t-prov">GCS</span><span class="file">storage.ts</span><span class="out">→ ClipRef[] {url,len}</span></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="num">8</div></div>
+      <div class="card">
+        <div class="title">Render the reel</div>
+        <span class="call">renderer.render(EditSpec)</span>
+        <p><code>buildShotstackTimeline</code> lays the pre-trimmed clips end-to-end on a video track + the music on an audio track (1080×1920, 15s); submit → poll → playable MP4.</p>
+        <div class="meta"><span class="tag t-seam">VideoRenderer</span><span class="tag t-prov">Shotstack</span><span class="file">shotstack.ts</span><span class="out">→ mp4Url</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ───────────── SEAMS ───────────── -->
+  <h2>The six seams — <code>seams.ts</code> (each: 1 interface · 1 real impl · 1 fake)</h2>
+  <div class="grid">
+
+    <div class="seamcard">
+      <h3>VideoMomentSelector</h3>
+      <span class="sig">select(video, {budgetSec}) → Segment[]</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">gemini.ts · Gemini</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeEvenSpacedSelector</span></div>
+      <div class="row"><span class="k">uses</span><span class="v">@google/genai Files API</span></div>
+    </div>
+
+    <div class="seamcard">
+      <h3>TempoDetector</h3>
+      <span class="sig">detect(audioUrl) → {bpm}</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">librosa.ts → scripts/tempo.py</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeFixedBpm</span></div>
+      <div class="row"><span class="k">note</span><span class="v">subprocess injected → mocked in tests</span></div>
+    </div>
+
+    <div class="seamcard">
+      <h3>MusicCatalog</h3>
+      <span class="sig">list() · fetch(trackId) → {url,bpm?}</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">firestoreCatalog.ts · Firestore</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeMusicCatalog</span></div>
+      <div class="row"><span class="k">data</span><span class="v">sampleMusic/{trackId} → signed URL</span></div>
+    </div>
+
+    <div class="seamcard">
+      <h3>ClipExtractor</h3>
+      <span class="sig">probeDurationSec() · extractClips(path,cuts,dur)</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">ffmpeg.ts · ffmpeg</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeClipExtractor</span></div>
+      <div class="row"><span class="k">why</span><span class="v">keep renderer source small</span></div>
+    </div>
+
+    <div class="seamcard">
+      <h3>BlobStore</h3>
+      <span class="sig">uploadAndSign(path) · sign(objectPath) → url</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">storage.ts · GCS getDownloadURL</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeBlobStore</span></div>
+      <div class="row"><span class="k">auth</span><span class="v">ADC (no SA key)</span></div>
+    </div>
+
+    <div class="seamcard">
+      <h3>VideoRenderer</h3>
+      <span class="sig">render(EditSpec) → {mp4Url}</span>
+      <div class="row"><span class="k">real</span><span class="v t-prov">shotstack.ts · Shotstack</span></div>
+      <div class="row"><span class="k">fake</span><span class="v">FakeEchoRenderer</span></div>
+      <div class="row"><span class="k">pure</span><span class="v">buildShotstackTimeline(spec)</span></div>
+    </div>
+
+  </div>
+
+  <!-- ───────────── WIRING ───────────── -->
+  <h2>Wiring — who builds the seams</h2>
+  <div class="wire">
+    <div class="wirebox fake">
+      <h3>makeDeps() · factory.ts</h3>
+      <p style="margin:0;font-size:13px;color:#374151">Default. Returns all <b>Fakes</b> → <code>npm test</code> / <code>run-fake</code> run with no network, no env. The real branch defers to <code>realClients</code>.</p>
+      <ul>
+        <li>Fake{Selector, Bpm, Catalog, Clip, Blob, Renderer}</li>
+      </ul>
+    </div>
+    <div class="wirebox real">
+      <h3>makeRealDeps() · realClients.ts</h3>
+      <p style="margin:0;font-size:13px;color:#374151">The only module that imports <code>firebase-admin</code>. Used by <code>run-live</code>. Kept out of the test graph.</p>
+      <ul>
+        <li>Gemini · librosa · Firestore · ffmpeg · GCS · Shotstack</li>
+      </ul>
+    </div>
+  </div>
+  <div class="compose">deps ──► runPipeline() ──► PipelineResult { mp4Url, plan, bpm, segments, durationSec, spec }</div>
+
+  <!-- ───────────── VALUE OBJECTS ───────────── -->
+  <h2>Value objects — <code>types.ts</code> (Zod-validated at every seam boundary)</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Shape</th><th>Crosses</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">Segment</td><td class="mono">{ startSec, endSec, score }</td><td>selector → clamp → planCuts</td></tr>
+      <tr><td class="mono">CutPlan</td><td class="mono">[{ srcIn, srcOut, len }] · Σlen = 15.000</td><td>planCuts → extractClips</td></tr>
+      <tr><td class="mono">SampleMusicTrack</td><td class="mono">{ trackId, title, url, format, durationSec, bpm?, … }</td><td>catalog.list()</td></tr>
+      <tr><td class="mono">ClipRef</td><td class="mono">{ url, len }</td><td>blobStore → EditSpec</td></tr>
+      <tr><td class="mono">EditSpec</td><td class="mono">{ clips[], musicUrl, totalSec, width, height }</td><td>pipeline → renderer</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ───────────── SCRIPTS ───────────── -->
+  <h2>Scripts — exercising each piece</h2>
+  <table>
+    <thead><tr><th>Command</th><th>Exercises</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">npm test</td><td>all seams via Fakes + pure functions — no network (71 tests)</td></tr>
+      <tr><td class="mono">run-fake [trackId]</td><td>full runPipeline on Fakes; prints the cut plan</td></tr>
+      <tr><td class="mono">verify-gemini / verify-shotstack</td><td>raw provider surfaces (smoke)</td></tr>
+      <tr><td class="mono">select-gemini &lt;mp4&gt; [bpm]</td><td>real VideoMomentSelector → planCuts</td></tr>
+      <tr><td class="mono">detect-tempo &lt;audio&gt;</td><td>real TempoDetector (librosa)</td></tr>
+      <tr><td class="mono">ingest-music</td><td>probe (librosa) + write sampleMusic Firestore docs</td></tr>
+      <tr><td class="mono">run-live &lt;trackId&gt;</td><td>the whole pipeline, real providers → a rendered MP4</td></tr>
+      <tr><td class="mono">diag-assets · shotstack-status · sign-url</td><td>diagnostics</td></tr>
+    </tbody>
+  </table>
+
+  <p class="foot">video-stitch v0 · Milestone 0 · spec: src/apps/video-stitch/v0-design.html · PRD #78</p>
+
+</div>
+</body>
+</html>

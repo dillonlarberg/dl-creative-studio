@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/canvasPrep.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/canvasPrep.ts keeps a separate prototype copy.
 import sharp from "sharp";
 import { legalGenDims } from "./config";
 import type { Spec } from "./promptTemplate";

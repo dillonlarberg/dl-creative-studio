@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cutdown · V1 — UX/UI Flow Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0b0c0e; --ink-2:#101218; --ink-3:#161922; --raised:#1b1f2a;
+    --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+    --text:#e9e7e0; --muted:#888d9a; --muted-2:#5d626f;
+    --lime:#d4ff3f; --lime-dim:rgba(212,255,63,.14);
+    --coral:#ff5d73; --coral-dim:rgba(255,93,115,.14);
+    --amber:#ffb454; --amber-dim:rgba(255,180,84,.13);
+    --sky:#5ad1ff; --sky-dim:rgba(90,209,255,.13);
+    --mono:'JetBrains Mono',monospace;
+    --disp:'Bricolage Grotesque',sans-serif;
+    --serif:'Newsreader',Georgia,serif;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--ink); color:var(--text);
+    font-family:var(--serif); font-size:18px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 500px at 85% -5%, rgba(212,255,63,.07), transparent 60%),
+      radial-gradient(800px 600px at 0% 10%, rgba(90,209,255,.06), transparent 55%);
+    background-attachment:fixed;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:1; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+    mix-blend-mode:overlay;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 28px; position:relative; z-index:2}
+  a{color:var(--lime); text-decoration:none; border-bottom:1px solid rgba(212,255,63,.3)}
+  a:hover{border-color:var(--lime)}
+  .mono{font-family:var(--mono); font-size:.74em; letter-spacing:.02em}
+
+  /* HERO */
+  header{padding:80px 0 30px}
+  .kicker{font-family:var(--mono); font-size:12px; letter-spacing:.34em; text-transform:uppercase; color:var(--lime); display:flex; gap:14px; align-items:center; margin-bottom:24px}
+  .kicker .dot{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 14px var(--lime);animation:pulse 2.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.35; box-shadow:0 0 4px var(--lime)}}
+  h1{font-family:var(--disp); font-weight:800; font-size:clamp(40px,7vw,88px); line-height:.94; letter-spacing:-.03em; margin:0 0 8px}
+  h1 .em{font-style:normal; color:var(--lime)}
+  .lede{font-size:clamp(18px,2.2vw,23px); color:var(--text); max-width:660px; margin:20px 0 0; opacity:.92}
+  .lede em{color:var(--coral); font-style:italic}
+  .note{margin-top:26px; padding:14px 18px; border:1px dashed var(--line-2); border-radius:12px; background:rgba(255,255,255,.02); color:var(--muted); font-size:15px}
+  .note b{color:var(--amber); font-weight:500}
+  .meta-row{display:flex; flex-wrap:wrap; gap:10px 8px; margin-top:22px}
+  .chip{font-family:var(--mono); font-size:11.5px; letter-spacing:.04em; padding:7px 12px; border:1px solid var(--line-2); border-radius:100px; color:var(--muted); display:inline-flex; gap:8px; align-items:center; background:rgba(255,255,255,.02)}
+  .chip b{color:var(--text); font-weight:500}
+  .chip.lime{border-color:rgba(212,255,63,.4); color:var(--lime)}
+  .chip.sky{border-color:rgba(90,209,255,.4); color:var(--sky)}
+
+  section{padding:60px 0; border-top:1px solid var(--line)}
+  .sec-num{font-family:var(--mono); font-size:12px; color:var(--lime); letter-spacing:.2em; margin-bottom:14px}
+  h2{font-family:var(--disp); font-weight:700; font-size:clamp(28px,4vw,42px); line-height:1.03; letter-spacing:-.02em; margin:0 0 10px}
+  .sub{color:var(--muted); font-size:17px; max-width:700px; margin:0 0 28px}
+  h3{font-family:var(--disp); font-weight:600; font-size:20px; letter-spacing:-.01em; margin:30px 0 12px}
+
+  /* SPINE / stepper */
+  .spine{display:flex; flex-direction:column; gap:12px; position:relative}
+  .step{display:grid; grid-template-columns:54px 1fr; gap:16px; align-items:start; border:1px solid var(--line); border-radius:14px; padding:18px 20px; background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,0)); position:relative}
+  .step .idx{font-family:var(--disp); font-weight:800; font-size:30px; color:var(--lime); line-height:1; opacity:.85}
+  .step h4{font-family:var(--disp); font-weight:600; font-size:18px; margin:0 0 4px; letter-spacing:-.01em}
+  .step p{margin:0; color:var(--muted); font-size:15px}
+  .step .tag{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; padding:3px 8px; border-radius:6px; border:1px solid var(--line-2); color:var(--muted-2); margin-left:8px}
+  .step.gate{border-color:rgba(255,93,115,.4); background:linear-gradient(180deg,rgba(255,93,115,.07),rgba(255,255,255,0))}
+  .step.gate .idx{color:var(--coral)}
+  .arrow{height:14px; display:flex; align-items:center; justify-content:center; color:var(--muted-2)}
+  .music-rail{margin:14px 0 0; border:1px dashed rgba(255,180,84,.5); border-radius:12px; padding:14px 18px; background:var(--amber-dim); color:var(--amber); font-size:14px; display:flex; gap:12px; align-items:center}
+  .music-rail b{color:var(--text); font-weight:600}
+
+  /* FORK cards */
+  .fork{border:1px solid var(--line); border-radius:16px; padding:24px; margin:18px 0; background:rgba(255,255,255,.018)}
+  .fork .flabel{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--sky); margin-bottom:8px}
+  .fork.hot .flabel{color:var(--coral)}
+  .fork h3{margin:0 0 6px}
+  .fork .why{color:var(--muted); font-size:15px; margin:0 0 18px}
+  .fork .why b{color:var(--amber); font-weight:500}
+  .opts{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px}
+  .opt{border:1px solid var(--line-2); border-radius:11px; padding:14px; background:var(--ink-2); cursor:pointer; transition:border-color .2s, transform .2s, background .2s}
+  .opt:hover{transform:translateY(-2px); border-color:var(--line-2)}
+  .opt.sel{border-color:var(--lime); background:var(--lime-dim)}
+  .opt .ot{font-family:var(--disp); font-weight:600; font-size:15px; margin-bottom:5px; display:flex; align-items:center; gap:7px}
+  .opt .ot .pill{font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:5px; background:var(--ink-3); color:var(--muted-2); letter-spacing:.06em}
+  .opt p{margin:0; color:var(--muted); font-size:13px; line-height:1.5}
+  .opt .rec{color:var(--lime); font-family:var(--mono); font-size:10px; letter-spacing:.1em; margin-top:8px; display:none}
+  .opt[data-rec] .rec{display:block}
+
+  /* mockups */
+  .mocks{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px}
+  @media(max-width:760px){.mocks{grid-template-columns:1fr}}
+  .mock{border:1px solid var(--line-2); border-radius:14px; overflow:hidden; background:var(--ink-2)}
+  .mock .cap{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:11px 14px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.02)}
+  .mock .body{padding:14px}
+  .scr{font-family:var(--mono); font-size:10.5px; color:var(--muted); line-height:1.7}
+  .player{aspect-ratio:9/16; max-width:120px; margin:0 auto 10px; border-radius:9px; background:linear-gradient(135deg,#1b1f2a,#0e1016); border:1px solid var(--line-2); display:flex; align-items:center; justify-content:center; color:var(--muted-2); font-family:var(--mono); font-size:9px; position:relative}
+  .player::after{content:"▶"; position:absolute; color:var(--lime); font-size:16px; opacity:.8}
+  .segrow{display:flex; gap:4px; height:40px; margin-top:8px}
+  .seg{flex:1; border-radius:6px; background:var(--lime); opacity:.85; display:flex; align-items:flex-end; padding:5px; font-family:var(--mono); font-size:8px; color:#0b0c0e; font-weight:700}
+  .seg.b{background:var(--coral)} .seg.c{background:var(--sky)} .seg.d{background:#fff} .seg.muted{background:var(--ink-3); color:var(--muted-2); border:1px dashed var(--line-2)}
+  .card-mini{border:1px solid var(--line); border-radius:9px; padding:9px 11px; margin-bottom:8px; display:grid; grid-template-columns:34px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.02)}
+  .card-mini .th{width:34px; height:48px; border-radius:5px; background:linear-gradient(135deg,#1b1f2a,#0e1016); border:1px solid var(--line-2)}
+  .card-mini .meta{font-family:var(--mono); font-size:10px; color:var(--muted)}
+  .card-mini .meta b{color:var(--text); font-weight:500; font-family:var(--disp); font-size:12px; display:block; margin-bottom:2px}
+  .card-mini .acts{display:flex; gap:4px}
+  .card-mini .acts span{width:22px; height:22px; border-radius:6px; border:1px solid var(--line-2); display:flex; align-items:center; justify-content:center; font-size:11px}
+  .yes{color:var(--lime); border-color:rgba(212,255,63,.4)!important}
+  .no{color:var(--coral); border-color:rgba(255,93,115,.4)!important}
+
+  .ladder{display:flex; flex-direction:column; gap:0; margin-top:10px; border-left:2px solid var(--line-2); padding-left:0}
+  .rung{padding:12px 0 12px 20px; position:relative; border-bottom:1px solid var(--line)}
+  .rung::before{content:""; position:absolute; left:-6px; top:18px; width:10px; height:10px; border-radius:50%; background:var(--ink); border:2px solid var(--muted-2)}
+  .rung.now::before{background:var(--lime); border-color:var(--lime); box-shadow:0 0 10px var(--lime)}
+  .rung b{font-family:var(--disp); font-weight:600; font-size:16px}
+  .rung .lv{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-2)}
+  .rung p{margin:4px 0 0; color:var(--muted); font-size:14px}
+
+  .api{border:1px solid var(--lime); border-radius:14px; background:linear-gradient(180deg,rgba(212,255,63,.06),rgba(255,255,255,0)); padding:22px 24px; margin-top:8px}
+  .api pre{font-family:var(--mono); font-size:13px; line-height:1.7; color:var(--text); margin:0; overflow-x:auto; white-space:pre}
+  .api pre .c{color:var(--muted-2)} .api pre .k{color:var(--coral)} .api pre .f{color:var(--lime)} .api pre .s{color:var(--amber)} .api pre .t{color:var(--sky)}
+  .twomode{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px}
+  @media(max-width:640px){.twomode{grid-template-columns:1fr}}
+  .mode{border:1px solid var(--line-2); border-radius:11px; padding:15px; background:var(--ink-2)}
+  .mode .mh{font-family:var(--disp); font-weight:600; font-size:15px; margin-bottom:6px; display:flex; gap:8px; align-items:center}
+  .mode .mh .b{font-family:var(--mono); font-size:9px; padding:2px 7px; border-radius:5px; letter-spacing:.08em}
+  .mode.auto .b{background:var(--sky-dim); color:var(--sky)} .mode.steer .b{background:var(--coral-dim); color:var(--coral)}
+  .mode p{margin:0; color:var(--muted); font-size:14px; line-height:1.55}
+  /* rung comparison */
+  .rungcmp{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:8px}
+  @media(max-width:760px){.rungcmp{grid-template-columns:1fr}}
+  .rcol{border:1px solid var(--line-2); border-radius:14px; overflow:hidden; background:var(--ink-2)}
+  .rcol.pick{border-color:var(--lime); box-shadow:0 0 0 1px rgba(212,255,63,.25)}
+  .rcol .rhead{padding:13px 16px; border-bottom:1px solid var(--line); background:rgba(255,255,255,.02); display:flex; justify-content:space-between; align-items:center}
+  .rcol .rhead .rt{font-family:var(--disp); font-weight:700; font-size:16px}
+  .rcol .rhead .rt span{font-family:var(--mono); font-size:10px; color:var(--muted-2); display:block; letter-spacing:.1em; margin-top:2px}
+  .rcol .rhead .badge{font-family:var(--mono); font-size:9px; padding:3px 8px; border-radius:6px; letter-spacing:.08em}
+  .rcol.pick .badge{background:var(--lime-dim); color:var(--lime)}
+  .rcol .badge.dim{background:var(--ink-3); color:var(--muted-2)}
+  .rbody{padding:14px}
+  .rmeta{font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:10px}
+  .rmeta b{color:var(--text); font-weight:500}
+  .sbstrip{display:flex; gap:6px; overflow:hidden}
+  .sbcard{flex:1; min-width:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:rgba(255,255,255,.02); position:relative}
+  .sbcard .thumb{aspect-ratio:9/14; background:linear-gradient(135deg,#1b1f2a,#0e1016); border-bottom:1px solid var(--line); position:relative}
+  .sbcard .thumb::after{content:attr(data-r); position:absolute; bottom:4px; left:5px; font-family:var(--mono); font-size:7.5px; color:var(--lime); letter-spacing:.05em}
+  .sbcard.b .thumb::after{color:var(--coral)} .sbcard.c .thumb::after{color:var(--sky)}
+  .sbcard .lab{padding:5px 6px; font-family:var(--mono); font-size:8px; color:var(--muted)}
+  .sbcard .lab b{display:block; color:var(--text); font-family:var(--disp); font-size:10px; font-weight:500; margin-bottom:1px}
+  .sbcard .toggle{position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:5px; border:1px solid var(--line-2); background:rgba(11,12,14,.8); display:flex; align-items:center; justify-content:center; font-size:10px}
+  .sbcard .toggle.ok{color:var(--lime); border-color:rgba(212,255,63,.5)}
+  .sbcard .reroll{position:absolute; top:4px; right:26px; width:18px; height:18px; border-radius:5px; border:1px solid var(--line-2); background:rgba(11,12,14,.8); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--muted)}
+  .sbcard.rejected{opacity:.4}
+  .sbcard.rejected .thumb{filter:grayscale(1)}
+  .sbcard.rejected .toggle{color:var(--coral); border-color:rgba(255,93,115,.5)}
+  .rfoot{margin-top:13px; display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .btn{font-family:var(--mono); font-size:11px; padding:8px 13px; border-radius:8px; border:1px solid var(--line-2); color:var(--muted); background:var(--ink-3)}
+  .btn.go{background:var(--lime); color:#0b0c0e; border-color:var(--lime); font-weight:700}
+  .briefline{font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:10px}
+  .briefline em{color:var(--lime); font-style:normal}
+  .vdesc{margin-top:9px; padding:8px 10px; border-left:2px solid var(--sky); background:rgba(90,209,255,.06); font-family:var(--serif); font-style:italic; font-size:12.5px; line-height:1.45; color:var(--text)}
+  .vdesc::before{content:"AI"; font-family:var(--mono); font-style:normal; font-size:8px; letter-spacing:.12em; color:var(--sky); display:block; margin-bottom:3px}
+  .opslist{margin:12px 0 0; padding:0; list-style:none; font-family:var(--mono); font-size:11px; color:var(--muted)}
+  .opslist li{padding:3px 0; display:flex; gap:8px}
+  .opslist li::before{content:"›"; color:var(--lime)}
+  .opslist li.no::before{content:"✕"; color:var(--muted-2)}
+  .opslist li.no{color:var(--muted-2)}
+  ul.q{list-style:none; padding:0; margin:18px 0 0}
+  ul.q li{padding:12px 16px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px; font-size:15px; color:var(--text); display:flex; gap:12px}
+  ul.q li::before{content:"?"; font-family:var(--mono); color:var(--coral); font-weight:700; flex:none}
+  footer{padding:50px 0 90px; color:var(--muted-2); font-family:var(--mono); font-size:12px; border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker"><span class="dot"></span> Cutdown · V1 · direction-finding</div>
+  <h1>One video in.<br><span class="em">One sharp cut out.</span></h1>
+  <p class="lede">A standalone <em>cutdown tool</em> — drop a long video, set a target length, let it propose the sections worth keeping, eyeball them, ship the cut. Later it slots into the bigger <em>video-stitch</em> as one module.</p>
+  <div class="note">⚠︎ <b>This is an exploration, not a spec.</b> The spine below is a proposal; the <b>forks</b> are the real decisions. Click options to mark your gut preference — then we'll run <span class="mono">grill-me</span> to lock the direction before any plan or code.</div>
+  <div class="meta-row">
+    <span class="chip lime">scope · <b>cutdown only</b></span>
+    <span class="chip">target length · <b>variable</b></span>
+    <span class="chip sky">gate · <b>human preview</b></span>
+    <span class="chip">render · <b>Shotstack</b></span>
+    <span class="chip">brief · <b>optional steer</b></span>
+  </div>
+</header>
+
+<!-- ───────────────────────── SPINE ───────────────────────── -->
+<section>
+  <div class="sec-num">01 / THE PROPOSED SPINE</div>
+  <h2>The flow, end to end</h2>
+  <p class="sub">Five beats. The one in coral is the new thing V0 never had: a place where a human looks before pixels get rendered.</p>
+
+  <div class="spine">
+    <div class="step">
+      <div class="idx">1</div>
+      <div><h4>Source <span class="tag">input</span></h4><p>Drop / pick a long video. We probe its true duration (ffmpeg) so nothing downstream runs past EOF.</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <div class="idx">2</div>
+      <div><h4>Intent <span class="tag">target length</span><span class="tag">brief?</span></h4><p>Set the target length (e.g. 15 / 30 / 60s or free). Optionally type a creative brief — “focus on the product reveal”, “the founder’s key points”. This steers selection.</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <div class="idx">3</div>
+      <div><h4>Suggest <span class="tag">Gemini</span></h4><p>The model watches the whole video and proposes cutdown sections — each with a short “why”, a role in the story, and a score. Two-pass: map the beats, then select a coherent subset that serves the brief.</p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step gate">
+      <div class="idx">4</div>
+      <div><h4>Preview &amp; refine <span class="tag">the gate</span></h4><p>Human looks. Preview the assembled cut, accept / reject / re-roll sections, tweak the brief and re-suggest. Nothing renders for real until you say go. <i>(Fidelity of this preview is a fork below.)</i></p></div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="step">
+      <div class="idx">5</div>
+      <div><h4>Output <span class="tag">render</span></h4><p>Approved plan → ffmpeg clips → Shotstack → the final cut. Download / share. (Sandbox watermark for now.)</p></div>
+    </div>
+  </div>
+
+  <div class="music-rail">🎵 <span><b>Where does music go?</b> Music isn’t on the spine yet — and that’s deliberate. Tempo currently <b>drives the cut grid</b>, so music can’t just be a sticker on top. See Fork&nbsp;A. It might even be <b>out of the isolated cutdown tool entirely</b> and live in video-stitch.</span></div>
+</section>
+
+<!-- ───────────────────────── ABSTRACTION ───────────────────────── -->
+<section>
+  <div class="sec-num">01·5 / THE CORE ABSTRACTION</div>
+  <h2>It's all a shell over one call</h2>
+  <p class="sub">Every surface — CLI, the local web page, later video-stitch — is just UX wrapped around a single brief-optional function. That's what makes the cutdown tool <em>isolatable</em>. The brain doesn't know or care who called it.</p>
+
+  <div class="api">
+    <pre><span class="c">// the isolation boundary — one function, two modes</span>
+<span class="k">async function</span> <span class="f">aiCutdown</span>(
+  videoInput<span class="t">: VideoRef</span>,             <span class="c">// the source (path / blob)</span>
+  opts<span class="t">: {</span>
+    humanInput<span class="t">?: string</span>,         <span class="c">// the brief — OPTIONAL</span>
+    targetSec<span class="t">: number</span>,           <span class="c">// desired output length</span>
+  <span class="t">}</span>
+)<span class="t">: Promise&lt;CutdownPlan&gt;</span> {
+  <span class="k">if</span> (!opts.humanInput) {
+    <span class="c">// ── AUTODETECT ── system prompt finds the meaningful</span>
+    <span class="c">// moments; planCuts maps them onto the beat-grid regions.</span>
+  } <span class="k">else</span> {
+    <span class="c">// ── STEER ── selection is biased toward the brief,</span>
+    <span class="c">// still snapped to the same beat-grid regions.</span>
+  }
+  <span class="k">return</span> plan; <span class="c">// ordered sections → preview → render</span>
+}</pre>
+  </div>
+
+  <div class="twomode">
+    <div class="mode auto">
+      <div class="mh">humanInput = ∅ <span class="b">AUTODETECT</span></div>
+      <p>Fallback path. The system prompt does the thinking — “find the moments that matter” — and the cuts land in the <b>beat-grid regions we already map</b>. Zero-input mode: drop a video, get a sensible cut. This is V0's behavior, made addressable.</p>
+    </div>
+    <div class="mode steer">
+      <div class="mh">humanInput = "…" <span class="b">STEER</span></div>
+      <p>The brief biases which moments win and how they cohere — but it rides on the <b>same grid + same return shape</b>. Same function, richer result. No second code path for the renderer to learn.</p>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:18px">Open question this raises for grill-me: does <span class="mono">aiCutdown</span> return a <b>plan to preview</b> (sections + timings, human approves, then a separate <span class="mono">render()</span>) or does it render straight through? The preview gate (Step&nbsp;4) argues for plan-then-render — keep the brain and the renderer as two seams.</p>
+</section>
+
+<!-- ───────────────────────── FORKS ───────────────────────── -->
+<section>
+  <div class="sec-num">02 / THE FORKS</div>
+  <h2>The decisions that actually shape it</h2>
+  <p class="sub">These are the things I can't pick for you. Click to register a lean; we'll pressure-test each in grill-me.</p>
+
+  <!-- FORK A: MUSIC -->
+  <div class="fork hot" data-fork="music">
+    <div class="flabel">Fork A · highest stakes</div>
+    <h3>Where does music live — or does it live here at all?</h3>
+    <p class="why">In V0, the track's <b>BPM builds the beat-grid that sets every cut boundary</b> (cuts land on bars so it feels synced). So music is upstream of timing, not a top layer. That makes “add music last” technically awkward — and raises whether music even belongs in a tool whose job is just “pick the moments.”</p>
+    <div class="opts">
+      <div class="opt" data-rec><div class="ot">Music-first <span class="pill">v0 today</span></div><p>Pick the track before suggest; its BPM drives the grid; preview is beat-accurate.</p><div class="rec">▸ matches current engine</div></div>
+      <div class="opt"><div class="ot">No music in cutdown</div><p>Cutdown tool outputs a silent, retimed cut. Music is a <b>video-stitch</b> concern. Cleanest isolation.</p></div>
+      <div class="opt"><div class="ot">Music after approve</div><p>Approve sections silently, then lay a track and re-snap the grid. Preview changes after music — friction.</p></div>
+      <div class="opt"><div class="ot">Auto-suggest track</div><p>Infer a vibe from the video, pick from the catalog, let the user swap. Most “magic”, most to build.</p></div>
+    </div>
+  </div>
+
+  <!-- FORK B: target -->
+  <div class="fork" data-fork="length">
+    <div class="flabel">Fork B</div>
+    <h3>Target length &amp; aspect — how much freedom?</h3>
+    <p class="why">V0 was hard-locked to 15.000s · 9:16. “Target length” implies that's now a knob. Every degree of freedom multiplies preview/QA surface.</p>
+    <div class="opts">
+      <div class="opt" data-rec><div class="ot">Presets <span class="pill">15/30/60</span></div><p>A few blessed lengths, 9:16 fixed. Predictable grid math, fast to ship.</p><div class="rec">▸ recommend for V1</div></div>
+      <div class="opt"><div class="ot">Free slider</div><p>Any length in a range (e.g. 6–90s). More flexible, more edge cases in the grid.</p></div>
+      <div class="opt"><div class="ot">Length + aspect</div><p>Also expose 9:16 / 1:1 / 16:9. Doubles the render-format matrix.</p></div>
+    </div>
+  </div>
+
+  <!-- FORK C: brief -->
+  <div class="fork" data-fork="brief">
+    <div class="flabel">Fork C</div>
+    <h3>The creative brief — when and how binding?</h3>
+    <p class="why">The brief is the user's voice in selection. Question is whether it's an upfront steer, a refinement after seeing suggestions, or both.</p>
+    <div class="opts">
+      <div class="opt" data-rec><div class="ot">Optional, upfront</div><p>Empty = “just make it engaging”. Filled = steer pass 2. Re-editable to re-suggest.</p><div class="rec">▸ simplest useful</div></div>
+      <div class="opt"><div class="ot">Refine-after</div><p>Suggest blind first, then the brief nudges a re-roll. Brief becomes a correction tool.</p></div>
+      <div class="opt"><div class="ot">Required</div><p>Force intent up front. Better cuts, higher friction, worse for “just give me something”.</p></div>
+    </div>
+  </div>
+
+  <!-- FORK D: preview fidelity -->
+  <div class="fork hot" data-fork="preview">
+    <div class="flabel">Fork D · defines the feel</div>
+    <h3>How real is the preview at the gate?</h3>
+    <p class="why">This single choice sets the whole UX tempo. A real render is truthful but <b>costs a Shotstack render + ~30–60s wait + watermark</b> on every iteration. A cheap preview is instant but approximate.</p>
+    <div class="opts">
+      <div class="opt"><div class="ot">Storyboard <span class="pill">cheapest</span></div><p>Thumbnails + labels on a timeline. No playback. Instant, zero render cost. Least convincing.</p></div>
+      <div class="opt" data-rec><div class="ot">Local rough-cut</div><p>Concatenate the source clips in-browser/ffmpeg (no beat-grid, no music). Fast, free, ~truthful on content.</p><div class="rec">▸ best effort/value</div></div>
+      <div class="opt"><div class="ot">Real render</div><p>Shotstack every iteration — exactly the final, but slow + costs credits + watermark each loop.</p></div>
+    </div>
+  </div>
+
+  <!-- FORK F: surface -->
+  <div class="fork" data-fork="surface">
+    <div class="flabel">Fork E</div>
+    <h3>What are we actually building in V1?</h3>
+    <p class="why">The flow above could be a script, a throwaway local UI, or a real studio screen. This decides how much of V1 is plumbing vs. product.</p>
+    <div class="opts">
+      <div class="opt"><div class="ot">CLI + artifacts <span class="pill">tracer++</span></div><p>Extend run-live: emit a suggestions JSON + storyboard, approve via a flag/file, then render. No UI.</p></div>
+      <div class="opt" data-rec><div class="ot">Minimal local web UI</div><p>One page: upload → suggestions → preview → render. Local only. Proves the UX honestly.</p><div class="rec">▸ matches “explore UX”</div></div>
+      <div class="opt"><div class="ot">Studio screen</div><p>A real app surface (auth, OutputDoc, multi-tenant). Biggest lift; arguably post-V1.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── GATE MOCKS ───────────────────────── -->
+<section>
+  <div class="sec-num">03 / THE GATE, TWO WAYS</div>
+  <h2>Step 4 is the heart — here are two shapes</h2>
+  <p class="sub">The suggest-and-approve screen carries the whole experience. Rough sketches, not final pixels — which mental model feels right?</p>
+
+  <div class="mocks">
+    <div class="mock">
+      <div class="cap">Variant 1 · Timeline-first</div>
+      <div class="body">
+        <div class="player">preview 9:16</div>
+        <div class="scr">▸ assembled cut · 0:30 · 7 sections</div>
+        <div class="segrow">
+          <div class="seg">hook</div><div class="seg b">build</div><div class="seg c">reveal</div><div class="seg d">react</div><div class="seg">detail</div><div class="seg b">payoff</div>
+        </div>
+        <div class="scr" style="margin-top:10px">drag edges to trim · click a block to swap source · ⟳ re-roll all<br>brief: <span style="color:var(--lime)">“focus on the demo”</span> ✎ &nbsp; [ Render ▸ ]</div>
+      </div>
+    </div>
+
+    <div class="mock">
+      <div class="cap">Variant 2 · Card review</div>
+      <div class="body">
+        <div class="card-mini"><div class="th"></div><div class="meta"><b>The reveal</b>1:24–1:29 · score .94</div><div class="acts"><span class="yes">✓</span><span class="no">✕</span></div></div>
+        <div class="card-mini"><div class="th"></div><div class="meta"><b>Founder line</b>0:48–0:53 · score .90</div><div class="acts"><span class="yes">✓</span><span class="no">✕</span></div></div>
+        <div class="card-mini"><div class="th"></div><div class="meta"><b>Crowd reaction</b>2:10–2:14 · score .86</div><div class="acts"><span class="yes">✓</span><span class="no">✕</span></div></div>
+        <div class="scr" style="margin-top:6px">accept the set → assemble → preview → render<br>simpler to build · less timeline control</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── SCOPE LADDER ───────────────────────── -->
+<section>
+  <div class="sec-num">04 / SCOPE LADDER</div>
+  <h2>How much control at the gate?</h2>
+  <p class="sub">Refinement power is a ladder, not a yes/no. V1 should pick a rung and stop.</p>
+  <div class="ladder">
+    <div class="rung"><span class="lv">rung 0</span><br><b>Accept all</b><p>Take the AI's set as-is. One button. (Basically V0 + a look.)</p></div>
+    <div class="rung now"><span class="lv">rung 1 · proposed V1</span><br><b>Accept / reject / re-roll per section + edit brief</b><p>Keep or kill each suggestion, ask for another, steer with the brief. No manual frame-trimming.</p></div>
+    <div class="rung"><span class="lv">rung 2</span><br><b>Manual trim &amp; reorder</b><p>Drag clip edges, reorder the story. Real mini-editor. Much more UI.</p></div>
+    <div class="rung"><span class="lv">rung 3</span><br><b>Add your own clips / overlays / captions</b><p>Full creative surface. This is video-stitch territory, not cutdown.</p></div>
+  </div>
+</section>
+
+<!-- ───────────────────────── RUNG 0 vs 1 ───────────────────────── -->
+<section>
+  <div class="sec-num">04·5 / THREE VERSIONS, PICK ONE</div>
+  <h2>Generate 3 cuts. Pick the one you like.</h2>
+  <p class="sub">No editing individual cuts. The brain returns <b>3 distinct full versions</b>, each a complete coherent cut shown as a thumbnail storyboard. You compare and pick one whole version to render — or re-roll for 3 fresh ones. Human taste replaces per-section fiddling.</p>
+
+  <div class="rungcmp" style="grid-template-columns:repeat(3,1fr)">
+    <!-- VERSION A -->
+    <div class="rcol">
+      <div class="rhead"><div class="rt">Version A <span>chronological</span></div><div class="badge dim">○ pick</div></div>
+      <div class="rbody">
+        <div class="rmeta">6 cuts · 0:30 · 108bpm</div>
+        <div class="sbstrip">
+          <div class="sbcard"><div class="thumb" data-r="open"></div></div>
+          <div class="sbcard b"><div class="thumb" data-r="build"></div></div>
+          <div class="sbcard c"><div class="thumb" data-r="mid"></div></div>
+          <div class="sbcard"><div class="thumb" data-r="turn"></div></div>
+          <div class="sbcard b"><div class="thumb" data-r="end"></div></div>
+        </div>
+        <div class="vdesc">Tells it in order — open → build → turning point → payoff. The calmest, most narrative read of the footage; good when the story matters more than punch.</div>
+      </div>
+    </div>
+    <!-- VERSION B (picked) -->
+    <div class="rcol pick">
+      <div class="rhead"><div class="rt">Version B <span>high-energy</span></div><div class="badge">● picked</div></div>
+      <div class="rbody">
+        <div class="rmeta">7 cuts · 0:30 · 108bpm</div>
+        <div class="sbstrip">
+          <div class="sbcard c"><div class="thumb" data-r="hook"></div></div>
+          <div class="sbcard"><div class="thumb" data-r="punch"></div></div>
+          <div class="sbcard b"><div class="thumb" data-r="reveal"></div></div>
+          <div class="sbcard c"><div class="thumb" data-r="react"></div></div>
+          <div class="sbcard"><div class="thumb" data-r="payoff"></div></div>
+        </div>
+        <div class="vdesc">Front-loads the hook and cuts hard between the biggest peaks. Punchiest for social; sacrifices some setup for momentum.</div>
+      </div>
+    </div>
+    <!-- VERSION C -->
+    <div class="rcol">
+      <div class="rhead"><div class="rt">Version C <span>on-brief: demo</span></div><div class="badge dim">○ pick</div></div>
+      <div class="rbody">
+        <div class="rmeta">5 cuts · 0:30 · 108bpm</div>
+        <div class="sbstrip">
+          <div class="sbcard b"><div class="thumb" data-r="setup"></div></div>
+          <div class="sbcard"><div class="thumb" data-r="demo1"></div></div>
+          <div class="sbcard c"><div class="thumb" data-r="demo2"></div></div>
+          <div class="sbcard b"><div class="thumb" data-r="result"></div></div>
+        </div>
+        <div class="vdesc">Tight on the product demo per your brief — setup, two demo beats, the result. Most on-message; least “highlight reel”.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rfoot" style="margin-top:14px">
+    <span class="btn go">Render Version B ▸</span>
+    <span class="btn">⟳ Re-roll all 3</span>
+    <span class="briefline" style="margin:0">brief: <em>“focus on the demo”</em> ✎ (edit → 3 new versions)</span>
+  </div>
+
+  <p class="sub" style="margin-top:18px"><b>What this means for the brain:</b> one call returns N plans — <span class="mono">aiCutdown(video, track, { humanInput?, targetSec, variants: 3 }) → CutdownPlan[]</span>. Each <span class="mono">CutdownPlan</span> carries an <b>AI-written description</b> (its pitch — the blue blurb above) plus a per-cut <span class="mono">why</span>, so you pick by reading, not just by squinting at thumbnails. No keep/exclude state, no per-slot regeneration. The open functional question is <b>how the 3 versions are made meaningfully different</b> (story angle? emphasis? sampling?) — graded in the next question.</p>
+</section>
+
+<!-- ───────────────────────── OPEN QUESTIONS ───────────────────────── -->
+<section>
+  <div class="sec-num">05 / DECISIONS LOCKED</div>
+  <h2>What grill-me settled</h2>
+  <ul class="q" style="--c:var(--lime)">
+    <li><b>Music:</b> music-first. User browses the catalog &amp; picks a track → BPM detected → that track is the source of truth for the cuts. The brain <i>receives</i> the track; it never browses.</li>
+    <li><b>Abstraction:</b> <span class="mono">aiCutdown(video, track, {humanInput?, targetSec, variants}) → CutdownPlan[]</span>. Plan-then-render: the brain returns plans, render is a separate seam.</li>
+    <li><b>Refinement:</b> generate <b>3 whole versions, pick one</b>. No per-cut editing. Re-roll = 3 fresh versions.</li>
+    <li><b>Diversity:</b> analyze once, then select 3× by <b>fixed angle — Narrative / Highlights / Punchy</b>. Each angle sets its own playback order. A brief, when present, biases all three.</li>
+    <li><b>Per-version polish:</b> one lightweight AI self-critique per version (coherence + brief-fit) before it's shown.</li>
+    <li><b>Each plan carries</b> an AI-written description + per-cut <span class="mono">why</span> (pick by reading, not squinting).</li>
+    <li><b>Preview:</b> storyboard thumbnails (ffmpeg frame-grabs) + description. Final watch = the rendered output (Shotstack).</li>
+    <li><b>Output:</b> presets <b>15 / 30 / 60s</b>, <b>9:16</b> locked.</li>
+    <li><b>Surface:</b> functionality first, UI is a thin throwaway shell. Whole flow is V1, built in checkpoints (mirrors M0 gates).</li>
+  </ul>
+  <p class="sub" style="margin-top:18px">Next → write the design spec → <span class="mono">writing-plans</span>.</p>
+</section>
+
+<footer>
+  cutdown-tracer · V1 flow exploration · direction-finding draft · not a spec · next → grill-me → design doc → writing-plans
+</footer>
+
+</div>
+<script>
+  // lightweight: let the reader register a lean per fork (single-select within a fork)
+  document.querySelectorAll('.fork').forEach(fork=>{
+    fork.querySelectorAll('.opt').forEach(opt=>{
+      opt.addEventListener('click',()=>{
+        fork.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
+        opt.classList.add('sel');
+      });
+    });
+  });
+</script>
+</body>
+</html>

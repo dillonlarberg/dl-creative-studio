@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/phase2.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/phase2.ts keeps a separate prototype copy.
 import OpenAI, { toFile } from "openai";
 import { DEFAULT_P2_QUALITY, OPENAI_P2_MODEL, type P2Quality } from "./config";
 import { prepPaddedCanvas, type PaddedCanvas } from "./canvasPrep";

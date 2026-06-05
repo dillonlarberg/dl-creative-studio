@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/resize.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/resize.ts keeps a separate prototype copy.
 import sharp from "sharp";
 
 export async function resizeToTarget(

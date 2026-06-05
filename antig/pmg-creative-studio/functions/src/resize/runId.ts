@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/runId.ts — see TODO(resize-pipeline-extract).
+// Tracer-only run-id helper. NOTE: tools/resize-tracer/src/runId.ts keeps a separate prototype copy.
 import { randomBytes } from "node:crypto";
 
 export function makeRunId(fixtureBasename: string, targetLabel: string): string {

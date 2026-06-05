@@ -1,0 +1,9 @@
+node_modules/
+.venv*/
+dist/
+fixtures/*
+!fixtures/README.md
+out/
+critiques.jsonl
+.env
+*.log

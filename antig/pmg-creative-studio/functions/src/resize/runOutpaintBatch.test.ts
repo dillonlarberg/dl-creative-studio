@@ -88,7 +88,7 @@ vi.mock("openai", () => ({
   },
 }));
 
-vi.mock("./pipeline", () => ({
+vi.mock("../_shared/ai/outpaint", () => ({
   runPhase1Once: vi.fn(),
   runPhase2ForTarget: vi.fn(),
   detectSourceSpec: vi.fn(),
@@ -103,7 +103,7 @@ vi.mock("./storage", () => ({
 import {
   runPhase1Once,
   runPhase2ForTarget,
-} from "./pipeline";
+} from "../_shared/ai/outpaint";
 import {
   stageSourceIfMissing,
   uploadOutput,

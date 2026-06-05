@@ -1,4 +1,4 @@
-// MAINTAINED IN PARALLEL with tools/resize-tracer/src/config.ts — see TODO(resize-pipeline-extract).
+// Shared outpaint primitive. NOTE: tools/resize-tracer/src/config.ts keeps a separate prototype copy.
 // Locked constants — Phase 1 (Gemini 2.5 Pro analysis) + Phase 2 (OpenAI gpt-image-2 edit).
 // Phase 1 SDK: @google/genai. Phase 2 SDK: openai.
 

@@ -1,0 +1,32 @@
+{
+  "name": "cutdown-tracer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Local debug rig for the video-stitch v0 cutdown pipeline (Gemini moment-selection -> librosa tempo -> planCuts -> Shotstack render). Spec: src/apps/video-stitch/v0-design.html.",
+  "scripts": {
+    "verify-gemini": "tsx scripts/verify-gemini.ts",
+    "verify-shotstack": "tsx scripts/verify-shotstack.ts",
+    "run-fake": "tsx scripts/run-fake.ts",
+    "select-gemini": "tsx scripts/select-gemini.ts",
+    "detect-tempo": "tsx scripts/detect-tempo.ts",
+    "ingest-music": "tsx scripts/ingest-music.ts",
+    "run-live": "tsx scripts/run-live.ts",
+    "run-cutdown": "tsx scripts/run-cutdown.ts",
+    "shotstack-status": "tsx scripts/shotstack-status.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^13.10.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
