@@ -39,7 +39,7 @@ describe("GeminiCutdownBrain.analyze", () => {
   it("uploads once, returns a validated theme + beats, deletes the file", async () => {
     const { client, calls } = queuedClient([analysisJson]);
     const brain = new GeminiCutdownBrain(client, { pollIntervalMs: 0 });
-    const analysis = await brain.analyze({ path: "x.mp4" }, 60);
+    const analysis = await brain.analyze({ path: "x.mp4" }, 60, 7);
     expect(analysis.theme).toBe("a product launch");
     expect(analysis.beats).toHaveLength(3);
     expect(calls.upload).toBe(1);
@@ -70,7 +70,7 @@ describe("GeminiCutdownBrain.selectForAngle", () => {
   it("returns angle-ordered segments with a why, text-only (no upload)", async () => {
     const { client, calls } = queuedClient([selectJson([2, 40, 20])]);
     const brain = new GeminiCutdownBrain(client);
-    const segs = await brain.selectForAngle(analysis, "narrative", undefined, 60);
+    const segs = await brain.selectForAngle(analysis, "narrative", undefined, 60, 3);
     expect(calls.upload).toBe(0);
     expect(segs.map((s) => s.startSec)).toEqual([2, 20, 40]);
     expect(segs[0].why).toBeTruthy();
@@ -86,7 +86,7 @@ describe("GeminiCutdownBrain.critique", () => {
   it("returns the revised selection when the model responds well", async () => {
     const { client } = queuedClient([critiqueJson([2], "a calm narrative")]);
     const brain = new GeminiCutdownBrain(client);
-    const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
+    const out = await brain.critique(analysis, "narrative", undefined, selected, 60, 1);
     expect(out.segments).toHaveLength(1);
     expect(out.segments[0].why).toBe("kept");
     expect(out.description).toBe("a calm narrative");
@@ -95,7 +95,7 @@ describe("GeminiCutdownBrain.critique", () => {
   it("degrades to the input selection if the critique call fails", async () => {
     const { client } = queuedClient([{ text: "garbage" }, { text: "garbage" }]);
     const brain = new GeminiCutdownBrain(client, { maxAttempts: 2, backoffMs: 0 });
-    const out = await brain.critique(analysis, "narrative", undefined, selected, 60);
+    const out = await brain.critique(analysis, "narrative", undefined, selected, 60, 2);
     expect(out.segments).toEqual(selected);
     expect(out.description).toMatch(/Narrative/);
   });

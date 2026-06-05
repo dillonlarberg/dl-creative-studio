@@ -8,7 +8,7 @@ import type { CutdownBrain, VideoRef } from "./seams.js";
 import { z } from "zod";
 import { VideoAnalysisSchema, SegmentSchema, CutdownPlanSchema, type VideoAnalysis, type Segment, type Angle, type CutdownPlan, type SampleMusicTrack } from "./types.js";
 import { angleGuidance, orderSegments, ANGLES, angleLabel } from "./angles.js";
-import { clampSegments, planCuts } from "./planCuts.js";
+import { clampSegments, planCuts, barGridBoundaries } from "./planCuts.js";
 import { type GenAiLike, uploadAndActivate, generateJson } from "./geminiCore.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
@@ -37,20 +37,28 @@ export class GeminiCutdownBrain implements CutdownBrain {
 
   private get model(): string { return this.opts.model ?? DEFAULT_MODEL; }
 
-  /** Shared analyze pass: upload the video once, extract a theme + described beats, clean up. */
-  async analyze(video: VideoRef, targetSec: number): Promise<VideoAnalysis> {
+  /**
+   * Shared analyze pass: upload the video once, extract a theme + described beats, clean up.
+   * `targetCuts` is the number of cuts the reel's beat grid will hold; analyze returns a
+   * comfortably larger pool of distinct, non-overlapping beats so each angle has real choice.
+   */
+  async analyze(video: VideoRef, targetSec: number, targetCuts: number): Promise<VideoAnalysis> {
     const file = await uploadAndActivate(this.ai, video.path, {
       pollIntervalMs: this.opts.pollIntervalMs,
       uploadTimeoutMs: this.opts.uploadTimeoutMs,
     });
     try {
+      const minBeats = Math.max(10, targetCuts + 3);
+      const maxBeats = Math.max(16, targetCuts * 2);
       const prompt =
         `Analyze this video for building a ~${targetSec}s vertical short. ` +
         `Return JSON { theme, beats } where theme is one sentence describing the through-line, ` +
         `and beats is an array of distinct moments: ` +
         `{ startSec, endSec, score (0-1 engagement), summary (what happens, <=12 words), ` +
         `role (e.g. hook, setup, build, reveal, reaction, payoff, detail) }. ` +
-        `Return 8-15 well-spread, non-overlapping beats; startSec/endSec are seconds into the source.`;
+        `Return at least ${minBeats} beats (aim for ${minBeats}-${maxBeats}), each a DISTINCT, ` +
+        `NON-OVERLAPPING moment — no two beats may overlap in source time. Spread them across the ` +
+        `whole source. startSec/endSec are seconds into the source.`;
       return await generateJson(this.ai, {
         model: this.model,
         contents: [
@@ -66,12 +74,17 @@ export class GeminiCutdownBrain implements CutdownBrain {
     }
   }
 
-  /** Text-only: pick the beats that serve this angle (+ brief), then order them for playback. */
+  /**
+   * Text-only: pick the beats that serve this angle (+ brief), then order them for playback.
+   * `targetCuts` is how many cuts the grid will hold; the selection must supply at least that
+   * many distinct, non-overlapping beats so the reel fills every slot without repeating.
+   */
   async selectForAngle(
     analysis: VideoAnalysis,
     angle: Angle,
     brief: string | undefined,
     targetSec: number,
+    targetCuts: number,
   ): Promise<Segment[]> {
     const briefLine = brief
       ? `The user's brief is: "${brief}". Every chosen beat must serve this brief.`
@@ -79,11 +92,13 @@ export class GeminiCutdownBrain implements CutdownBrain {
     const prompt =
       `Theme: ${analysis.theme}\n` +
       `Beats (JSON): ${JSON.stringify(analysis.beats)}\n\n` +
-      `Select the subset of these beats for a ~${targetSec}s vertical short. ` +
+      `Select beats for a ~${targetSec}s vertical short. ` +
       `${angleGuidance(angle)} ${briefLine} ` +
       `Return JSON { segments: [{ startSec, endSec, score, summary, role, why }] } ` +
       `where 'why' is a short reason this beat earns its place in THIS cut. ` +
-      `Choose enough distinct beats to comfortably fill ${targetSec}s. Use each beat at most once unless the duration cannot be reached otherwise.`;
+      `Select AT LEAST ${targetCuts} DISTINCT beats (a few more is good) so the reel fills every ` +
+      `slot without repeating a moment. The chosen beats must NOT overlap each other in source ` +
+      `time, and never reuse the same beat twice.`;
     const { segments } = await generateJson(this.ai, {
       model: this.model,
       contents: [{ text: prompt }],
@@ -107,6 +122,7 @@ export class GeminiCutdownBrain implements CutdownBrain {
     brief: string | undefined,
     selected: Segment[],
     targetSec: number,
+    targetCuts: number,
   ): Promise<{ description: string; segments: Segment[] }> {
     const briefLine = brief ? `Brief: "${brief}". ` : "";
     const prompt =
@@ -114,7 +130,9 @@ export class GeminiCutdownBrain implements CutdownBrain {
       `Available beats: ${JSON.stringify(analysis.beats)}\n` +
       `Current ${angle} selection: ${JSON.stringify(selected)}\n\n` +
       `${briefLine}Critique this selection for coherence (do adjacent cuts relate?) and ` +
-      `${angle} fit. Keep enough beats to fill roughly ${targetSec}s — don't collapse to too few. ` +
+      `${angle} fit. Ensure the final selection has AT LEAST ${targetCuts} DISTINCT, ` +
+      `NON-OVERLAPPING beats so the ~${targetSec}s reel never repeats or overlaps a moment; ` +
+      `if there are fewer, add more from the available beats. ` +
       `If it is already good, return it unchanged. Otherwise swap/drop/replace ` +
       `beats (drawn only from the available beats) to improve it. ` +
       `Also write a one-line 'description': a punchy pitch (<=15 words) for THIS version's cut. ` +
@@ -144,15 +162,18 @@ export class GeminiCutdownBrain implements CutdownBrain {
     track: SampleMusicTrack,
     opts: { targetSec: number; durationSec: number; humanInput?: string },
   ): Promise<CutdownPlan[]> {
-    const analysis = await this.analyze(video, opts.targetSec);
     const bpm = track.bpm ?? DEFAULT_BPM;
+    // How many cuts the beat grid will hold — drives how many distinct beats we ask for,
+    // so the reel fills every slot without planCuts having to repeat a moment.
+    const targetCuts = Math.max(1, barGridBoundaries(bpm, opts.targetSec).length - 1);
+    const analysis = await this.analyze(video, opts.targetSec, targetCuts);
 
     const plans: CutdownPlan[] = [];
     for (const angle of ANGLES) {
-      const selected = await this.selectForAngle(analysis, angle, opts.humanInput, opts.targetSec);
+      const selected = await this.selectForAngle(analysis, angle, opts.humanInput, opts.targetSec, targetCuts);
       // playback order is set by selectForAngle/critique (per-angle); planCuts preserves it.
       const { description, segments: critiqued } = await this.critique(
-        analysis, angle, opts.humanInput, selected, opts.targetSec,
+        analysis, angle, opts.humanInput, selected, opts.targetSec, targetCuts,
       );
       const clamped = clampSegments(critiqued, opts.durationSec);
       if (clamped.length === 0) continue; // this angle yielded nothing usable → drop it
