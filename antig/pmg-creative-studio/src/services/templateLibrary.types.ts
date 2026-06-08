@@ -3,13 +3,11 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type FieldMappingSource = 'feed' | 'upload' | 'brand' | 'static';
 
-export interface FieldMapping {
-  source: FieldMappingSource;
-  column?: string;       // required when source === 'feed'
-  assetPath?: string;    // required when source === 'upload' — GCS path, not signed URL
-  brandKey?: string;     // required when source === 'brand' — key of brandOverrides
-  value?: string;        // required when source === 'static'
-}
+export type FieldMapping =
+  | { source: 'feed'; column: string }
+  | { source: 'upload'; assetPath: string }
+  | { source: 'brand'; brandKey: string }
+  | { source: 'static'; value: string };
 
 export interface AdSize {
   width: number;
