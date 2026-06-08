@@ -6,7 +6,8 @@
  * Auth: ADC (`gcloud auth application-default login`). Re-runnable (merges docs).
  *
  * Run:  PYTHON_BIN=$(pwd)/.venv-librosa/bin/python npm run ingest-music
- *       npm run ingest-music -- --dry-run     # probe + print, write nothing
+ *       npm run ingest-music -- --dry-run            # probe + print, write nothing
+ *       npm run ingest-music -- --manifest tracks.json  # curated catalog w/ tags
  */
 import "dotenv/config";
 import os from "node:os";
@@ -66,13 +67,14 @@ function probe(localPath: string): Promise<{ bpm: number; durationSec: number }>
 async function main(): Promise<void> {
   const dryRun = process.argv.includes("--dry-run");
 
+  admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
+  const bucket = admin.storage().bucket();
+  const db = admin.firestore();
+
   const manifestIdx = process.argv.indexOf("--manifest");
   if (manifestIdx !== -1) {
     const manifestPath = process.argv[manifestIdx + 1];
     if (!manifestPath) throw new Error("--manifest requires a file path");
-    admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
-    const bucket = admin.storage().bucket();
-    const db = admin.firestore();
     const entries = TrackManifestSchema.parse(JSON.parse(await fs.readFile(manifestPath, "utf8")));
     console.log(`① manifest ${manifestPath}: ${entries.length} track(s)`);
     for (const entry of entries) {
@@ -89,10 +91,6 @@ async function main(): Promise<void> {
     console.log(`\n✓ done (${dryRun ? "dry-run" : "wrote " + entries.length + " doc(s)"}).`);
     return;
   }
-
-  admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
-  const bucket = admin.storage().bucket();
-  const db = admin.firestore();
 
   console.log(`① listing gs://${BUCKET}/${PREFIX} …`);
   const [files] = await bucket.getFiles({ prefix: PREFIX });
