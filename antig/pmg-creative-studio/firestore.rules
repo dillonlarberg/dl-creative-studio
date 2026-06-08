@@ -36,13 +36,99 @@ service cloud.firestore {
       return request.auth.token.get('clients', {}).get(clientSlug, false) == true;
     }
 
-    // Path-scoped tenant subtree.
+    // ─────────────────────────────────────────────────────────────────────
+    // Client subtree — explicit per-collection rules replace the old catch-all.
     //
-    // PROTOTYPE: allowlist-only until syncClientClaims callable is deployed.
-    // Production target (uncomment and remove the line below once callable is live):
-    //   allow read, write: if isAlliStudioUser() && isClientMember(clientSlug);
-    match /clients/{clientSlug}/{document=**} {
+    // WHY: Firestore ORs all matching rules. A catch-all `/clients/{slug}/**`
+    // grants isAlliStudioUser() to ALL subpaths, making it impossible to add
+    // narrower rules (e.g. draft-privacy, ownership checks) for templateLibrary.
+    // Each collection is now explicit.
+    //
+    // TODO(roles): add isClientMember(clientSlug) to each rule once
+    // syncClientClaims callable is deployed.
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Brand profile document — field data (name, colors, fonts) lives here.
+    match /clients/{clientSlug} {
       allow read, write: if isAlliStudioUser();
+    }
+
+    // Brand assets — logos, fonts, uploaded brand media.
+    match /clients/{clientSlug}/assets/{assetId} {
+      allow read, write: if isAlliStudioUser();
+    }
+
+    // App subtree — creatives, templates, batches, outputs across all appIds.
+    // /outputs/ subcollection is also covered by the collectionGroup rule below.
+    match /clients/{clientSlug}/apps/{appId}/{document=**} {
+      allow read, write: if isAlliStudioUser();
+    }
+
+    // Template Library — client-level reusable templates shared across apps.
+    // Narrower than the app rules: draft privacy + ownership on create/update.
+    match /clients/{clientSlug}/templateLibrary/{templateId} {
+
+      allow read: if isAlliStudioUser() && (
+        resource.data.status == 'published' ||
+        resource.data.createdByUid == request.auth.uid
+      );
+
+      // Create: must start as a draft at version 1, owned by the creator.
+      allow create: if isAlliStudioUser() &&
+        request.resource.data.createdByUid   == request.auth.uid  &&
+        request.resource.data.id             == templateId        &&
+        request.resource.data.status         == 'draft'           &&
+        request.resource.data.version        == 1                 &&
+        request.resource.data.publishedAt    == null              &&
+        request.resource.data.publishedBy    == null              &&
+        request.resource.data.publishedByUid == null;
+
+      // Draft update: creator only, immutable fields protected, status stays draft.
+      allow update: if isAlliStudioUser() &&
+        resource.data.status == 'draft' &&
+        resource.data.createdByUid == request.auth.uid &&
+        request.resource.data.id           == resource.data.id           &&
+        request.resource.data.createdByUid == resource.data.createdByUid &&
+        request.resource.data.createdBy    == resource.data.createdBy    &&
+        request.resource.data.createdAt    == resource.data.createdAt    &&
+        request.resource.data.status       == 'draft';
+
+      // Publish transition: creator only (draft → published).
+      allow update: if isAlliStudioUser() &&
+        resource.data.status == 'draft' &&
+        resource.data.createdByUid == request.auth.uid &&
+        request.resource.data.id           == resource.data.id           &&
+        request.resource.data.createdByUid == resource.data.createdByUid &&
+        request.resource.data.createdBy    == resource.data.createdBy    &&
+        request.resource.data.createdAt    == resource.data.createdAt    &&
+        request.resource.data.status       == 'published';
+
+      // Published template edit: any allowlisted user, immutable fields protected.
+      // TODO(roles): narrow to isClientMember(clientSlug) && memberRole in ['admin', 'editor']
+      allow update: if isAlliStudioUser() &&
+        resource.data.status == 'published' &&
+        request.resource.data.id           == resource.data.id           &&
+        request.resource.data.createdByUid == resource.data.createdByUid &&
+        request.resource.data.createdBy    == resource.data.createdBy    &&
+        request.resource.data.createdAt    == resource.data.createdAt    &&
+        request.resource.data.status       == 'published';
+
+      // Delete: creator only.
+      allow delete: if isAlliStudioUser() &&
+        resource.data.createdByUid == request.auth.uid;
+
+      // History subcollection: immutable after write; access mirrors parent visibility.
+      match /history/{historyId} {
+        allow read: if isAlliStudioUser() && (
+          get(/databases/$(database)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.status == 'published' ||
+          get(/databases/$(database)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.createdByUid == request.auth.uid
+        );
+        allow create: if isAlliStudioUser() && (
+          get(/databases/$(database)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.status == 'published' ||
+          get(/databases/$(database)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.createdByUid == request.auth.uid
+        );
+        allow update, delete: if false;
+      }
     }
 
     // Datasource registry — written ONLY by the scanDatasources Cloud Function
