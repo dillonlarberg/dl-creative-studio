@@ -1,38 +1,13 @@
-import type { AppManifest, StepData, WizardStep } from '../types';
+import type { AppManifest } from '../types';
 
-/**
- * Video Cutdown — Step 2 stub manifest.
- *
- * The full lift from src/pages/use-cases/UseCaseWizardPage.tsx is parked as
- * its own multi-PR effort (see plan Step 2 — 8 branch points, async-submit
- * orchestration, FFmpeg + Gemini integration, regression test backfill).
- *
- * For now: a preview-status stub so the dashboard can render a clickable
- * card (when VITE_FEATURE_VIDEO_CUTDOWN_LIFT=true) that lands on a
- * "Lift in progress" panel — proves the registry path is reserved without
- * shipping a half-built wizard.
- */
-
-interface VideoCutdownStubData extends StepData {}
-
-const stubStep: WizardStep<VideoCutdownStubData> = {
-  id: 'preview',
-  name: 'Preview',
-  validate: () => ({ ok: false, reason: 'Lift in progress' }),
-  render: () => null,
-};
-
-const manifest: AppManifest<VideoCutdownStubData> = {
+const manifest: AppManifest = {
   id: 'video-cutdown',
   basePath: 'video-cutdown',
   title: 'Video Cutdown',
-  description:
-    'AI-driven cutdown of long-form video into 6/15/30s variants. Lift in progress.',
-  status: 'preview',
-  // Once lifted, this should require brand standards (matches the legacy
-  // UseCase.requiresBrandStandards = true on new-video).
+  description: 'Turn one long video into a sharp, beat-synced 9:16 cut — 3 AI versions, pick one.',
+  status: 'live',
   requiresBrandStandards: false,
-  steps: [stubStep],
+  steps: [],
   initialStepData: () => ({}),
 };
 
