@@ -59,6 +59,8 @@ export interface FeedToCreativesResult {
   creatives: Creative[];
   /** Rows skipped because the chosen column held a video URL (Ad Resize is images-only). */
   skippedVideo: number;
+  /** Rows skipped because image_type === 'thumbnail'. */
+  skippedThumbnail: number;
 }
 
 export async function feedToCreatives(
@@ -67,8 +69,10 @@ export async function feedToCreatives(
   imageColumn: string,
 ): Promise<FeedToCreativesResult> {
   const withUrl = sampleData.filter(row => String(row[imageColumn] ?? '').startsWith('http'));
-  const images = withUrl.filter(row => !isVideoUrl(row[imageColumn]));
-  const skippedVideo = withUrl.length - images.length;
+  const nonThumbnail = withUrl.filter(row => String(row['image_type'] ?? '').toLowerCase() !== 'thumbnail');
+  const skippedThumbnail = withUrl.length - nonThumbnail.length;
+  const images = nonThumbnail.filter(row => !isVideoUrl(row[imageColumn]));
+  const skippedVideo = nonThumbnail.length - images.length;
   const creatives = await Promise.all(
     images.map(async (row) => {
       const imageUrl = String(row[imageColumn]);
@@ -88,5 +92,5 @@ export async function feedToCreatives(
       };
     }),
   );
-  return { creatives, skippedVideo };
+  return { creatives, skippedVideo, skippedThumbnail };
 }
