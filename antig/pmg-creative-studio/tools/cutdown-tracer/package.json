@@ -14,6 +14,7 @@
     "run-live": "tsx scripts/run-live.ts",
     "run-cutdown": "tsx scripts/run-cutdown.ts",
     "shotstack-status": "tsx scripts/shotstack-status.ts",
+    "storyboard": "tsx scripts/storyboard.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
