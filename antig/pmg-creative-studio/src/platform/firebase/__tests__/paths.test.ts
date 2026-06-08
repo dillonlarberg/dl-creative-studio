@@ -125,6 +125,26 @@ describe('paths', () => {
     });
   });
 
+  describe('templateLibrary paths', () => {
+    it('returns the client-level templateLibrary collection path', () => {
+      expect(paths.templateLibrary('ralph_lauren')).toBe(
+        'clients/ralph_lauren/templateLibrary'
+      );
+    });
+
+    it('returns a specific templateLibrary document path', () => {
+      expect(paths.templateLibraryDoc('ralph_lauren', 'tmpl_abc123')).toBe(
+        'clients/ralph_lauren/templateLibrary/tmpl_abc123'
+      );
+    });
+
+    it('returns the history subcollection path for a template', () => {
+      expect(paths.templateLibraryHistory('ralph_lauren', 'tmpl_abc123')).toBe(
+        'clients/ralph_lauren/templateLibrary/tmpl_abc123/history'
+      );
+    });
+  });
+
   describe('compile-time invariants (these would be TS errors if regressed)', () => {
     it('app() refuses an unknown AppId at compile time', () => {
       // @ts-expect-error — 'not-an-app' is not a valid AppId

@@ -73,6 +73,15 @@ export const paths = {
   datasource: (slug: ClientSlug, modelName: string) =>
     `${root(slug)}/datasources/${modelName}`,
 
+  templateLibrary: (slug: ClientSlug): string =>
+    `${root(slug)}/templateLibrary`,
+
+  templateLibraryDoc: (slug: ClientSlug, templateId: string): string =>
+    `${root(slug)}/templateLibrary/${templateId}`,
+
+  templateLibraryHistory: (slug: ClientSlug, templateId: string): string =>
+    `${root(slug)}/templateLibrary/${templateId}/history`,
+
   storage: {
     client: (slug: ClientSlug) => root(slug),
     app: (slug: ClientSlug, appId: AppId, suffix: string) =>
