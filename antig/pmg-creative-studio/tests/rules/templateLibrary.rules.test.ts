@@ -183,9 +183,68 @@ describe('templateLibrary — update draft', () => {
     await assertFails(updateDoc(ref, { createdByUid: 'uid_hacker' }));
   });
 
-  it('denies draft update that sets status to published directly', async () => {
+
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLISH TRANSITION (draft → published)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('templateLibrary — publish transition', () => {
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), `clients/${SLUG}/templateLibrary/draft_001`),
+        draftPayload('uid_annie')
+      );
+    });
+  });
+
+  it('allows creator to publish with full publish metadata set', async () => {
+    const ref = doc(alliCtx('uid_annie').firestore(), `clients/${SLUG}/templateLibrary/draft_001`);
+    await assertSucceeds(
+      updateDoc(ref, {
+        status: 'published',
+        version: 2,
+        publishedByUid: 'uid_annie',
+        publishedBy: 'alli_user_1',
+        publishedAt: new Date(),
+      })
+    );
+  });
+
+  it('denies publish when publishedByUid does not match auth.uid', async () => {
+    const ref = doc(alliCtx('uid_annie').firestore(), `clients/${SLUG}/templateLibrary/draft_001`);
+    await assertFails(
+      updateDoc(ref, {
+        status: 'published',
+        version: 2,
+        publishedByUid: 'uid_someone_else',
+        publishedBy: 'other_user',
+        publishedAt: new Date(),
+      })
+    );
+  });
+
+  it('denies bare status flip without publish metadata', async () => {
     const ref = doc(alliCtx('uid_annie').firestore(), `clients/${SLUG}/templateLibrary/draft_001`);
     await assertFails(updateDoc(ref, { status: 'published' }));
+  });
+
+  it('denies non-creator from publishing', async () => {
+    const ref = doc(
+      alliCtx('uid_chris', otherAllowedEmail).firestore(),
+      `clients/${SLUG}/templateLibrary/draft_001`
+    );
+    await assertFails(
+      updateDoc(ref, {
+        status: 'published',
+        version: 2,
+        publishedByUid: 'uid_chris',
+        publishedBy: 'chris_user',
+        publishedAt: new Date(),
+      })
+    );
   });
 });
 

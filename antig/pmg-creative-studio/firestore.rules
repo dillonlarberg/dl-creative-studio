@@ -94,14 +94,19 @@ service cloud.firestore {
         request.resource.data.status       == 'draft';
 
       // Publish transition: creator only (draft → published).
+      // Requires publishedByUid/publishedBy/publishedAt to be non-null so a bare
+      // {status:'published'} flip (without setting publish metadata) is rejected.
       allow update: if isAlliStudioUser() &&
         resource.data.status == 'draft' &&
         resource.data.createdByUid == request.auth.uid &&
-        request.resource.data.id           == resource.data.id           &&
-        request.resource.data.createdByUid == resource.data.createdByUid &&
-        request.resource.data.createdBy    == resource.data.createdBy    &&
-        request.resource.data.createdAt    == resource.data.createdAt    &&
-        request.resource.data.status       == 'published';
+        request.resource.data.id             == resource.data.id             &&
+        request.resource.data.createdByUid   == resource.data.createdByUid   &&
+        request.resource.data.createdBy      == resource.data.createdBy      &&
+        request.resource.data.createdAt      == resource.data.createdAt      &&
+        request.resource.data.status         == 'published'                  &&
+        request.resource.data.publishedByUid == request.auth.uid             &&
+        request.resource.data.publishedBy    != null                         &&
+        request.resource.data.publishedAt    != null;
 
       // Published template edit: any allowlisted user, immutable fields protected.
       // TODO(roles): narrow to isClientMember(clientSlug) && memberRole in ['admin', 'editor']
@@ -133,12 +138,8 @@ service cloud.firestore {
 
     // Datasource registry — written ONLY by the scanDatasources Cloud Function
     // (admin SDK, bypasses rules). Apps read; there is no client write path.
-    //
-    // NOTE: the prototype catch-all above currently OR-grants write to
-    // allowlisted users (Firestore unions allows across matching rules; a
-    // second rule cannot deny what another grants). True client-write denial
-    // lands when that catch-all is scoped to explicit subtrees — tracked with
-    // the existing isClientMember TODO. Meanwhile no client code writes here.
+    // The old catch-all has been replaced with explicit per-collection rules,
+    // so this explicit write:false is now structurally enforced.
     match /clients/{clientSlug}/datasources/{modelName} {
       allow read: if isAlliStudioUser();
       allow write: if false;
