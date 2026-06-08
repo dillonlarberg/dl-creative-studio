@@ -12,6 +12,7 @@
 import { z } from "zod";
 import type { MusicCatalog } from "./seams.js";
 import { SampleMusicTrackSchema, type SampleMusicTrack } from "./types.js";
+import { MoodSchema, GenreSchema, VocalsSchema, UseCaseTagSchema, EnergySchema } from "./musicTags.js";
 
 /**
  * The shape stored in each `sampleMusic/{trackId}` doc. Note: `storagePath` (a
@@ -25,8 +26,11 @@ export const MusicDocSchema = z.object({
   durationSec: z.number().positive(),
   bpm: z.number().positive().optional(),
   firstBeatSec: z.number().nonnegative().optional(),
-  mood: z.string().optional(),
-  genre: z.string().optional(),
+  mood: MoodSchema.optional(),
+  genre: GenreSchema.optional(),
+  energy: EnergySchema.optional(),
+  vocals: VocalsSchema.optional(),
+  tags: z.array(UseCaseTagSchema).optional(),
   provider: z.string().min(1),
   licenseRef: z.string().min(1),
 });
@@ -85,6 +89,9 @@ export class FirestoreMusicCatalog implements MusicCatalog {
       firstBeatSec: meta.firstBeatSec,
       mood: meta.mood,
       genre: meta.genre,
+      energy: meta.energy,
+      vocals: meta.vocals,
+      tags: meta.tags,
       provider: meta.provider,
       licenseRef: meta.licenseRef,
     });
