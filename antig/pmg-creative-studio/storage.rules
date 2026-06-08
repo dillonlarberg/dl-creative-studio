@@ -35,11 +35,28 @@ service firebase.storage {
       return request.auth.token.get('clients', {}).get(clientSlug, false) == true;
     }
 
-    // PROTOTYPE: allowlist-only until syncClientClaims callable is deployed.
-    // Production target (uncomment and remove the line below once callable is live):
-    //   allow read, write: if isAlliStudioUser() && isClientMember(clientSlug);
-    match /clients/{clientSlug}/{allPaths=**} {
+    // ─────────────────────────────────────────────────────────────────────
+    // Client storage subtree — explicit per-path rules replace the old catch-all.
+    // Same rationale as firestore.rules: the catch-all ORs with narrower rules,
+    // making templateLibrary write restrictions ineffective.
+    // TODO(roles): add isClientMember(clientSlug) once syncClientClaims ships.
+    // ─────────────────────────────────────────────────────────────────────
+
+    // App uploads — all app-generated content (creatives, renders, batch output).
+    match /clients/{clientSlug}/apps/{appId}/{allPaths=**} {
       allow read, write: if isAlliStudioUser();
+    }
+
+    // Template Library assets — thumbnails and uploaded field images.
+    // Read mirrors Firestore draft-privacy (draft: creator only; published: all allowlisted).
+    // Write: owner only — non-owners cannot upload new assets for a template they don't own.
+    match /clients/{clientSlug}/templateLibrary/{templateId}/{allPaths=**} {
+      allow read: if isAlliStudioUser() && (
+        firestore.get(/databases/(default)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.status == 'published' ||
+        firestore.get(/databases/(default)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.createdByUid == request.auth.uid
+      );
+      allow write: if isAlliStudioUser() &&
+        firestore.get(/databases/(default)/documents/clients/$(clientSlug)/templateLibrary/$(templateId)).data.createdByUid == request.auth.uid;
     }
 
     // Default-deny everywhere else, including the previously-permissive
