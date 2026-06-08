@@ -6,7 +6,8 @@
  * Auth: ADC (`gcloud auth application-default login`). Re-runnable (merges docs).
  *
  * Run:  PYTHON_BIN=$(pwd)/.venv-librosa/bin/python npm run ingest-music
- *       npm run ingest-music -- --dry-run     # probe + print, write nothing
+ *       npm run ingest-music -- --dry-run            # probe + print, write nothing
+ *       npm run ingest-music -- --manifest tracks.json  # curated catalog w/ tags
  */
 import "dotenv/config";
 import os from "node:os";
@@ -16,6 +17,7 @@ import { promises as fs } from "node:fs";
 import admin from "firebase-admin";
 import { z } from "zod";
 import { MusicDocSchema, type MusicDoc } from "../src/firestoreCatalog.js";
+import { TrackManifestSchema, manifestEntryToDocFields } from "../src/trackManifest.js";
 
 const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT ?? "automated-creative-e10d7";
 const BUCKET = process.env.GCS_BUCKET ?? "automated-creative-e10d7.firebasestorage.app";
@@ -68,6 +70,27 @@ async function main(): Promise<void> {
   admin.initializeApp({ projectId: PROJECT_ID, storageBucket: BUCKET });
   const bucket = admin.storage().bucket();
   const db = admin.firestore();
+
+  const manifestIdx = process.argv.indexOf("--manifest");
+  if (manifestIdx !== -1) {
+    const manifestPath = process.argv[manifestIdx + 1];
+    if (!manifestPath) throw new Error("--manifest requires a file path");
+    const entries = TrackManifestSchema.parse(JSON.parse(await fs.readFile(manifestPath, "utf8")));
+    console.log(`① manifest ${manifestPath}: ${entries.length} track(s)`);
+    for (const entry of entries) {
+      let probed = { bpm: entry.bpm ?? 0, durationSec: entry.durationSec ?? 0 };
+      if (!entry.bpm || !entry.durationSec) {
+        const tmp = path.join(os.tmpdir(), `ingest-${entry.trackId}.${entry.format}`);
+        await bucket.file(entry.storagePath).download({ destination: tmp });
+        try { probed = await probe(tmp); } finally { await fs.rm(tmp, { force: true }); }
+      }
+      const doc = MusicDocSchema.parse(manifestEntryToDocFields(entry, probed));
+      console.log(`   ${entry.trackId}: bpm=${doc.bpm} dur=${doc.durationSec}s mood=${doc.mood}/${doc.genre}`);
+      if (!dryRun) await db.collection("sampleMusic").doc(entry.trackId).set(doc, { merge: true });
+    }
+    console.log(`\n✓ done (${dryRun ? "dry-run" : "wrote " + entries.length + " doc(s)"}).`);
+    return;
+  }
 
   console.log(`① listing gs://${BUCKET}/${PREFIX} …`);
   const [files] = await bucket.getFiles({ prefix: PREFIX });

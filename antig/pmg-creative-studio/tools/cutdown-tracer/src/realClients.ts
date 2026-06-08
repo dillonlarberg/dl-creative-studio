@@ -18,6 +18,7 @@ import { FirestoreMusicCatalog, type FirestoreLike } from "./firestoreCatalog.js
 import { GcsBlobStore, type BucketLike } from "./storage.js";
 import { makeShotstackRenderer } from "./shotstack.js";
 import { makeFfmpegClipExtractor } from "./ffmpeg.js";
+import { makeFfmpegStoryboard } from "./storyboard.js";
 
 const DEFAULT_PROJECT = "automated-creative-e10d7";
 const DEFAULT_BUCKET = "automated-creative-e10d7.firebasestorage.app";
@@ -49,5 +50,6 @@ export function makeRealDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps
     blobStore,
     clipExtractor: makeFfmpegClipExtractor(),
     brain: makeCutdownBrain(env.GEMINI_API_KEY ?? ""),
+    storyboard: makeFfmpegStoryboard(),
   };
 }

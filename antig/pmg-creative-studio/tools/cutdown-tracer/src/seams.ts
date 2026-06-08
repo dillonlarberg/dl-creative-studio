@@ -73,6 +73,12 @@ export interface ClipExtractor {
   extractClips(localVideoPath: string, cuts: CutPlan, durationSec: number): Promise<string[]>;
 }
 
+/** Grabs one representative still per cut for the storyboard preview. Real: ffmpeg
+ *  single-frame extraction at each cut's midpoint. Fake: canned local paths. */
+export interface StoryboardMaker {
+  frames(localVideoPath: string, cuts: ReadonlyArray<{ srcIn: number; len: number }>, durationSec: number): Promise<string[]>;
+}
+
 /**
  * The V1 cutdown brain: from a video + a chosen track, produce N angled cut
  * versions for a human to pick. Real: Gemini (analyze + per-angle select+critique).
@@ -95,4 +101,5 @@ export interface PipelineDeps {
   blobStore: BlobStore;
   clipExtractor: ClipExtractor;
   brain: CutdownBrain;
+  storyboard: StoryboardMaker;
 }

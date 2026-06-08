@@ -1,0 +1,4 @@
+[
+  { "trackId": "dtmf", "title": "Dtmf", "storagePath": "sampleMusic/dtmf.mp3", "format": "mp3", "mood": "confident", "genre": "hiphop", "energy": 4, "vocals": "instrumental", "tags": ["social","lifestyle"], "provider": "manual", "licenseRef": "internal-demo" },
+  { "trackId": "otro_atardecer", "title": "Otro Atardecer", "storagePath": "sampleMusic/otro_atardecer.mp3", "format": "mp3", "mood": "warm", "genre": "indie", "energy": 3, "vocals": "instrumental", "tags": ["lifestyle","travel"], "provider": "manual", "licenseRef": "internal-demo" }
+]

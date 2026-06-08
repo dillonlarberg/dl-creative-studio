@@ -1,0 +1,13 @@
+import { z } from "zod";
+export const MOODS = ["energetic","chill","uplifting","dramatic","dark","playful","cinematic","nostalgic","aggressive","romantic","confident","warm","dreamy","calm","intense"] as const;
+export const GENRES = ["electronic","hiphop","pop","rock","ambient","corporate","acoustic","orchestral","lofi","funk","indie","rnb","folk","jazz"] as const;
+export const USE_CASE_TAGS = ["product","lifestyle","tech","fashion","travel","corporate","social","beauty","fitness","food","automotive","finance"] as const;
+export const MoodSchema = z.enum(MOODS);
+export const GenreSchema = z.enum(GENRES);
+export const VocalsSchema = z.enum(["instrumental","vocal"]);
+export const UseCaseTagSchema = z.enum(USE_CASE_TAGS);
+export const EnergySchema = z.number().int().min(1).max(5);
+export type Mood = z.infer<typeof MoodSchema>;
+export type Genre = z.infer<typeof GenreSchema>;
+export type Vocals = z.infer<typeof VocalsSchema>;
+export type UseCaseTag = z.infer<typeof UseCaseTagSchema>;

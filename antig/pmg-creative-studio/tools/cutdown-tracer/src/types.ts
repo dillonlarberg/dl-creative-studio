@@ -6,6 +6,7 @@
  * Spec: src/apps/video-stitch/v0-design.html · PRD: dillonlarberg/dl-creative-studio#78.
  */
 import { z } from "zod";
+import { MoodSchema, GenreSchema, VocalsSchema, UseCaseTagSchema, EnergySchema } from "./musicTags.js";
 
 /** The fixed v0 output contract — 15.000s · 1080×1920 · 9:16. */
 export const OUTPUT = {
@@ -68,8 +69,11 @@ export const SampleMusicTrackSchema = z.object({
   durationSec: z.number().positive(),
   bpm: z.number().positive().optional(),
   firstBeatSec: z.number().nonnegative().optional(),
-  mood: z.string().optional(),
-  genre: z.string().optional(),
+  mood: MoodSchema.optional(),
+  genre: GenreSchema.optional(),
+  energy: EnergySchema.optional(),
+  vocals: VocalsSchema.optional(),
+  tags: z.array(UseCaseTagSchema).optional(),
   provider: z.string().min(1),
   licenseRef: z.string().min(1),
 });
