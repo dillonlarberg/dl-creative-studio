@@ -17,35 +17,27 @@ import { logger } from "firebase-functions";
 import { getFirestore } from "firebase-admin/firestore";
 import os from "os";
 import path from "path";
+import fs from "fs/promises";
 
 import { assertAlliStudioUser } from "../_shared/assertAlliStudioUser";
 import { getAlliUserIdFromAuth } from "../_shared/getAlliUserIdFromAuth";
 import { createOutput, updateOutput } from "../_shared/outputs";
 import { makeCutdownDeps } from "./deps";
 import { cutdownPaths, APP_ID } from "./paths";
+import { CutdownPlanSchema, OUTPUT, type CutdownPlan } from "./engine/types";
 
 const GEMINI_KEY = defineSecret("GEMINI_API_KEY");
 const SHOTSTACK_KEY = defineSecret("SHOTSTACK_API_KEY");
 
 const CLIENT_SLUG_RE = /^[a-z0-9_-]+$/;
 
-interface RenderCut {
-  srcIn: number;
-  srcOut: number;
-  len: number;
-}
-interface RenderPlan {
-  angle: string;
-  description?: string;
-  cuts: RenderCut[];
-}
 interface RenderInput {
   clientSlug: string;
   batchId: string;
   videoStoragePath: string;
   trackId: string;
   targetSec?: number;
-  plan: RenderPlan;
+  plan: CutdownPlan;
 }
 
 function validateInput(data: unknown): RenderInput {
@@ -54,7 +46,6 @@ function validateInput(data: unknown): RenderInput {
   const batchId = d.batchId;
   const videoStoragePath = d.videoStoragePath;
   const trackId = d.trackId;
-  const plan = d.plan as RenderPlan | undefined;
 
   if (typeof clientSlug !== "string" || !CLIENT_SLUG_RE.test(clientSlug)) {
     throw new HttpsError("invalid-argument", "clientSlug must match /^[a-z0-9_-]+$/");
@@ -68,13 +59,11 @@ function validateInput(data: unknown): RenderInput {
   if (typeof trackId !== "string" || trackId.length === 0) {
     throw new HttpsError("invalid-argument", "trackId is required");
   }
-  if (
-    !plan ||
-    typeof plan.angle !== "string" ||
-    !Array.isArray(plan.cuts) ||
-    plan.cuts.length === 0
-  ) {
-    throw new HttpsError("invalid-argument", "plan with non-empty cuts is required");
+  // Validate the plan against the engine's Zod schema so malformed cuts
+  // (negative len, srcOut <= srcIn) are rejected before reaching ffmpeg.
+  const parsed = CutdownPlanSchema.safeParse(d.plan);
+  if (!parsed.success) {
+    throw new HttpsError("invalid-argument", `invalid plan: ${parsed.error.message}`);
   }
   return {
     clientSlug,
@@ -82,13 +71,15 @@ function validateInput(data: unknown): RenderInput {
     videoStoragePath,
     trackId,
     targetSec: typeof d.targetSec === "number" ? d.targetSec : undefined,
-    plan,
+    plan: parsed.data,
   };
 }
 
 export const cutdownRender = onCall(
   {
-    enforceAppCheck: true,
+    // enforceAppCheck:false — App Check not yet registered for this web app;
+    // match runOutpaintBatch. Re-enable once registered.
+    enforceAppCheck: false,
     secrets: [GEMINI_KEY, SHOTSTACK_KEY],
     region: "us-central1",
     memory: "4GiB",
@@ -100,7 +91,7 @@ export const cutdownRender = onCall(
       request.data,
     );
     const createdBy = getAlliUserIdFromAuth(request.auth);
-    const totalSec = targetSec ?? 15;
+    const totalSec = targetSec ?? OUTPUT.totalSec;
 
     const db = getFirestore();
     const deps = makeCutdownDeps(GEMINI_KEY.value(), SHOTSTACK_KEY.value());
@@ -120,9 +111,14 @@ export const cutdownRender = onCall(
       prompt: plan.description ?? null,
     });
 
+    // tmpdir() is in-memory tmpfs that persists across warm invocations — track
+    // every local file we write and clean up in `finally` so warm instances
+    // don't OOM.
+    const tmp = path.join(os.tmpdir(), `cutdown-render-${batchId}.mp4`);
+    let clipPaths: string[] = [];
+
     try {
       // 1. Download source + probe true duration.
-      const tmp = path.join(os.tmpdir(), `cutdown-render-${batchId}.mp4`);
       await deps.bucket.file(videoStoragePath).download({ destination: tmp });
       const durationSec = await deps.clipExtractor.probeDurationSec(tmp);
 
@@ -130,9 +126,9 @@ export const cutdownRender = onCall(
       const { url: musicUrl } = await deps.catalog.fetch(trackId);
 
       // 3. Extract each cut locally, upload to Storage, sign for the renderer.
-      const localClips = await deps.clipExtractor.extractClips(tmp, plan.cuts, durationSec);
+      clipPaths = await deps.clipExtractor.extractClips(tmp, plan.cuts, durationSec);
       const clips = await Promise.all(
-        localClips.map(async (localPath, i) => {
+        clipPaths.map(async (localPath, i) => {
           const dest = cutdownPaths.renderClip(clientSlug, batchId, plan.angle, i);
           await deps.bucket.upload(localPath, {
             destination: dest,
@@ -147,13 +143,15 @@ export const cutdownRender = onCall(
         clips,
         musicUrl,
         totalSec,
-        width: 1080,
-        height: 1920,
+        width: OUTPUT.width,
+        height: OUTPUT.height,
       });
 
       await updateOutput(db, clientSlug, APP_ID, outputId, {
         status: "complete",
         previewUrl: mp4Url,
+        // TODO(cutdown): re-host the rendered mp4 into our GCS bucket so
+        // storageRef is a bucket path like the resize app.
         storageRef: mp4Url,
       });
 
@@ -168,6 +166,11 @@ export const cutdownRender = onCall(
       });
       if (e instanceof HttpsError) throw e;
       throw new HttpsError("internal", message);
+    } finally {
+      await fs.rm(tmp, { force: true }).catch(() => {});
+      if (clipPaths.length) {
+        await fs.rm(path.dirname(clipPaths[0]), { recursive: true, force: true }).catch(() => {});
+      }
     }
   },
 );

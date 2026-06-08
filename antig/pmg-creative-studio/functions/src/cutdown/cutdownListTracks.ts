@@ -21,7 +21,9 @@ const SHOTSTACK_KEY = defineSecret("SHOTSTACK_API_KEY");
 
 export const cutdownListTracks = onCall(
   {
-    enforceAppCheck: true,
+    // enforceAppCheck:false — App Check not yet registered for this web app;
+    // match runOutpaintBatch. Re-enable once registered.
+    enforceAppCheck: false,
     secrets: [GEMINI_KEY, SHOTSTACK_KEY],
     region: "us-central1",
     memory: "512MiB",
