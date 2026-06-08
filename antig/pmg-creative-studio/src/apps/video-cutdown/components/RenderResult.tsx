@@ -36,7 +36,7 @@ export default function RenderResult({ mp4Url, angle, onRestart }: RenderResultP
         </div>
 
         {/* RIGHT — details + actions */}
-        <div className="flex-1 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex-1 rounded-xl border border-gray-200 p-5">
           <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Output</p>
           <dl className="space-y-2 text-[12px]">
             <div className="flex items-start justify-between gap-4">

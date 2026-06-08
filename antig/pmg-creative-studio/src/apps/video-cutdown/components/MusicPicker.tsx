@@ -29,7 +29,7 @@ export default function MusicPicker({ selectedTrackId, onPick }: MusicPickerProp
         </span>
       </div>
 
-      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="mt-4 rounded-xl border border-gray-200 p-3">
         <p className="mb-2 px-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
           Sample soundtracks
         </p>

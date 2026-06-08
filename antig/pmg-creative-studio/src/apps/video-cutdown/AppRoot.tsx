@@ -106,7 +106,7 @@ export default function VideoCutdownAppRoot() {
   }
 
   return (
-    <div className="flex flex-col gap-0">
+    <div className="flex min-h-[calc(100vh-132px)] flex-col gap-0 rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-gray-900/5">
       {/* Page header */}
       <div className="mb-5">
         <Link
@@ -168,7 +168,12 @@ export default function VideoCutdownAppRoot() {
 
       {stage === 'brief' && (
         <div className="space-y-5">
-          <BriefPanel targetSec={cfg.targetSec} brief={cfg.brief} onChange={setCfg} />
+          <BriefPanel
+            targetSec={cfg.targetSec}
+            brief={cfg.brief}
+            onChange={setCfg}
+            onSubmit={handleGenerate}
+          />
           <div className="mx-auto flex max-w-[760px] items-center justify-end border-t border-gray-200 pt-4">
             <Button variant="primary" onClick={handleGenerate}>
               Generate 3 versions

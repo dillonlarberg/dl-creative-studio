@@ -9,23 +9,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="assets/theme.js"></script>
+  <link rel="stylesheet" href="assets/alli.css" />
 </head>
 <body class="font-sans text-gray-800" style="background-color:#EEF1F7">
   <div id="chrome"></div>
 
   <main class="pt-[60px]">
-    <div class="mx-auto max-w-[640px] px-8 pt-8 pb-16">
-      <div id="pagehead"></div>
+    <div class="mx-auto max-w-[640px] px-6 pt-8 pb-10 xl:px-10">
+      <div class="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-gray-900/5">
+        <div id="pagehead"></div>
 
       <!-- Pipeline card -->
-      <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <div class="mb-5 flex items-center gap-3">
-          <div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600"></div>
-          <h2 class="text-[13px] font-semibold text-gray-900">Building 3 cutdowns</h2>
+      <div class="rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-6">
+        <!-- Ask Alli hero — orbiting sparkles -->
+        <div class="flex flex-col items-center gap-3 py-2 pb-6 text-center">
+          <div class="alli-orb alli-orb-lg my-3">
+            <span class="alli-center"><svg><use href="#alli-sparkle" /></svg></span>
+            <span class="alli-o a"><svg><use href="#alli-sparkle" /></svg></span>
+            <span class="alli-o b"><svg><use href="#alli-sparkle" /></svg></span>
+            <span class="alli-o c"><svg><use href="#alli-sparkle" /></svg></span>
+          </div>
+          <div>
+            <h2 class="text-[15px] font-semibold text-gray-900">Alli is building 3 cutdowns</h2>
+            <p class="mt-0.5 text-[12px] font-medium text-indigo-500">Analyzing once, then cutting three ways…</p>
+          </div>
         </div>
 
+        <div class="h-px bg-gray-100"></div>
+
         <!-- Pipeline checklist -->
-        <div class="space-y-3">
+        <div class="mt-5 space-y-3">
           <!-- Probe duration — DONE -->
           <div class="flex items-center gap-3">
             <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-50">
@@ -61,7 +74,7 @@
           <!-- Highlights — IN PROGRESS -->
           <div class="flex items-center gap-3">
             <div class="flex h-6 w-6 shrink-0 items-center justify-center">
-              <div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600"></div>
+              <div class="alli-spinner"></div>
             </div>
             <div class="min-w-0">
               <p class="text-[13px] font-medium text-gray-900">Highlights — select + critique</p>
@@ -93,7 +106,7 @@
         <!-- Progress bar -->
         <div class="mt-6">
           <div class="h-1.5 w-full rounded-full bg-gray-100">
-            <div class="h-1.5 rounded-full bg-blue-600" style="width:62%"></div>
+            <div class="alli-progress-fill h-1.5 rounded-full" style="width:62%"></div>
           </div>
         </div>
 
@@ -103,7 +116,8 @@
 
       <!-- Skip link -->
       <div class="mt-5 text-center">
-        <a href="05-versions.html" class="text-[13px] font-medium text-blue-600 hover:text-blue-700">Skip to versions →</a>
+        <a href="05-versions.html" class="text-[13px] font-medium text-indigo-600 hover:text-indigo-700">Skip to versions →</a>
+      </div>
       </div>
     </div>
   </main>
