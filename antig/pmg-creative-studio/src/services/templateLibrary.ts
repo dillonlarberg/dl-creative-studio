@@ -73,6 +73,13 @@ export async function _fetchLiveFeedColumns(datasourceId: string): Promise<strin
   return (snap.data()!.columns as string[]).sort();
 }
 
+// Indirection object so vi.spyOn on the named export propagates to internal callers.
+// checkFeedDrift calls _fns._fetchLiveFeedColumns; tests spy on the export and also
+// patch _fns so the spy is honoured inside the module.
+export const _fns = {
+  _fetchLiveFeedColumns,
+};
+
 function validateMappings(
   expectedFields: string[],
   fieldMappings: Record<string, FieldMapping>
@@ -91,7 +98,7 @@ async function checkFeedDrift(
     .filter((m): m is Extract<FieldMapping, { source: 'feed' }> => m.source === 'feed')
     .map((m) => m.column);
 
-  const liveColumns = await _fetchLiveFeedColumns(datasourceId);
+  const liveColumns = await _fns._fetchLiveFeedColumns(datasourceId);
   return mappedFeedColumns.filter((c) => !liveColumns.includes(c));
 }
 
@@ -192,6 +199,40 @@ export const templateLibraryService = {
 
       transaction.update(docRef, {
         ...safeData,
+        updatedBy: currentAlliId(),
+        updatedByUid: currentUid(),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  },
+
+  async publish(clientSlug: ClientSlug, templateId: string): Promise<void> {
+    const docRef = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
+
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(docRef);
+
+      if (!snap.exists()) throw new TemplateNotFoundError(templateId);
+      const data = snap.data() as TemplateLibraryRecord;
+      if (data.status === 'published') throw new TemplateDraftError(templateId);
+
+      validateMappings(data.scaffoldSnapshot.expectedFields, data.fieldMappings);
+
+      const removed = await checkFeedDrift(data.fieldMappings, data.datasourceId);
+      if (removed.length > 0) {
+        throw new Error(
+          `Cannot publish: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
+        );
+      }
+
+      _writeHistoryInTransaction(transaction, docRef, snap);
+
+      transaction.update(docRef, {
+        status: 'published',
+        version: data.version + 1,
+        publishedBy: currentAlliId(),
+        publishedByUid: currentUid(),
+        publishedAt: serverTimestamp(),
         updatedBy: currentAlliId(),
         updatedByUid: currentUid(),
         updatedAt: serverTimestamp(),

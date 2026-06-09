@@ -40,8 +40,8 @@ vi.mock('../../platform/firebase/paths', () => ({
 }));
 
 import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc, runTransaction } from 'firebase/firestore';
-import { templateLibraryService } from '../templateLibrary';
-import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError } from '../templateLibrary.types';
+import { templateLibraryService, _fns } from '../templateLibrary';
+import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError, TemplateDraftError } from '../templateLibrary.types';
 
 function makeSnap(data: object | null, id = 'tmpl_001') {
   return {
@@ -314,5 +314,107 @@ describe('templateLibraryService.upsertDraft', () => {
     expect(setPayload.savedBy).toBe('alli_user_123');
     expect(setPayload.savedByUid).toBe('firebase_uid_123');
     expect(setPayload.savedAt).toEqual({ _type: 'serverTimestamp' });
+  });
+});
+
+describe('templateLibraryService.publish', () => {
+  function validDraft() {
+    return {
+      status: 'draft',
+      version: 1,
+      scaffoldSnapshot: {
+        expectedFields: ['headline', 'image'],
+        contentHash: 'abc',
+        capturedAt: {},
+      },
+      datasourceId: 'feed_01',
+      feedSnapshot: { columns: ['title', 'image_url'], capturedAt: {} },
+      fieldMappings: {
+        headline: { source: 'feed', column: 'title' },
+        image: { source: 'feed', column: 'image_url' },
+      },
+      brandOverrides: {},
+      createdByUid: 'firebase_uid_123',
+      createdBy: 'alli_user_123',
+      createdAt: {},
+    };
+  }
+
+  function mockPublishTransaction(draftData: object) {
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap(draftData);
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+  }
+
+  it('throws TemplateDraftError if template is already published', async () => {
+    mockPublishTransaction({ ...validDraft(), status: 'published' });
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(TemplateDraftError);
+  });
+
+  it('increments version and sets status to published', async () => {
+    let updatePayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap(validDraft());
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn((_, data) => { updatePayload = data; }),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
+
+    await templateLibraryService.publish('acme', 'tmpl_001');
+
+    expect(updatePayload.status).toBe('published');
+    expect(updatePayload.version).toBe(2);
+    expect(updatePayload.publishedByUid).toBe('firebase_uid_123');
+    expect(updatePayload.publishedBy).toBe('alli_user_123');
+  });
+
+  it('throws if a required field has no mapping', async () => {
+    const draftMissingMapping = {
+      ...validDraft(),
+      fieldMappings: {
+        headline: { source: 'feed', column: 'title' },
+        // 'image' is in expectedFields but not in fieldMappings
+      },
+    };
+    mockPublishTransaction(draftMissingMapping);
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(/unmapped required field/i);
+  });
+
+  it('throws if a mapped feed column no longer exists in the live feed', async () => {
+    const draftWithStaleMapping = {
+      ...validDraft(),
+      fieldMappings: {
+        headline: { source: 'feed', column: 'old_column' },
+        image: { source: 'feed', column: 'image_url' },
+      },
+    };
+    mockPublishTransaction(draftWithStaleMapping);
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['image_url', 'title', 'price']);
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(/no longer exist/i);
   });
 });
