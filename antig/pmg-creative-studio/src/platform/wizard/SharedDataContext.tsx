@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { fetchDataSources } from '../datasources';
 import type { SelectedFeed } from '../datasources';
 
@@ -20,23 +20,28 @@ export function SharedDataProvider({ clientSlug, children }: { clientSlug: strin
   const [dataSources, setDataSources] = useState<SelectedFeed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const load = async () => {
-    setIsLoading(true);
-    setError(null);
-    const { feeds, error: err } = await fetchDataSources({ clientSlug });
-    setDataSources(feeds);
-    if (err) setError(err);
-    setIsLoading(false);
-  };
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     if (!clientSlug) return;
-    void load();
-  }, [clientSlug]);
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    void fetchDataSources({ clientSlug }).then(({ feeds, error: err }) => {
+      if (cancelled) return;
+      setDataSources(feeds);
+      if (err) setError(err);
+      setIsLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [clientSlug, refreshToken]);
+
+  const refresh = useCallback(() => setRefreshToken((n) => n + 1), []);
 
   return (
-    <SharedDataContext.Provider value={{ dataSources, isLoading, error, refresh: () => void load() }}>
+    <SharedDataContext.Provider value={{ dataSources, isLoading, error, refresh }}>
       {children}
     </SharedDataContext.Provider>
   );
