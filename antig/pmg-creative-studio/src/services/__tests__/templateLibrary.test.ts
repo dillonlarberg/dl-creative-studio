@@ -39,9 +39,9 @@ vi.mock('../../platform/firebase/paths', () => ({
   },
 }));
 
-import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc } from 'firebase/firestore';
+import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc, runTransaction } from 'firebase/firestore';
 import { templateLibraryService } from '../templateLibrary';
-import { TemplateNotFoundError, TemplatePermissionError } from '../templateLibrary.types';
+import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError } from '../templateLibrary.types';
 
 function makeSnap(data: object | null, id = 'tmpl_001') {
   return {
@@ -209,5 +209,86 @@ describe('templateLibraryService.saveDraft', () => {
     });
 
     expect(id).toBe('tmpl_auto');
+  });
+});
+
+describe('templateLibraryService.upsertDraft', () => {
+  function mockTransaction(snapData: object | null) {
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap(snapData);
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+  }
+
+  it('throws TemplateNotFoundError if doc does not exist', async () => {
+    mockTransaction(null);
+
+    await expect(
+      templateLibraryService.upsertDraft('acme', 'tmpl_001', { name: 'Updated' })
+    ).rejects.toThrow(TemplateNotFoundError);
+  });
+
+  it('throws TemplatePublishedError if doc is published', async () => {
+    mockTransaction({ status: 'published', createdByUid: 'firebase_uid_123' });
+
+    await expect(
+      templateLibraryService.upsertDraft('acme', 'tmpl_001', { name: 'Updated' })
+    ).rejects.toThrow(TemplatePublishedError);
+  });
+
+  it('strips immutable fields from the update payload', async () => {
+    let updatePayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap({ status: 'draft', createdByUid: 'firebase_uid_123' });
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn((_, data) => { updatePayload = data; }),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    await templateLibraryService.upsertDraft('acme', 'tmpl_001', {
+      name: 'Updated',
+      createdBy: 'hacker',
+      createdByUid: 'hacked_uid',
+      createdAt: {} as any,
+      id: 'wrong_id',
+    });
+
+    expect(updatePayload.createdBy).toBeUndefined();
+    expect(updatePayload.createdByUid).toBeUndefined();
+    expect(updatePayload.createdAt).toBeUndefined();
+    expect(updatePayload.id).toBeUndefined();
+    expect(updatePayload.name).toBe('Updated');
+  });
+
+  it('sets updatedBy/updatedByUid from auth context, ignoring caller values', async () => {
+    let updatePayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap({ status: 'draft', createdByUid: 'firebase_uid_123' });
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn((_, data) => { updatePayload = data; }),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    await templateLibraryService.upsertDraft('acme', 'tmpl_001', {
+      updatedBy: 'spoofed_user',
+      updatedByUid: 'spoofed_uid',
+    });
+
+    expect(updatePayload.updatedBy).toBe('alli_user_123');
+    expect(updatePayload.updatedByUid).toBe('firebase_uid_123');
   });
 });

@@ -160,4 +160,32 @@ export const templateLibraryService = {
     return newDocRef.id;
   },
 
+  async upsertDraft(
+    clientSlug: ClientSlug,
+    templateId: string,
+    data: Partial<TemplateLibraryRecord>
+  ): Promise<void> {
+    const docRef = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
+
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(docRef);
+
+      if (!snap.exists()) throw new TemplateNotFoundError(templateId);
+      if ((snap.data() as TemplateLibraryRecord).status === 'published') {
+        throw new TemplatePublishedError(templateId);
+      }
+
+      await _writeHistoryInTransaction(transaction, docRef, snap);
+
+      const { id: _id, createdBy: _cb, createdByUid: _cbUid, createdAt: _ca, ...safeData } = data;
+
+      transaction.update(docRef, {
+        ...safeData,
+        updatedBy: currentAlliId(),
+        updatedByUid: currentUid(),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  },
+
 };
