@@ -41,7 +41,7 @@ vi.mock('../../platform/firebase/paths', () => ({
 
 import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc, runTransaction } from 'firebase/firestore';
 import { templateLibraryService, _fns } from '../templateLibrary';
-import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError, TemplateDraftError } from '../templateLibrary.types';
+import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError } from '../templateLibrary.types';
 
 function makeSnap(data: object | null, id = 'tmpl_001') {
   return {
@@ -353,12 +353,12 @@ describe('templateLibraryService.publish', () => {
     });
   }
 
-  it('throws TemplateDraftError if template is already published', async () => {
+  it('throws TemplatePublishedError if template is already published', async () => {
     mockPublishTransaction({ ...validDraft(), status: 'published' });
 
     await expect(
       templateLibraryService.publish('acme', 'tmpl_001')
-    ).rejects.toThrow(TemplateDraftError);
+    ).rejects.toThrow(TemplatePublishedError);
   });
 
   it('increments version and sets status to published', async () => {
@@ -416,5 +416,76 @@ describe('templateLibraryService.publish', () => {
     await expect(
       templateLibraryService.publish('acme', 'tmpl_001')
     ).rejects.toThrow(/no longer exist/i);
+  });
+
+  it('throws if a feed mapping has an empty column', async () => {
+    const draftEmptyColumn = {
+      ...validDraft(),
+      fieldMappings: {
+        headline: { source: 'feed', column: '' },
+        image: { source: 'feed', column: 'image_url' },
+      },
+    };
+    mockPublishTransaction(draftEmptyColumn);
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['image_url', 'title']);
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(/column is empty/i);
+  });
+
+  it('throws if an upload mapping has an empty assetPath', async () => {
+    const draftEmptyAssetPath = {
+      ...validDraft(),
+      fieldMappings: {
+        headline: { source: 'upload', assetPath: '' },
+        image: { source: 'feed', column: 'image_url' },
+      },
+    };
+    mockPublishTransaction(draftEmptyAssetPath);
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(/assetPath is empty/i);
+  });
+
+  it('throws if a brand mapping has an empty brandKey', async () => {
+    const draftEmptyBrandKey = {
+      ...validDraft(),
+      fieldMappings: {
+        headline: { source: 'brand', brandKey: '' },
+        image: { source: 'feed', column: 'image_url' },
+      },
+    };
+    mockPublishTransaction(draftEmptyBrandKey);
+
+    await expect(
+      templateLibraryService.publish('acme', 'tmpl_001')
+    ).rejects.toThrow(/brandKey is empty/i);
+  });
+
+  it('writes a history entry inside the transaction', async () => {
+    let setPayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap(validDraft());
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn((_, data) => { setPayload = data; }),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
+
+    await templateLibraryService.publish('acme', 'tmpl_001');
+
+    expect(setPayload.snapshot).toEqual(
+      expect.objectContaining({ status: 'draft', version: 1 })
+    );
+    expect(setPayload.savedBy).toBe('alli_user_123');
+    expect(setPayload.savedByUid).toBe('firebase_uid_123');
   });
 });

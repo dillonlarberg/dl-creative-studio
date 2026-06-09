@@ -28,7 +28,6 @@ import {
   TemplateNotFoundError,
   TemplatePermissionError,
   TemplatePublishedError,
-  TemplateDraftError,
 } from './templateLibrary.types';
 
 // ---------------------------------------------------------------------------
@@ -73,9 +72,8 @@ export async function _fetchLiveFeedColumns(datasourceId: string): Promise<strin
   return (snap.data()!.columns as string[]).sort();
 }
 
-// Indirection object so vi.spyOn on the named export propagates to internal callers.
-// checkFeedDrift calls _fns._fetchLiveFeedColumns; tests spy on the export and also
-// patch _fns so the spy is honoured inside the module.
+// Tests spy on `_fns._fetchLiveFeedColumns` directly; `checkFeedDrift` calls through
+// `_fns` so the spy is honoured inside the module without dynamic import interception.
 export const _fns = {
   _fetchLiveFeedColumns,
 };
@@ -87,6 +85,18 @@ function validateMappings(
   const unmapped = expectedFields.filter((f) => !(f in fieldMappings));
   if (unmapped.length > 0) {
     throw new Error(`Unmapped required field(s): ${unmapped.join(', ')}`);
+  }
+
+  for (const [field, mapping] of Object.entries(fieldMappings)) {
+    if (mapping.source === 'feed' && !mapping.column) {
+      throw new Error(`Field "${field}" maps to feed source but column is empty`);
+    }
+    if (mapping.source === 'upload' && !mapping.assetPath) {
+      throw new Error(`Field "${field}" maps to upload source but assetPath is empty`);
+    }
+    if (mapping.source === 'brand' && !mapping.brandKey) {
+      throw new Error(`Field "${field}" maps to brand source but brandKey is empty`);
+    }
   }
 }
 
@@ -214,7 +224,7 @@ export const templateLibraryService = {
 
       if (!snap.exists()) throw new TemplateNotFoundError(templateId);
       const data = snap.data() as TemplateLibraryRecord;
-      if (data.status === 'published') throw new TemplateDraftError(templateId);
+      if (data.status === 'published') throw new TemplatePublishedError(templateId);
 
       validateMappings(data.scaffoldSnapshot.expectedFields, data.fieldMappings);
 
