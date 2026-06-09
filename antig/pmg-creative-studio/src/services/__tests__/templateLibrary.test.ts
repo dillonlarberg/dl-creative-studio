@@ -291,4 +291,28 @@ describe('templateLibraryService.upsertDraft', () => {
     expect(updatePayload.updatedBy).toBe('alli_user_123');
     expect(updatePayload.updatedByUid).toBe('firebase_uid_123');
   });
+
+  it('writes a history entry inside the transaction', async () => {
+    let setPayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snapData = { status: 'draft', createdByUid: 'firebase_uid_123', name: 'Original' };
+      const snap = makeSnap(snapData);
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn((_, data) => { setPayload = data; }),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    await templateLibraryService.upsertDraft('acme', 'tmpl_001', { name: 'Updated' });
+
+    expect(setPayload.snapshot).toEqual(
+      expect.objectContaining({ status: 'draft', name: 'Original' })
+    );
+    expect(setPayload.savedBy).toBe('alli_user_123');
+    expect(setPayload.savedByUid).toBe('firebase_uid_123');
+    expect(setPayload.savedAt).toEqual({ _type: 'serverTimestamp' });
+  });
 });

@@ -47,11 +47,11 @@ function currentAlliId(): string {
   return id;
 }
 
-async function _writeHistoryInTransaction(
+function _writeHistoryInTransaction(
   transaction: Transaction,
   docRef: DocumentReference,
   currentSnap: DocumentSnapshot
-): Promise<void> {
+): void {
   if (!currentSnap.exists()) return;
   const { id: _id, ...snapshot } = currentSnap.data() as TemplateLibraryRecord;
   const historyRef = doc(collection(db, `${docRef.path}/history`));
@@ -175,9 +175,20 @@ export const templateLibraryService = {
         throw new TemplatePublishedError(templateId);
       }
 
-      await _writeHistoryInTransaction(transaction, docRef, snap);
+      _writeHistoryInTransaction(transaction, docRef, snap);
 
-      const { id: _id, createdBy: _cb, createdByUid: _cbUid, createdAt: _ca, ...safeData } = data;
+      const {
+        id: _id,
+        createdBy: _cb,
+        createdByUid: _cbUid,
+        createdAt: _ca,
+        status: _s,
+        version: _v,
+        publishedBy: _pb,
+        publishedByUid: _pbUid,
+        publishedAt: _pa,
+        ...safeData
+      } = data;
 
       transaction.update(docRef, {
         ...safeData,
