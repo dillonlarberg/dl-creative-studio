@@ -1,11 +1,21 @@
 import WizardShell from '../../platform/wizard/WizardShell';
+import { SharedDataProvider } from '../../platform/wizard/SharedDataContext';
+import { AssetHouseProvider } from '../../platform/assetHouse/AssetHouseContext';
+import { TemplateBuilderProvider } from './TemplateBuilderContext';
+import { useCurrentClient } from '../../platform/client/useCurrentClient';
 import manifest from './manifest';
 import type { TemplateBuilderStepData } from './types';
 
-/**
- * Mount point for the Dynamic Template Builder app. Routed under
- * `/:clientSlug/template-builder/*` (the route is wired in PR 3 Task 7).
- */
 export default function TemplateBuilderAppRoot() {
-  return <WizardShell<TemplateBuilderStepData> manifest={manifest} />;
+  const { currentClient } = useCurrentClient();
+  const slug = currentClient?.slug ?? '';
+  return (
+    <SharedDataProvider clientSlug={slug}>
+      <AssetHouseProvider clientSlug={slug}>
+        <TemplateBuilderProvider>
+          <WizardShell<TemplateBuilderStepData> manifest={manifest} />
+        </TemplateBuilderProvider>
+      </AssetHouseProvider>
+    </SharedDataProvider>
+  );
 }
