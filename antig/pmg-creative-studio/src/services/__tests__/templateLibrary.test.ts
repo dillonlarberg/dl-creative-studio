@@ -110,3 +110,101 @@ describe('templateLibraryService.getDraftTemplates', () => {
     expect(vi.mocked(getDocs)).toHaveBeenCalled();
   });
 });
+
+describe('templateLibraryService.saveDraft', () => {
+  it('writes to the correct tenant-isolated templateLibrary path', async () => {
+    vi.mocked(addDoc).mockResolvedValue({ id: 'tmpl_new' } as any);
+
+    await templateLibraryService.saveDraft('acme', {
+      name: 'New Template',
+      channel: 'social',
+      adSizes: [{ width: 1080, height: 1080 }],
+      scaffoldId: 'social:grid_2x2',
+      scaffoldSnapshot: {
+        expectedFields: ['headline'],
+        contentHash: 'abc123',
+        capturedAt: {} as any,
+      },
+      datasourceId: 'feed_01',
+      datasourceName: 'Test Feed',
+      feedSnapshot: { columns: ['title', 'price'], capturedAt: {} as any },
+      fieldMappings: { headline: { source: 'feed', column: 'title' } },
+      brandOverrides: {},
+    });
+
+    expect(vi.mocked(collection)).toHaveBeenCalledWith(
+      expect.anything(),
+      'clients/acme/templateLibrary'
+    );
+  });
+
+  it('initializes status as draft and version as 1', async () => {
+    let writtenData: Record<string, unknown> = {};
+    vi.mocked(addDoc).mockImplementation(async (_, data) => {
+      writtenData = data as Record<string, unknown>;
+      return { id: 'tmpl_new' } as any;
+    });
+
+    await templateLibraryService.saveDraft('acme', {
+      name: 'New Template',
+      channel: 'social',
+      adSizes: [],
+      scaffoldId: 'social:grid_2x2',
+      scaffoldSnapshot: { expectedFields: [], contentHash: 'abc', capturedAt: {} as any },
+      datasourceId: 'feed_01',
+      datasourceName: 'Feed',
+      feedSnapshot: { columns: [], capturedAt: {} as any },
+      fieldMappings: {},
+      brandOverrides: {},
+    });
+
+    expect(writtenData.status).toBe('draft');
+    expect(writtenData.version).toBe(1);
+    expect(writtenData.publishedAt).toBeNull();
+    expect(writtenData.publishedBy).toBeNull();
+    expect(writtenData.publishedByUid).toBeNull();
+  });
+
+  it('sets createdByUid from auth context, not from caller', async () => {
+    let writtenData: Record<string, unknown> = {};
+    vi.mocked(addDoc).mockImplementation(async (_, data) => {
+      writtenData = data as Record<string, unknown>;
+      return { id: 'tmpl_new' } as any;
+    });
+
+    await templateLibraryService.saveDraft('acme', {
+      name: 'New Template',
+      channel: 'social',
+      adSizes: [],
+      scaffoldId: 'social:grid_2x2',
+      scaffoldSnapshot: { expectedFields: [], contentHash: 'abc', capturedAt: {} as any },
+      datasourceId: 'feed_01',
+      datasourceName: 'Feed',
+      feedSnapshot: { columns: [], capturedAt: {} as any },
+      fieldMappings: {},
+      brandOverrides: {},
+    });
+
+    expect(writtenData.createdByUid).toBe('firebase_uid_123');
+    expect(writtenData.createdBy).toBe('alli_user_123');
+  });
+
+  it('returns the new templateId', async () => {
+    vi.mocked(addDoc).mockResolvedValue({ id: 'tmpl_new_456' } as any);
+
+    const id = await templateLibraryService.saveDraft('acme', {
+      name: 'New',
+      channel: 'social',
+      adSizes: [],
+      scaffoldId: 'social:grid_2x2',
+      scaffoldSnapshot: { expectedFields: [], contentHash: 'abc', capturedAt: {} as any },
+      datasourceId: 'feed_01',
+      datasourceName: 'Feed',
+      feedSnapshot: { columns: [], capturedAt: {} as any },
+      fieldMappings: {},
+      brandOverrides: {},
+    });
+
+    expect(id).toBe('tmpl_new_456');
+  });
+});

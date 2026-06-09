@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   runTransaction,
   addDoc,
+  updateDoc,
   deleteDoc,
   type Transaction,
   type DocumentReference,
@@ -132,6 +133,32 @@ export const templateLibraryService = {
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as TemplateLibraryRecord));
+  },
+
+  async saveDraft(clientSlug: ClientSlug, data: NewTemplateData): Promise<string> {
+    const uid = currentUid();
+    const alliId = currentAlliId();
+    const now = serverTimestamp();
+    const colRef = collection(db, paths.templateLibrary(clientSlug));
+
+    const newDocRef = await addDoc(colRef, {
+      ...data,
+      status: 'draft',
+      version: 1,
+      createdBy: alliId,
+      createdByUid: uid,
+      createdAt: now,
+      updatedBy: alliId,
+      updatedByUid: uid,
+      updatedAt: now,
+      publishedAt: null,
+      publishedBy: null,
+      publishedByUid: null,
+    });
+
+    await updateDoc(newDocRef, { id: newDocRef.id });
+
+    return newDocRef.id;
   },
 
 };
