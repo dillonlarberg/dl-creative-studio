@@ -340,21 +340,10 @@ describe('templateLibraryService.publish', () => {
     };
   }
 
-  function mockPublishTransaction(draftData: object) {
-    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
-      const snap = makeSnap(draftData);
-      const transaction = {
-        get: vi.fn().mockResolvedValue(snap),
-        update: vi.fn(),
-        set: vi.fn(),
-      };
-      await fn(transaction as any);
-      return transaction;
-    });
-  }
-
   it('throws TemplatePublishedError if template is already published', async () => {
-    mockPublishTransaction({ ...validDraft(), status: 'published' });
+    vi.mocked(getDoc).mockResolvedValue(
+      makeSnap({ ...validDraft(), status: 'published' }) as any
+    );
 
     await expect(
       templateLibraryService.publish('acme', 'tmpl_001')
@@ -362,19 +351,20 @@ describe('templateLibraryService.publish', () => {
   });
 
   it('increments version and sets status to published', async () => {
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(validDraft()) as any);
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
+
     let updatePayload: Record<string, unknown> = {};
     vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
       const snap = makeSnap(validDraft());
       const transaction = {
         get: vi.fn().mockResolvedValue(snap),
-        update: vi.fn((_, data) => { updatePayload = data; }),
+        update: vi.fn((_, d) => { updatePayload = d; }),
         set: vi.fn(),
       };
       await fn(transaction as any);
       return transaction;
     });
-
-    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
 
     await templateLibraryService.publish('acme', 'tmpl_001');
 
@@ -392,8 +382,7 @@ describe('templateLibraryService.publish', () => {
         // 'image' is in expectedFields but not in fieldMappings
       },
     };
-    mockPublishTransaction(draftMissingMapping);
-
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(draftMissingMapping) as any);
     vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
 
     await expect(
@@ -409,8 +398,7 @@ describe('templateLibraryService.publish', () => {
         image: { source: 'feed', column: 'image_url' },
       },
     };
-    mockPublishTransaction(draftWithStaleMapping);
-
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(draftWithStaleMapping) as any);
     vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['image_url', 'title', 'price']);
 
     await expect(
@@ -426,8 +414,7 @@ describe('templateLibraryService.publish', () => {
         image: { source: 'feed', column: 'image_url' },
       },
     };
-    mockPublishTransaction(draftEmptyColumn);
-
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(draftEmptyColumn) as any);
     vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['image_url', 'title']);
 
     await expect(
@@ -443,7 +430,7 @@ describe('templateLibraryService.publish', () => {
         image: { source: 'feed', column: 'image_url' },
       },
     };
-    mockPublishTransaction(draftEmptyAssetPath);
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(draftEmptyAssetPath) as any);
 
     await expect(
       templateLibraryService.publish('acme', 'tmpl_001')
@@ -458,7 +445,7 @@ describe('templateLibraryService.publish', () => {
         image: { source: 'feed', column: 'image_url' },
       },
     };
-    mockPublishTransaction(draftEmptyBrandKey);
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(draftEmptyBrandKey) as any);
 
     await expect(
       templateLibraryService.publish('acme', 'tmpl_001')
@@ -466,19 +453,20 @@ describe('templateLibraryService.publish', () => {
   });
 
   it('writes a history entry inside the transaction', async () => {
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(validDraft()) as any);
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
+
     let setPayload: Record<string, unknown> = {};
     vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
       const snap = makeSnap(validDraft());
       const transaction = {
         get: vi.fn().mockResolvedValue(snap),
         update: vi.fn(),
-        set: vi.fn((_, data) => { setPayload = data; }),
+        set: vi.fn((_, d) => { setPayload = d; }),
       };
       await fn(transaction as any);
       return transaction;
     });
-
-    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title', 'image_url']);
 
     await templateLibraryService.publish('acme', 'tmpl_001');
 
@@ -491,60 +479,58 @@ describe('templateLibraryService.publish', () => {
 });
 
 describe('templateLibraryService.updatePublished', () => {
-  function mockUpdateTransaction(snapData: object) {
-    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
-      const snap = makeSnap(snapData);
-      const transaction = {
-        get: vi.fn().mockResolvedValue(snap),
-        update: vi.fn(),
-        set: vi.fn(),
-      };
-      await fn(transaction as any);
-      return transaction;
-    });
+  function publishedDoc() {
+    return {
+      status: 'published',
+      version: 3,
+      scaffoldSnapshot: {
+        expectedFields: ['headline'],
+        contentHash: 'abc',
+        capturedAt: {},
+      },
+      fieldMappings: { headline: { source: 'feed', column: 'title' } },
+      datasourceId: 'feed_01',
+      feedSnapshot: { columns: ['title'], capturedAt: {} },
+      brandOverrides: {},
+      createdByUid: 'firebase_uid_123',
+      createdBy: 'alli_user_123',
+      createdAt: {},
+    };
   }
 
   it('throws TemplateDraftError if template is still a draft', async () => {
-    mockUpdateTransaction({
-      status: 'draft',
-      version: 1,
-      createdByUid: 'firebase_uid_123',
-    });
+    vi.mocked(getDoc).mockResolvedValue(
+      makeSnap({ status: 'draft', version: 1, createdByUid: 'firebase_uid_123' }) as any
+    );
 
     await expect(
       templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' })
     ).rejects.toThrow(TemplateDraftError);
   });
 
+  it('throws TemplateNotFoundError if doc does not exist', async () => {
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(null) as any);
+
+    await expect(
+      templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' })
+    ).rejects.toThrow(TemplateNotFoundError);
+  });
+
   it('increments version on published edit', async () => {
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(publishedDoc()) as any);
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
+
     let updatePayload: Record<string, unknown> = {};
     vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
-      const snap = makeSnap({
-        status: 'published',
-        version: 3,
-        scaffoldSnapshot: {
-          expectedFields: ['headline'],
-          contentHash: 'abc',
-          capturedAt: {},
-        },
-        fieldMappings: { headline: { source: 'feed', column: 'title' } },
-        datasourceId: 'feed_01',
-        feedSnapshot: { columns: ['title'], capturedAt: {} },
-        brandOverrides: {},
-        createdByUid: 'firebase_uid_123',
-        createdBy: 'alli_user_123',
-        createdAt: {},
-      });
+      const snap = makeSnap(publishedDoc());
       const transaction = {
         get: vi.fn().mockResolvedValue(snap),
-        update: vi.fn((_, data) => { updatePayload = data; }),
+        update: vi.fn((_, d) => { updatePayload = d; }),
         set: vi.fn(),
       };
       await fn(transaction as any);
       return transaction;
     });
-
-    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
 
     await templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' });
 
@@ -554,40 +540,25 @@ describe('templateLibraryService.updatePublished', () => {
   });
 
   it('writes a history entry inside the transaction', async () => {
+    vi.mocked(getDoc).mockResolvedValue(makeSnap(publishedDoc()) as any);
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
+
     let setPayload: Record<string, unknown> = {};
     vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
-      const snap = makeSnap({
-        status: 'published',
-        version: 2,
-        name: 'Original Published',
-        scaffoldSnapshot: {
-          expectedFields: ['headline'],
-          contentHash: 'abc',
-          capturedAt: {},
-        },
-        fieldMappings: { headline: { source: 'feed', column: 'title' } },
-        datasourceId: 'feed_01',
-        feedSnapshot: { columns: ['title'], capturedAt: {} },
-        brandOverrides: {},
-        createdByUid: 'firebase_uid_123',
-        createdBy: 'alli_user_123',
-        createdAt: {},
-      });
+      const snap = makeSnap(publishedDoc());
       const transaction = {
         get: vi.fn().mockResolvedValue(snap),
         update: vi.fn(),
-        set: vi.fn((_, data) => { setPayload = data; }),
+        set: vi.fn((_, d) => { setPayload = d; }),
       };
       await fn(transaction as any);
       return transaction;
     });
 
-    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
-
     await templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' });
 
     expect(setPayload.snapshot).toEqual(
-      expect.objectContaining({ status: 'published', version: 2 })
+      expect.objectContaining({ status: 'published', version: 3 })
     );
     expect(setPayload.savedBy).toBe('alli_user_123');
     expect(setPayload.savedByUid).toBe('firebase_uid_123');
@@ -600,10 +571,8 @@ describe('templateLibraryService.deleteTemplate', () => {
 
     await templateLibraryService.deleteTemplate('acme', 'tmpl_001');
 
-    expect(vi.mocked(deleteDoc)).toHaveBeenCalled();
-    expect(vi.mocked(doc)).toHaveBeenCalledWith(
-      expect.anything(),
-      'clients/acme/templateLibrary/tmpl_001'
+    expect(vi.mocked(deleteDoc)).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'clients/acme/templateLibrary/tmpl_001' })
     );
   });
 });

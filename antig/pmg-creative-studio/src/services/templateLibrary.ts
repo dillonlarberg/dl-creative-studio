@@ -220,21 +220,25 @@ export const templateLibraryService = {
   async publish(clientSlug: ClientSlug, templateId: string): Promise<void> {
     const docRef = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
 
+    // Phase 1: validation reads outside the transaction
+    const preSnap = await getDoc(docRef);
+    if (!preSnap.exists()) throw new TemplateNotFoundError(templateId);
+    const preData = preSnap.data() as TemplateLibraryRecord;
+    if (preData.status === 'published') throw new TemplatePublishedError(templateId);
+    validateMappings(preData.scaffoldSnapshot.expectedFields, preData.fieldMappings);
+    const removed = await checkFeedDrift(preData.fieldMappings, preData.datasourceId);
+    if (removed.length > 0) {
+      throw new Error(
+        `Cannot publish: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
+      );
+    }
+
+    // Phase 2: atomic write — re-reads inside transaction for consistency
     await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(docRef);
-
       if (!snap.exists()) throw new TemplateNotFoundError(templateId);
       const data = snap.data() as TemplateLibraryRecord;
       if (data.status === 'published') throw new TemplatePublishedError(templateId);
-
-      validateMappings(data.scaffoldSnapshot.expectedFields, data.fieldMappings);
-
-      const removed = await checkFeedDrift(data.fieldMappings, data.datasourceId);
-      if (removed.length > 0) {
-        throw new Error(
-          `Cannot publish: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
-        );
-      }
 
       _writeHistoryInTransaction(transaction, docRef, snap);
 
@@ -258,22 +262,26 @@ export const templateLibraryService = {
   ): Promise<void> {
     const docRef = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
 
+    // Phase 1: validation reads outside the transaction
+    const preSnap = await getDoc(docRef);
+    if (!preSnap.exists()) throw new TemplateNotFoundError(templateId);
+    const preCurrent = preSnap.data() as TemplateLibraryRecord;
+    if (preCurrent.status === 'draft') throw new TemplateDraftError(templateId);
+    const merged = { ...preCurrent, ...data };
+    validateMappings(merged.scaffoldSnapshot.expectedFields, merged.fieldMappings);
+    const removed = await checkFeedDrift(merged.fieldMappings, merged.datasourceId);
+    if (removed.length > 0) {
+      throw new Error(
+        `Cannot update: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
+      );
+    }
+
+    // Phase 2: atomic write — re-reads inside transaction for consistency
     await runTransaction(db, async (transaction) => {
       const snap = await transaction.get(docRef);
-
       if (!snap.exists()) throw new TemplateNotFoundError(templateId);
       const current = snap.data() as TemplateLibraryRecord;
       if (current.status === 'draft') throw new TemplateDraftError(templateId);
-
-      const merged = { ...current, ...data };
-      validateMappings(merged.scaffoldSnapshot.expectedFields, merged.fieldMappings);
-
-      const removed = await checkFeedDrift(merged.fieldMappings, merged.datasourceId);
-      if (removed.length > 0) {
-        throw new Error(
-          `Cannot update: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
-        );
-      }
 
       _writeHistoryInTransaction(transaction, docRef, snap);
 
