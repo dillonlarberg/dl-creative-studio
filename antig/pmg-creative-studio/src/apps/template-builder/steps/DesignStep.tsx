@@ -32,7 +32,9 @@ interface DesignCtx {
   feedColumns: string[];
   assetHouse: ReturnType<typeof useAssetHouse>['assetHouse'];
   setCandidates: (c: Candidate[]) => void;
+  setIsLoadingCandidates: (v: boolean) => void;
   setSuggestedFields: (fields: Set<string>) => void;
+  setLayoutError: (msg: string | null) => void;
   mergeStepData: (patch: Partial<TemplateBuilderStepData>) => void;
 }
 
@@ -120,6 +122,7 @@ function DesignStepBody({
 
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [suggestedFields, setSuggestedFields] = useState<Set<string>>(new Set());
+  const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
 
   // Wire the module-level ref every render so onEnter can reach context.
@@ -129,7 +132,9 @@ function DesignStepBody({
     feedColumns,
     assetHouse,
     setCandidates,
+    setIsLoadingCandidates,
     setSuggestedFields,
+    setLayoutError,
     mergeStepData,
   };
 
@@ -195,6 +200,12 @@ function DesignStepBody({
               Layout Candidate
             </h4>
           </div>
+
+          {layoutError && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+              {layoutError}
+            </div>
+          )}
 
           {isLoadingCandidates ? (
             <div className="space-y-3">
@@ -512,10 +523,11 @@ const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
   const ctx = _designCtx;
   if (!ctx) return;
 
-  const { candidates, requirements, feedColumns, assetHouse, setCandidates, setSuggestedFields } = ctx;
+  const { candidates, requirements, feedColumns, assetHouse, setCandidates, setIsLoadingCandidates, setSuggestedFields, setLayoutError } = ctx;
 
   // Generate layouts if not already done
   if (candidates.length === 0) {
+    setIsLoadingCandidates(true);
     try {
       const generated = await generateLayouts({
         requirements,
@@ -525,6 +537,9 @@ const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
       setCandidates(generated);
     } catch (err) {
       console.error('[DesignStep] generateLayouts failed:', err);
+      setLayoutError('Failed to generate layouts. Please go back and try again.');
+    } finally {
+      setIsLoadingCandidates(false);
     }
   }
 
