@@ -7,10 +7,15 @@ vi.mock('../../firebase', () => ({
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_, path) => ({ path })),
-  doc: vi.fn((_, path) => ({ path })),
+  doc: vi.fn((dbOrRef: any, path?: string) => {
+    if (typeof path === 'string') return { id: path.split('/').pop() ?? path, path };
+    // doc(collectionRef) — generates a new document reference
+    return { id: 'tmpl_auto', path: `${dbOrRef.path}/tmpl_auto` };
+  }),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
   addDoc: vi.fn(),
+  setDoc: vi.fn(),
   updateDoc: vi.fn(),
   deleteDoc: vi.fn(),
   runTransaction: vi.fn(),
@@ -34,7 +39,7 @@ vi.mock('../../platform/firebase/paths', () => ({
   },
 }));
 
-import { getDoc, getDocs, addDoc, deleteDoc, collection, doc } from 'firebase/firestore';
+import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc } from 'firebase/firestore';
 import { templateLibraryService } from '../templateLibrary';
 import { TemplateNotFoundError, TemplatePermissionError } from '../templateLibrary.types';
 
@@ -113,7 +118,7 @@ describe('templateLibraryService.getDraftTemplates', () => {
 
 describe('templateLibraryService.saveDraft', () => {
   it('writes to the correct tenant-isolated templateLibrary path', async () => {
-    vi.mocked(addDoc).mockResolvedValue({ id: 'tmpl_new' } as any);
+    vi.mocked(setDoc).mockResolvedValue(undefined);
 
     await templateLibraryService.saveDraft('acme', {
       name: 'New Template',
@@ -140,9 +145,8 @@ describe('templateLibraryService.saveDraft', () => {
 
   it('initializes status as draft and version as 1', async () => {
     let writtenData: Record<string, unknown> = {};
-    vi.mocked(addDoc).mockImplementation(async (_, data) => {
-      writtenData = data as Record<string, unknown>;
-      return { id: 'tmpl_new' } as any;
+    vi.mocked(setDoc).mockImplementation(async (_, data) => {
+      writtenData = data as any;
     });
 
     await templateLibraryService.saveDraft('acme', {
@@ -167,9 +171,8 @@ describe('templateLibraryService.saveDraft', () => {
 
   it('sets createdByUid from auth context, not from caller', async () => {
     let writtenData: Record<string, unknown> = {};
-    vi.mocked(addDoc).mockImplementation(async (_, data) => {
-      writtenData = data as Record<string, unknown>;
-      return { id: 'tmpl_new' } as any;
+    vi.mocked(setDoc).mockImplementation(async (_, data) => {
+      writtenData = data as any;
     });
 
     await templateLibraryService.saveDraft('acme', {
@@ -190,7 +193,7 @@ describe('templateLibraryService.saveDraft', () => {
   });
 
   it('returns the new templateId', async () => {
-    vi.mocked(addDoc).mockResolvedValue({ id: 'tmpl_new_456' } as any);
+    vi.mocked(setDoc).mockResolvedValue(undefined);
 
     const id = await templateLibraryService.saveDraft('acme', {
       name: 'New',
@@ -205,6 +208,6 @@ describe('templateLibraryService.saveDraft', () => {
       brandOverrides: {},
     });
 
-    expect(id).toBe('tmpl_new_456');
+    expect(id).toBe('tmpl_auto');
   });
 });

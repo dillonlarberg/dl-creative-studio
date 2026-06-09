@@ -8,7 +8,7 @@ import {
   orderBy,
   serverTimestamp,
   runTransaction,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   type Transaction,
@@ -138,25 +138,24 @@ export const templateLibraryService = {
   async saveDraft(clientSlug: ClientSlug, data: NewTemplateData): Promise<string> {
     const uid = currentUid();
     const alliId = currentAlliId();
-    const now = serverTimestamp();
     const colRef = collection(db, paths.templateLibrary(clientSlug));
+    const newDocRef = doc(colRef);
 
-    const newDocRef = await addDoc(colRef, {
+    await setDoc(newDocRef, {
       ...data,
+      id: newDocRef.id,
       status: 'draft',
       version: 1,
       createdBy: alliId,
       createdByUid: uid,
-      createdAt: now,
+      createdAt: serverTimestamp(),
       updatedBy: alliId,
       updatedByUid: uid,
-      updatedAt: now,
+      updatedAt: serverTimestamp(),
       publishedAt: null,
       publishedBy: null,
       publishedByUid: null,
     });
-
-    await updateDoc(newDocRef, { id: newDocRef.id });
 
     return newDocRef.id;
   },
