@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CircleStackIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, Channel } from '../types';
@@ -133,6 +133,10 @@ function SetupStepBody({
     tbCtx.setFeedSample(feedResult.sampleData, columns);
     tbCtx.setRequirements(requirements);
   };
+
+  useEffect(() => {
+    return () => { _submitCallback = null; };
+  }, []);
 
   return (
     <div className="relative space-y-8 text-left">
