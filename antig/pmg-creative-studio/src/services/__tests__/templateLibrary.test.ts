@@ -41,7 +41,7 @@ vi.mock('../../platform/firebase/paths', () => ({
 
 import { getDoc, getDocs, addDoc, setDoc, deleteDoc, collection, doc, runTransaction } from 'firebase/firestore';
 import { templateLibraryService, _fns } from '../templateLibrary';
-import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError } from '../templateLibrary.types';
+import { TemplateNotFoundError, TemplatePermissionError, TemplatePublishedError, TemplateDraftError } from '../templateLibrary.types';
 
 function makeSnap(data: object | null, id = 'tmpl_001') {
   return {
@@ -487,5 +487,123 @@ describe('templateLibraryService.publish', () => {
     );
     expect(setPayload.savedBy).toBe('alli_user_123');
     expect(setPayload.savedByUid).toBe('firebase_uid_123');
+  });
+});
+
+describe('templateLibraryService.updatePublished', () => {
+  function mockUpdateTransaction(snapData: object) {
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap(snapData);
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+  }
+
+  it('throws TemplateDraftError if template is still a draft', async () => {
+    mockUpdateTransaction({
+      status: 'draft',
+      version: 1,
+      createdByUid: 'firebase_uid_123',
+    });
+
+    await expect(
+      templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' })
+    ).rejects.toThrow(TemplateDraftError);
+  });
+
+  it('increments version on published edit', async () => {
+    let updatePayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap({
+        status: 'published',
+        version: 3,
+        scaffoldSnapshot: {
+          expectedFields: ['headline'],
+          contentHash: 'abc',
+          capturedAt: {},
+        },
+        fieldMappings: { headline: { source: 'feed', column: 'title' } },
+        datasourceId: 'feed_01',
+        feedSnapshot: { columns: ['title'], capturedAt: {} },
+        brandOverrides: {},
+        createdByUid: 'firebase_uid_123',
+        createdBy: 'alli_user_123',
+        createdAt: {},
+      });
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn((_, data) => { updatePayload = data; }),
+        set: vi.fn(),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
+
+    await templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' });
+
+    expect(updatePayload.version).toBe(4);
+    expect(updatePayload.updatedByUid).toBe('firebase_uid_123');
+    expect(updatePayload.updatedBy).toBe('alli_user_123');
+  });
+
+  it('writes a history entry inside the transaction', async () => {
+    let setPayload: Record<string, unknown> = {};
+    vi.mocked(runTransaction).mockImplementation(async (_, fn) => {
+      const snap = makeSnap({
+        status: 'published',
+        version: 2,
+        name: 'Original Published',
+        scaffoldSnapshot: {
+          expectedFields: ['headline'],
+          contentHash: 'abc',
+          capturedAt: {},
+        },
+        fieldMappings: { headline: { source: 'feed', column: 'title' } },
+        datasourceId: 'feed_01',
+        feedSnapshot: { columns: ['title'], capturedAt: {} },
+        brandOverrides: {},
+        createdByUid: 'firebase_uid_123',
+        createdBy: 'alli_user_123',
+        createdAt: {},
+      });
+      const transaction = {
+        get: vi.fn().mockResolvedValue(snap),
+        update: vi.fn(),
+        set: vi.fn((_, data) => { setPayload = data; }),
+      };
+      await fn(transaction as any);
+      return transaction;
+    });
+
+    vi.spyOn(_fns, '_fetchLiveFeedColumns').mockResolvedValue(['title']);
+
+    await templateLibraryService.updatePublished('acme', 'tmpl_001', { name: 'Updated' });
+
+    expect(setPayload.snapshot).toEqual(
+      expect.objectContaining({ status: 'published', version: 2 })
+    );
+    expect(setPayload.savedBy).toBe('alli_user_123');
+    expect(setPayload.savedByUid).toBe('firebase_uid_123');
+  });
+});
+
+describe('templateLibraryService.deleteTemplate', () => {
+  it('calls deleteDoc with the correct path', async () => {
+    vi.mocked(deleteDoc).mockResolvedValue(undefined);
+
+    await templateLibraryService.deleteTemplate('acme', 'tmpl_001');
+
+    expect(vi.mocked(deleteDoc)).toHaveBeenCalled();
+    expect(vi.mocked(doc)).toHaveBeenCalledWith(
+      expect.anything(),
+      'clients/acme/templateLibrary/tmpl_001'
+    );
   });
 });

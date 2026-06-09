@@ -28,6 +28,7 @@ import {
   TemplateNotFoundError,
   TemplatePermissionError,
   TemplatePublishedError,
+  TemplateDraftError,
 } from './templateLibrary.types';
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,60 @@ export const templateLibraryService = {
         updatedAt: serverTimestamp(),
       });
     });
+  },
+
+  async updatePublished(
+    clientSlug: ClientSlug,
+    templateId: string,
+    data: Partial<TemplateLibraryRecord>
+  ): Promise<void> {
+    const docRef = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
+
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(docRef);
+
+      if (!snap.exists()) throw new TemplateNotFoundError(templateId);
+      const current = snap.data() as TemplateLibraryRecord;
+      if (current.status === 'draft') throw new TemplateDraftError(templateId);
+
+      const merged = { ...current, ...data };
+      validateMappings(merged.scaffoldSnapshot.expectedFields, merged.fieldMappings);
+
+      const removed = await checkFeedDrift(merged.fieldMappings, merged.datasourceId);
+      if (removed.length > 0) {
+        throw new Error(
+          `Cannot update: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
+        );
+      }
+
+      _writeHistoryInTransaction(transaction, docRef, snap);
+
+      const {
+        id: _id,
+        createdBy: _cb,
+        createdByUid: _cbUid,
+        createdAt: _ca,
+        status: _s,
+        version: _v,
+        publishedBy: _pb,
+        publishedByUid: _pbUid,
+        publishedAt: _pa,
+        ...safeData
+      } = data;
+
+      transaction.update(docRef, {
+        ...safeData,
+        version: current.version + 1,
+        updatedBy: currentAlliId(),
+        updatedByUid: currentUid(),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  },
+
+  async deleteTemplate(clientSlug: ClientSlug, templateId: string): Promise<void> {
+    const ref = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
+    await deleteDoc(ref);
   },
 
 };
