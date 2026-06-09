@@ -1,3 +1,6 @@
+import type { SelectedFeed } from '../../platform/datasources/types';
+export type { SelectedFeed };
+
 export type Channel = 'Social' | 'Programmatic' | 'Print' | 'Digital Signage';
 export type LogoVariant = 'primary' | 'inverse';
 
@@ -6,12 +9,9 @@ export interface RequirementField {
   label: string;
   category: 'Brand' | 'Dynamic' | 'System';
   source: string;
-  type: 'text' | 'image' | 'currency' | 'button' | 'asset' | string;
+  type: 'text' | 'image' | 'currency' | 'button' | 'asset';
   value?: string;
 }
-
-import type { SelectedFeed } from '../../platform/datasources/types';
-export type { SelectedFeed };
 
 export interface TemplateBuilderStepData {
   // ── setup step ────────────────────────────────────────────────────
