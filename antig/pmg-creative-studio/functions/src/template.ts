@@ -14,7 +14,10 @@ export const synthesizeRequirementsAI = functions
     channel: string;
     brand: { primaryColor?: string; fontPrimary?: string } | null;
   }) => {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    if (!data.channel) throw new functions.https.HttpsError("invalid-argument", "channel is required");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new functions.https.HttpsError("internal", "GEMINI_API_KEY secret is not configured");
+    const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({
       model: MODEL,
       generationConfig: {
@@ -62,7 +65,12 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
 - { id: "price", label: "Price", category: "Dynamic", source: "Feed", type: "currency" }`;
 
     const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text()) as unknown[];
+    const text = result.response.text();
+    try {
+      return JSON.parse(text) as unknown[];
+    } catch {
+      throw new functions.https.HttpsError("internal", `AI returned unparseable response: ${text.slice(0, 200)}`);
+    }
   });
 
 // ── generateLayoutsAI ────────────────────────────────────────────────────────
@@ -75,7 +83,11 @@ export const generateLayoutsAI = functions
     channel: string;
     brand: { primaryColor?: string; fontPrimary?: string; cornerRadius?: string; logoPrimary?: string } | null;
   }) => {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    if (!data.channel) throw new functions.https.HttpsError("invalid-argument", "channel is required");
+    if (!Array.isArray(data.requirements)) throw new functions.https.HttpsError("invalid-argument", "requirements must be an array");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new functions.https.HttpsError("internal", "GEMINI_API_KEY secret is not configured");
+    const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({
       model: MODEL,
       generationConfig: {
@@ -156,7 +168,12 @@ For each:
 - elements.logo: ${hasLogo}`;
 
     const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text()) as unknown[];
+    const text = result.response.text();
+    try {
+      return JSON.parse(text) as unknown[];
+    } catch {
+      throw new functions.https.HttpsError("internal", `AI returned unparseable response: ${text.slice(0, 200)}`);
+    }
   });
 
 // ── suggestMappingsAI ────────────────────────────────────────────────────────
@@ -170,7 +187,9 @@ export const suggestMappingsAI = functions
   }) => {
     if (data.feedColumns.length === 0) return {};
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new functions.https.HttpsError("internal", "GEMINI_API_KEY secret is not configured");
+    const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({
       model: MODEL,
       generationConfig: {
@@ -201,7 +220,13 @@ Only include fields you are confident about. Skip fields with no good match.
 Example output: { "headline": "product_title", "image_url": "image_link", "price": "final_price" }`;
 
     const result = await model.generateContent(prompt);
-    const raw = JSON.parse(result.response.text()) as Record<string, unknown>;
+    const text = result.response.text();
+    let raw: Record<string, unknown>;
+    try {
+      raw = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      throw new functions.https.HttpsError("internal", `AI returned unparseable response: ${text.slice(0, 200)}`);
+    }
 
     const safe: Record<string, string> = {};
     for (const [k, v] of Object.entries(raw)) {
