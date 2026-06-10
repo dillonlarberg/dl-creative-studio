@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckIcon, SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
 import { cn } from '../../../utils/cn';
@@ -13,6 +14,7 @@ import { CandidatePreview } from '../_internal/CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
 import { discoverSlots } from '../_internal/discoverSlots';
 import type { TemplateSlot } from '../_internal/discoverSlots';
+import { AskAlliPanel } from '../_internal/AskAlliPanel';
 
 /**
  * Design step — "Design & Map" (Step 2 of 3: Setup → Design → Publish).
@@ -130,6 +132,8 @@ function DesignStepBody({
   const [brandOpen, setBrandOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
+  const [askAlliOpen, setAskAlliOpen] = useState(false);
+  const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newFieldPreset, setNewFieldPreset] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
@@ -170,6 +174,7 @@ function DesignStepBody({
   const feedSampleData = tbCtx.feedSampleData;
 
   const customFields = stepData.customFields ?? [];
+  const fieldTransforms = stepData.fieldTransforms ?? {};
   const allFields: Array<RequirementField> = [
     ...requirements.filter((r) => r.category === 'Dynamic'),
     ...customFields.map((f) => ({
@@ -305,6 +310,14 @@ function DesignStepBody({
                           AI suggested
                         </span>
                       )}
+                      <button
+                        type="button"
+                        title="Ask Alli about this field"
+                        onClick={() => { setAskAlliTargetField(field.id); setAskAlliOpen(true); }}
+                        className="h-4 w-4 text-indigo-400 hover:text-indigo-600 transition-colors shrink-0"
+                      >
+                        <SparklesIconSolid className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                     <select
                       value={currentVal}
@@ -380,6 +393,32 @@ function DesignStepBody({
                             <XMarkIcon className="h-3 w-3" />
                           </button>
                         )}
+                      </div>
+                    )}
+                    {/* Transform badges */}
+                    {(fieldTransforms[field.id] ?? []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-0.5">
+                        {(fieldTransforms[field.id] ?? []).map((transform) => (
+                          <span
+                            key={transform}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[8px] font-black uppercase tracking-wide"
+                          >
+                            {transform.replace(/_/g, ' ')}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = { ...fieldTransforms };
+                                next[field.id] = (next[field.id] ?? []).filter((t) => t !== transform);
+                                if ((next[field.id] ?? []).length === 0) delete next[field.id];
+                                mergeStepData({ fieldTransforms: next });
+                              }}
+                              className="ml-0.5 text-indigo-400 hover:text-indigo-700 leading-none"
+                              title={`Remove ${transform}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
                       </div>
                     )}
                     {customFields.some((f) => f.id === field.id) && (
@@ -621,15 +660,26 @@ function DesignStepBody({
       {/* ── Right panel (60%) ─────────────────────────────────────────── */}
       <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
 
-        {/* Social + wireframe selected → FilledTemplatePreview */}
+        {/* Social + wireframe selected → FilledTemplatePreview + optional Ask Alli panel */}
         {isSocial && hasWireframe && wireframe && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {wireframe.name} — Live Mapped Preview
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  {wireframe.name} — Live Mapped Preview
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setAskAlliTargetField(null); setAskAlliOpen((v) => !v); }}
+                className="inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 pl-2 pr-3 py-1 text-white shadow-lg shadow-indigo-500/30 text-[10px] font-semibold hover:from-indigo-600 hover:to-violet-700 transition-all"
+              >
+                <SparklesIconSolid className="h-3.5 w-3.5 shrink-0" />
+                Ask Alli
+              </button>
             </div>
+
             {activeSlotField !== null && (
               <div className="flex items-center justify-between px-4 py-2 bg-blue-600 rounded-xl text-white">
                 <span className="text-[10px] font-black uppercase tracking-widest">
@@ -640,24 +690,47 @@ function DesignStepBody({
                 </button>
               </div>
             )}
-            <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden" style={{ minHeight: '360px' }}>
-              <FilledTemplatePreview
-                templateFile={wireframe.file}
-                name={wireframe.name}
-                scale={360 / (wireframe.adSize || 1024)}
-                adSize={wireframe.adSize || 1024}
-                injections={injections}
-                cssOverrides={cssOverrides}
-                slotOverrides={stepData.slotMappings}
-                slotSelectionMode={activeSlotField !== null}
-                highlightSlot={activeSlotField !== null ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null) : null}
-                onSlotClick={(slotId) => {
-                  if (activeSlotField) {
-                    mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
-                    setActiveSlotField(null);
-                  }
-                }}
-              />
+
+            <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
+              <div
+                className={cn(
+                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
+                  askAlliOpen ? 'flex-1' : 'w-full'
+                )}
+                style={{ minHeight: '360px' }}
+              >
+                <FilledTemplatePreview
+                  templateFile={wireframe.file}
+                  name={wireframe.name}
+                  scale={askAlliOpen ? 280 / (wireframe.adSize || 1024) : 360 / (wireframe.adSize || 1024)}
+                  adSize={wireframe.adSize || 1024}
+                  injections={injections}
+                  cssOverrides={cssOverrides}
+                  slotOverrides={stepData.slotMappings}
+                  slotSelectionMode={activeSlotField !== null}
+                  highlightSlot={activeSlotField !== null ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null) : null}
+                  onSlotClick={(slotId) => {
+                    if (activeSlotField) {
+                      mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
+                      setActiveSlotField(null);
+                    }
+                  }}
+                />
+              </div>
+
+              {askAlliOpen && (
+                <div className="w-72 rounded-3xl border border-gray-100 shadow-xl overflow-hidden flex flex-col" style={{ minHeight: '360px' }}>
+                  <AskAlliPanel
+                    stepData={stepData}
+                    mergeStepData={mergeStepData}
+                    onClose={() => setAskAlliOpen(false)}
+                    targetFieldId={askAlliTargetField}
+                    requirements={requirements}
+                    feedColumns={feedColumns}
+                    brand={assetHouse}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
