@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckIcon, SparklesIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, SparklesIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
 import { cn } from '../../../utils/cn';
@@ -11,6 +11,8 @@ import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
 import { TemplatePreview } from '../_internal/TemplatePreview';
 import { CandidatePreview } from '../_internal/CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
+import { discoverSlots } from '../_internal/discoverSlots';
+import type { TemplateSlot } from '../_internal/discoverSlots';
 
 /**
  * Design step — "Design & Map" (Step 2 of 3: Setup → Design → Publish).
@@ -126,6 +128,8 @@ function DesignStepBody({
   const [suggestedFields, setSuggestedFields] = useState<Set<string>>(new Set());
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
+  const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
+  const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
 
   // Wire the module-level ref every render so onEnter can reach context.
   _designCtx = {
@@ -146,13 +150,31 @@ function DesignStepBody({
     };
   }, []);
 
+  useEffect(() => {
+    if (!stepData.wireframeFile) { setDiscoveredSlots([]); return; }
+    fetch(`/template_examples/social/${stepData.wireframeFile}`)
+      .then((r) => r.text())
+      .then((html) => setDiscoveredSlots(discoverSlots(html)))
+      .catch(() => setDiscoveredSlots([]));
+  }, [stepData.wireframeFile]);
+
   // Derived values
   const selectedCandidateIndex = stepData.selectedCandidateIndex ?? 0;
   const activeCandidate = candidates[selectedCandidateIndex ?? 0];
   const feedMappings = stepData.feedMappings ?? {};
   const feedSampleData = tbCtx.feedSampleData;
 
-  const dynamicRequirements = requirements.filter((r) => r.category === 'Dynamic');
+  const customFields = stepData.customFields ?? [];
+  const allFields: Array<RequirementField> = [
+    ...requirements.filter((r) => r.category === 'Dynamic'),
+    ...customFields.map((f) => ({
+      id: f.id,
+      label: f.label,
+      category: 'Dynamic' as const,
+      source: 'Feed',
+      type: f.type,
+    })),
+  ];
 
   const isSocial = stepData.channel === 'Social';
   const hasWireframe = Boolean(stepData.selectedWireframeId && stepData.wireframeFile);
@@ -236,14 +258,14 @@ function DesignStepBody({
         </div>
 
         {/* Field mapping */}
-        {dynamicRequirements.length > 0 && (
+        {allFields.length > 0 && (
           <div className="space-y-4">
             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
               Field Mapping
             </h4>
 
             <div className="space-y-4">
-              {dynamicRequirements.map((field) => {
+              {allFields.map((field) => {
                 const isSuggested = suggestedFields.has(field.id);
                 const currentVal = feedMappings[field.id] ?? '';
 
