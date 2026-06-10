@@ -64,8 +64,13 @@ Also include if channel is Social or Programmatic:
 Also include if brief mentions product, sale, deal, price, shop, or buy (or brief is empty):
 - { id: "price", label: "Price", category: "Dynamic", source: "Feed", type: "currency" }`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text: string;
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (err) {
+      throw new functions.https.HttpsError("internal", `Gemini call failed: ${(err as Error).message}`);
+    }
     try {
       return JSON.parse(text) as unknown[];
     } catch {
@@ -167,8 +172,13 @@ For each:
 - elements.cta: ${hasCTA}
 - elements.logo: ${hasLogo}`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text: string;
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (err) {
+      throw new functions.https.HttpsError("internal", `Gemini call failed: ${(err as Error).message}`);
+    }
     try {
       return JSON.parse(text) as unknown[];
     } catch {
@@ -219,8 +229,13 @@ Return a flat JSON object: { "fieldId": "columnName" }
 Only include fields you are confident about. Skip fields with no good match.
 Example output: { "headline": "product_title", "image_url": "image_link", "price": "final_price" }`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    let text: string;
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (err) {
+      throw new functions.https.HttpsError("internal", `Gemini call failed: ${(err as Error).message}`);
+    }
     let raw: Record<string, unknown>;
     try {
       raw = JSON.parse(text) as Record<string, unknown>;
