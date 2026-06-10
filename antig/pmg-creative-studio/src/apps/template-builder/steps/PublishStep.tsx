@@ -170,6 +170,7 @@ function PublishStepBody({
       capturedAt: Timestamp.fromDate(new Date()),
     },
     fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
+    fieldTransforms: stepData.fieldTransforms ?? {},
     brandOverrides: {
       primaryColor: stepData.backgroundColor,
       accentColor: stepData.accentColor,
