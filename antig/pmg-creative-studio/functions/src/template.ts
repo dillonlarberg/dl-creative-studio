@@ -2,7 +2,7 @@
 import * as functions from "firebase-functions";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash";
 
 // ── synthesizeRequirementsAI ──────────────────────────────────────────────────
 // Input:  { brief: string, channel: string, brand: { primaryColor?: string, fontPrimary?: string } | null }

@@ -6,7 +6,7 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 admin.initializeApp();
 
 const corsHandler = cors({ origin: true });
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 // Export function groups from domain-specific modules
 export * from "./alliProxy";
