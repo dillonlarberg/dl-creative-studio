@@ -13,6 +13,12 @@ export interface RequirementField {
   value?: string;
 }
 
+export type AlliAction =
+  | { type: 'add_transform'; fieldId: string; transform: string }
+  | { type: 'remove_transform'; fieldId: string; transform: string }
+  | { type: 'suggest_mapping'; fieldId: string; column: string }
+  | { type: 'suggest_slot'; fieldId: string; slotId: string };
+
 export interface TemplateBuilderStepData {
   // ── setup step ────────────────────────────────────────────────────
   templateName?: string;
@@ -31,6 +37,12 @@ export interface TemplateBuilderStepData {
     id: string;
     label: string;
     type: 'text' | 'image' | 'currency' | 'button' | 'asset';
+  }>;
+  fieldTransforms?: Record<string, string[]>; // fieldId → transform IDs
+  askAlliMessages?: Array<{                   // persistent chat history
+    role: 'user' | 'assistant';
+    content: string;
+    actions?: AlliAction[];
   }>;
   logoVariant?: LogoVariant;
   backgroundColor?: string;

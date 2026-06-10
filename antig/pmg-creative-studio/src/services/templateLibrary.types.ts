@@ -40,6 +40,7 @@ export interface TemplateLibraryRecord {
   };
 
   fieldMappings: Record<string, FieldMapping>;
+  fieldTransforms?: Record<string, string[]>;
 
   brandOverrides: {
     primaryColor?: string;
@@ -88,7 +89,11 @@ export type NewTemplateData = Pick<
   | 'feedSnapshot'
   | 'fieldMappings'
   | 'brandOverrides'
-> & { brief?: string; aiRequirements?: TemplateLibraryRecord['aiRequirements'] };
+> & {
+  brief?: string;
+  aiRequirements?: TemplateLibraryRecord['aiRequirements'];
+  fieldTransforms?: Record<string, string[]>;
+};
 
 export class TemplateNotFoundError extends Error {
   constructor(templateId: string) {
