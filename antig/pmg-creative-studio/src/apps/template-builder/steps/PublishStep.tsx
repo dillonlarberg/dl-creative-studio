@@ -35,11 +35,16 @@ function parseRatio(ratio: string): { width: number; height: number } {
 /** Convert feedMappings + uploadValues into the FieldMapping discriminated union. */
 function buildFieldMappings(
   feedMappings: Record<string, string>,
-  uploadValues: Record<string, string>
+  uploadValues: Record<string, string>,
+  slotMappings?: Record<string, string>
 ): Record<string, FieldMapping> {
   const result: Record<string, FieldMapping> = {};
   for (const [fieldId, column] of Object.entries(feedMappings)) {
-    result[fieldId] = { source: 'feed', column };
+    result[fieldId] = {
+      source: 'feed',
+      column,
+      ...(slotMappings?.[fieldId] ? { slotId: slotMappings[fieldId] } : {}),
+    };
   }
   for (const [fieldId, assetPath] of Object.entries(uploadValues)) {
     result[fieldId] = { source: 'upload', assetPath };
@@ -164,7 +169,7 @@ function PublishStepBody({
       columns: tbCtx.feedColumns,
       capturedAt: Timestamp.fromDate(new Date()),
     },
-    fieldMappings: buildFieldMappings(feedMappings, uploadValues),
+    fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
     brandOverrides: {
       primaryColor: stepData.backgroundColor,
       accentColor: stepData.accentColor,
