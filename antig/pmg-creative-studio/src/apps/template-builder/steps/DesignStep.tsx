@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckIcon, SparklesIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
 import { cn } from '../../../utils/cn';
@@ -130,6 +130,11 @@ function DesignStepBody({
   const [brandOpen, setBrandOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
+  const [addFieldOpen, setAddFieldOpen] = useState(false);
+  const [newFieldPreset, setNewFieldPreset] = useState('');
+  const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
+  const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
+  const [newFieldColumn, setNewFieldColumn] = useState('');
 
   // Wire the module-level ref every render so onEnter can reach context.
   _designCtx = {
@@ -324,10 +329,143 @@ function DesignStepBody({
                         </p>
                       </div>
                     )}
+                    {customFields.some((f) => f.id === field.id) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = { ...feedMappings };
+                          delete next[field.id];
+                          const nextSlots = { ...(stepData.slotMappings ?? {}) };
+                          delete nextSlots[field.id];
+                          mergeStepData({
+                            customFields: customFields.filter((f) => f.id !== field.id),
+                            feedMappings: next,
+                            slotMappings: nextSlots,
+                          });
+                        }}
+                        className="text-[8px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors mt-0.5"
+                      >
+                        Remove field
+                      </button>
+                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Add Field */}
+            {!addFieldOpen ? (
+              <button
+                type="button"
+                onClick={() => setAddFieldOpen(true)}
+                className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors mt-2"
+              >
+                <PlusIcon className="h-3 w-3" />
+                Add Field
+              </button>
+            ) : (
+              <div className="border-2 border-blue-100 rounded-xl p-4 space-y-3 bg-blue-50/30 mt-2">
+                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">New Field</p>
+
+                {/* Preset picker */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { id: 'headline_2', label: 'Headline 2', type: 'text' },
+                    { id: 'callout', label: 'Callout', type: 'text' },
+                    { id: 'price', label: 'Price', type: 'currency' },
+                    { id: 'background_image', label: 'BG Image', type: 'image' },
+                    { id: 'cta', label: 'CTA', type: 'text' },
+                    { id: '__custom__', label: 'Custom', type: 'text' },
+                  ] as Array<{ id: string; label: string; type: 'text' | 'image' | 'currency' }>).map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        setNewFieldPreset(preset.id);
+                        setNewFieldType(preset.type);
+                        if (preset.id !== '__custom__') setNewFieldCustomLabel('');
+                      }}
+                      className={cn(
+                        'px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wide border-2 transition-all',
+                        newFieldPreset === preset.id
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-100 text-gray-400 hover:border-blue-200'
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom label input */}
+                {newFieldPreset === '__custom__' && (
+                  <input
+                    type="text"
+                    placeholder="Field label (e.g. Sub-headline)"
+                    value={newFieldCustomLabel}
+                    onChange={(e) => setNewFieldCustomLabel(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
+                  />
+                )}
+
+                {/* Column picker */}
+                <select
+                  value={newFieldColumn}
+                  onChange={(e) => setNewFieldColumn(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
+                >
+                  <option value="">— Select feed column —</option>
+                  {feedColumns.map((col) => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                </select>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!newFieldPreset || !newFieldColumn || (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim())}
+                    onClick={() => {
+                      const id =
+                        newFieldPreset === '__custom__'
+                          ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+                          : newFieldPreset;
+                      const label =
+                        newFieldPreset === '__custom__'
+                          ? newFieldCustomLabel.trim()
+                          : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
+
+                      const existingCustom = stepData.customFields ?? [];
+                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) return;
+
+                      mergeStepData({
+                        customFields: [...existingCustom, { id, label, type: newFieldType }],
+                        feedMappings: { ...feedMappings, [id]: newFieldColumn },
+                      });
+                      setAddFieldOpen(false);
+                      setNewFieldPreset('');
+                      setNewFieldCustomLabel('');
+                      setNewFieldColumn('');
+                    }}
+                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:bg-gray-100 disabled:text-gray-300 transition-all"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddFieldOpen(false);
+                      setNewFieldPreset('');
+                      setNewFieldCustomLabel('');
+                      setNewFieldColumn('');
+                    }}
+                    className="py-2 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
