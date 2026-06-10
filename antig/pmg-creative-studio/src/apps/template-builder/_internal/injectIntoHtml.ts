@@ -107,10 +107,16 @@ export const CSS_INJECTION_MAP: Record<
   ],
 };
 
+// All known injectable target IDs (flattened from FIELD_ID_MAP, deduplicated)
+const ALL_KNOWN_TARGETS: string[] = Array.from(
+  new Set(Object.values(FIELD_ID_MAP).flatMap((m) => m.targets))
+);
+
 export function injectIntoHtml(
   html: string,
   injections: Record<string, { type: 'image' | 'text'; value: string }>,
-  cssOverrides?: Record<string, string>
+  cssOverrides?: Record<string, string>,
+  slotOverrides?: Record<string, string>
 ): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -122,9 +128,14 @@ export function injectIntoHtml(
     const lowerField = fieldId.toLowerCase();
     let targetIds: string[] = [];
 
-    if (FIELD_ID_MAP[lowerField]) {
+    // 1. Explicit slot override takes priority
+    if (slotOverrides?.[lowerField]) {
+      targetIds = [slotOverrides[lowerField]];
+    } else if (FIELD_ID_MAP[lowerField]) {
+      // 2. Direct FIELD_ID_MAP lookup
       targetIds = FIELD_ID_MAP[lowerField].targets;
     } else {
+      // 3. Partial match fallback
       for (const [key, mapping] of Object.entries(FIELD_ID_MAP)) {
         if (lowerField.includes(key) || key.includes(lowerField)) {
           targetIds = mapping.targets;
@@ -171,4 +182,58 @@ export function injectIntoHtml(
   }
 
   return new XMLSerializer().serializeToString(doc);
+}
+
+/**
+ * Returns a self-contained <script> string to append to wireframe HTML when
+ * the preview needs to be interactive (slot-selection mode). The script:
+ * - Sends `{ type: 'slot-click', slotId }` to the parent when a known slot is clicked
+ * - Listens for `{ type: 'highlight-slot', slotId }` to outline a single slot
+ * - Listens for `{ type: 'slot-selection-mode', active }` to pulse all known slots
+ * - Listens for `{ type: 'clear-highlights' }` to remove all outlines
+ */
+export function buildInteractiveScript(): string {
+  const slotsJson = JSON.stringify(ALL_KNOWN_TARGETS);
+  return `<script>
+(function() {
+  var KNOWN = ${slotsJson};
+  KNOWN.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.parent.postMessage({ type: 'slot-click', slotId: id }, '*');
+    });
+    el.style.transition = 'outline 0.15s';
+  });
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    if (e.data.type === 'highlight-slot') {
+      KNOWN.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.style.outline = ''; el.style.cursor = ''; }
+      });
+      if (e.data.slotId) {
+        var t = document.getElementById(e.data.slotId);
+        if (t) { t.style.outline = '3px solid #2563eb'; t.style.cursor = 'default'; }
+      }
+    }
+    if (e.data.type === 'slot-selection-mode') {
+      KNOWN.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.outline = e.data.active ? '2px dashed #2563eb' : '';
+        el.style.cursor = e.data.active ? 'pointer' : '';
+      });
+    }
+    if (e.data.type === 'clear-highlights') {
+      KNOWN.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.style.outline = ''; el.style.cursor = ''; }
+      });
+    }
+  });
+})();
+</script>`;
 }
