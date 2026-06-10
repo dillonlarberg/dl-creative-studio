@@ -213,13 +213,13 @@ function DesignStepBody({
               <SkeletonCard />
               <SkeletonCard />
             </div>
-          ) : candidates.length === 0 ? (
+          ) : candidates.length === 0 && !isSocial ? (
             <div className="py-8 text-center border-2 border-dashed border-gray-100 rounded-2xl">
               <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                No candidates generated yet
+                Generating layout options…
               </p>
             </div>
-          ) : (
+          ) : candidates.length === 0 && isSocial ? null : (
             <div className="space-y-3">
               {candidates.map((c, idx) => (
                 <CandidateCard
@@ -562,6 +562,7 @@ const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
 export const designStep: WizardStep<TemplateBuilderStepData> = {
   id: 'design',
   name: 'Design & Map',
+  description: 'Pick a layout, then map your feed columns to the template fields. The live preview updates as you go.',
   validate,
   onEnter,
   render: (props) => <DesignStepBody {...props} />,

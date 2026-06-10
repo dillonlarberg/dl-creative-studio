@@ -48,6 +48,8 @@ export interface StepRenderProps<S extends StepData = StepData> extends StepCont
 export interface WizardStep<S extends StepData = StepData> {
   id: string;
   name: string;
+  /** One-sentence description shown below the step title in the wizard card. */
+  description?: string;
   render: (props: StepRenderProps<S>) => ReactNode;
   validate: (data: S) => ValidationResult;
   onEnter?: (ctx: StepContext<S>) => void | Promise<void>;

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { CircleStackIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useMemo } from 'react';
+import { CircleStackIcon, CheckCircleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, Channel } from '../types';
 import { cn } from '../../../utils/cn';
@@ -47,7 +47,7 @@ interface OverlayProps {
 
 function LoadingOverlay({ feedDone, requirementsDone }: OverlayProps) {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 rounded-xl bg-white/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-white/95 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
         <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
@@ -79,6 +79,191 @@ function StatusLine({ done, label }: { done: boolean; label: string }) {
       >
         {label}
       </span>
+    </div>
+  );
+}
+
+// ── Feed list ────────────────────────────────────────────────────────────────
+
+const DATASOURCE_TYPE_LABELS: Record<string, string> = {
+  alliclientfile: 'Alli Upload',
+  googledrive: 'Google Drive',
+  bigquery: 'BigQuery',
+  redshift: 'Redshift',
+  snowflake: 'Snowflake',
+  s3: 'S3',
+  mysql: 'MySQL',
+  postgres: 'PostgreSQL',
+};
+
+function formatLastModified(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function FeedList({
+  feeds,
+  selectedFeedId,
+  onSelect,
+}: {
+  feeds: SelectedFeed[];
+  selectedFeedId?: string;
+  onSelect: (feed: SelectedFeed) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'default' | 'recent'>('default');
+  const [typeFilter, setTypeFilter] = useState('');
+
+  // Unique source types present in this client's feed list — drives the filter dropdown.
+  const availableTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const f of feeds) {
+      if (f.datasourceType) seen.add(f.datasourceType);
+    }
+    return Array.from(seen).sort();
+  }, [feeds]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let result = feeds;
+    if (q) result = result.filter((f) => f.name.toLowerCase().includes(q));
+    if (typeFilter) result = result.filter((f) => f.datasourceType === typeFilter);
+    if (sortBy === 'recent') {
+      result = [...result].sort((a, b) => {
+        const ta = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+        const tb = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+        return tb - ta;
+      });
+    }
+    return result;
+  }, [feeds, query, typeFilter, sortBy]);
+
+  return (
+    <div className="space-y-3">
+      {/* Controls — contained in a subtle card */}
+      <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-3 space-y-2.5">
+        {/* Search */}
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-300 pointer-events-none" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search feeds…"
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-50 outline-none transition-all text-[11px] font-bold text-gray-700 placeholder-gray-300 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* Sort toggle + type filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">
+            Sort
+          </span>
+
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm shrink-0">
+            {(['default', 'recent'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setSortBy(opt)}
+                className={cn(
+                  'px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all',
+                  sortBy === opt
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+                )}
+              >
+                {opt === 'default' ? 'Default' : 'Recent'}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0" />
+
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full appearance-none pl-3 pr-7 py-1.5 rounded-lg border border-gray-200 focus:border-blue-500 outline-none text-[8px] font-black uppercase tracking-widest bg-white shadow-sm transition-all cursor-pointer"
+              style={{ color: typeFilter ? '#1e40af' : '#9ca3af' }}
+            >
+              <option value="">All Types</option>
+              {availableTypes.map((t) => (
+                <option key={t} value={t}>
+                  {DATASOURCE_TYPE_LABELS[t] ?? t}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      {/* Results */}
+      {filtered.length === 0 ? (
+        <p className="py-4 text-center text-[9px] font-black text-gray-300 uppercase tracking-widest">
+          No feeds match "{query}"
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {filtered.map((feed) => {
+            const isSelected = selectedFeedId === feed.name;
+            const typeLabel =
+              DATASOURCE_TYPE_LABELS[feed.datasourceType ?? ''] ?? feed.datasourceType ?? '';
+            const updatedDate = formatLastModified(feed.lastModified);
+
+            return (
+              <button
+                key={feed.name}
+                type="button"
+                onClick={() => onSelect(feed)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all',
+                  isSelected
+                    ? 'border-blue-600 bg-blue-50'
+                    : 'border-gray-100 hover:border-blue-200 bg-white'
+                )}
+              >
+                <CircleStackIcon
+                  className={cn('h-5 w-5 shrink-0', isSelected ? 'text-blue-600' : 'text-gray-300')}
+                />
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={cn(
+                      'text-[11px] font-black uppercase tracking-tight truncate',
+                      isSelected ? 'text-blue-900' : 'text-gray-700'
+                    )}
+                  >
+                    {feed.title || feed.name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {typeLabel && (
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                        {typeLabel}
+                      </span>
+                    )}
+                    {updatedDate && (
+                      <span className="text-[9px] font-medium text-gray-300">
+                        · Updated {updatedDate}
+                      </span>
+                    )}
+                    {feed.isCertified && (
+                      <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-green-50 text-green-600">
+                        Certified
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {isSelected && (
+                  <CheckCircleIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -238,57 +423,13 @@ function SetupStepBody({
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {dataSources.map((feed) => {
-              const feedId = String((feed as Record<string, unknown>).id ?? feed.name);
-              const feedType = String((feed as Record<string, unknown>).type ?? '');
-              const isSelected = stepData.selectedFeedId === feedId;
-
-              return (
-                <button
-                  key={feedId}
-                  type="button"
-                  onClick={() =>
-                    mergeStepData({
-                      selectedFeedId: feedId,
-                      selectedFeedName: feed.name,
-                    })
-                  }
-                  className={cn(
-                    'w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all',
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-100 hover:border-blue-200 bg-white'
-                  )}
-                >
-                  <CircleStackIcon
-                    className={cn(
-                      'h-5 w-5 shrink-0',
-                      isSelected ? 'text-blue-600' : 'text-gray-300'
-                    )}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'text-[11px] font-black uppercase tracking-tight truncate',
-                        isSelected ? 'text-blue-900' : 'text-gray-700'
-                      )}
-                    >
-                      {feed.name}
-                    </p>
-                    {feedType && (
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        {feedType}
-                      </p>
-                    )}
-                  </div>
-                  {isSelected && (
-                    <CheckCircleIcon className="h-4 w-4 text-blue-600 shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <FeedList
+            feeds={dataSources}
+            selectedFeedId={stepData.selectedFeedId}
+            onSelect={(feed) =>
+              mergeStepData({ selectedFeedId: feed.name, selectedFeedName: feed.name })
+            }
+          />
         )}
       </div>
 
@@ -343,6 +484,7 @@ const submit: WizardStep<TemplateBuilderStepData>['submit'] = async ({
 export const setupStep: WizardStep<TemplateBuilderStepData> = {
   id: 'setup',
   name: 'Setup',
+  description: 'Name your template, pick a channel and sizes, connect a data feed, and optionally describe the creative.',
   validate,
   submit,
   render: (props) => <SetupStepBody {...props} />,

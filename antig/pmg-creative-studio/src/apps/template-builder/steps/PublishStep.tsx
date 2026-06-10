@@ -259,6 +259,11 @@ function PublishStepBody({
             placeholder="e.g. Summer Sale Social 1:1"
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
           />
+          {(stepData.templateName ?? '').startsWith('Untitled') && (
+            <p className="text-[10px] font-bold text-amber-600">
+              Give your template a descriptive name before publishing — e.g. "Summer Sale Social 1:1"
+            </p>
+          )}
         </div>
 
         {/* Metadata summary */}
@@ -389,6 +394,7 @@ function MetaRow({
 export const publishStep: WizardStep<TemplateBuilderStepData> = {
   id: 'publish',
   name: 'Publish',
+  description: 'Review your template and publish it to the Template Library for use across campaigns.',
   validate: () => ({ ok: true }),
   render: (props) => <PublishStepBody {...props} />,
 };

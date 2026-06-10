@@ -454,6 +454,9 @@ export function WizardShell<S extends StepData = StepData>({
       <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
         <div className="text-center">
           <h2 className="text-lg font-semibold text-gray-900">{currentStep.name}</h2>
+          {currentStep.description && (
+            <p className="mt-1 text-sm text-blue-gray-500">{currentStep.description}</p>
+          )}
           <div className="mt-8" data-testid={`step-body-${currentStep.id}`}>
             {currentStep.render(renderProps)}
           </div>
@@ -539,7 +542,9 @@ export function WizardShell<S extends StepData = StepData>({
                   )}
                 >
                   {isLoading && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
-                  {isLoading ? 'Synchronizing...' : 'Continue Upstream →'}
+                  {isLoading
+                    ? 'Loading...'
+                    : `Next: ${manifest.steps[currentStepIndex + 1]?.name ?? 'Continue'} →`}
                 </button>
               )}
             </div>
