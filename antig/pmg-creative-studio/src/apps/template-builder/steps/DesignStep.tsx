@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, SparklesIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
 import { cn } from '../../../utils/cn';
@@ -23,6 +23,8 @@ import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
  * so onEnter can call into context hooks that are only available inside
  * the mounted component tree.
  */
+
+const IMAGE_COLUMN_KEYWORDS = ['image', 'img', 'url', 'link', 'photo', 'pic', 'src', 'thumb', 'media'] as const;
 
 // ── Module-level context ref ─────────────────────────────────────────────────
 
@@ -278,7 +280,12 @@ function DesignStepBody({
                           },
                         })
                       }
-                      className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white"
+                      className={cn(
+                        'w-full px-3 py-2 rounded-xl border-2 focus:ring-4 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white',
+                        field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k))
+                          ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-50'
+                          : 'border-gray-100 focus:border-blue-600 focus:ring-blue-50'
+                      )}
                     >
                       <option value="">— Select column —</option>
                       {feedColumns.map((col) => (
@@ -287,6 +294,14 @@ function DesignStepBody({
                         </option>
                       ))}
                     </select>
+                    {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <ExclamationTriangleIcon className="h-3 w-3 text-amber-500 shrink-0" />
+                        <p className="text-[9px] font-bold text-amber-600">
+                          "{currentVal}" may not contain image URLs — check this column has image links, not text or dates.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -299,12 +314,17 @@ function DesignStepBody({
           <button
             type="button"
             onClick={() => setBrandOpen((v) => !v)}
-            className="flex items-center justify-between w-full group"
+            className="flex items-start justify-between w-full group text-left"
           >
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] group-hover:text-gray-600 transition-colors">
-              Brand Overrides
-            </h4>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+            <div>
+              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] group-hover:text-gray-600 transition-colors">
+                Brand Overrides
+              </h4>
+              <p className="text-[9px] font-medium text-gray-300 mt-0.5">
+                Adjust colors, font, and logo variant for this template
+              </p>
+            </div>
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0 mt-0.5">
               {brandOpen ? 'Hide ▲' : 'Show ▼'}
             </span>
           </button>
@@ -415,9 +435,14 @@ function DesignStepBody({
           <div className="space-y-6">
             {/* Wireframe library picker */}
             <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                Choose a Social Template
-              </h4>
+              <div>
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                  Choose a Social Template
+                </h4>
+                <p className="text-[9px] font-medium text-gray-300 mt-0.5">
+                  Select one to load it into the live preview and start mapping your feed columns
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {SOCIAL_WIREFRAMES.map((wf) => (
                   <button

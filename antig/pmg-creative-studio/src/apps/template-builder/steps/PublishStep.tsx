@@ -291,12 +291,17 @@ function PublishStepBody({
         {publishedId ? (
           <div className="flex flex-col items-center gap-4 rounded-xl bg-green-50 border border-green-200 p-6 text-center">
             <CheckCircleIcon className="h-8 w-8 text-green-500" />
-            <p className="text-sm font-semibold text-green-800">Template published!</p>
+            <div>
+              <p className="text-sm font-semibold text-green-800">Template published!</p>
+              <p className="text-[10px] font-medium text-green-600 mt-1">
+                It's now available in the Template Library for use across campaigns.
+              </p>
+            </div>
             <a
-              href="/"
+              href={`/adlabs/${client.slug}`}
               className="inline-flex items-center gap-1.5 text-[10px] font-black text-green-700 uppercase tracking-[0.15em] hover:text-green-900 transition-colors"
             >
-              View in Template Library
+              Back to Dashboard
               <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
           </div>
