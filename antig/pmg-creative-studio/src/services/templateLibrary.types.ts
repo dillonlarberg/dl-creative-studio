@@ -4,7 +4,7 @@ import type { Timestamp } from 'firebase/firestore';
 export type FieldMappingSource = 'feed' | 'upload' | 'brand' | 'static';
 
 export type FieldMapping =
-  | { source: 'feed'; column: string }
+  | { source: 'feed'; column: string; slotId?: string }
   | { source: 'upload'; assetPath: string }
   | { source: 'brand'; brandKey: string }
   | { source: 'static'; value: string };

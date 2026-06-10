@@ -26,6 +26,12 @@ export interface TemplateBuilderStepData {
   selectedCandidateIndex?: number | null;
   feedMappings?: Record<string, string>;    // fieldId → columnName
   uploadValues?: Record<string, string>;    // fieldId → dataURL or URL
+  slotMappings?: Record<string, string>;    // fieldId → explicit slotId override
+  customFields?: Array<{                    // user-added fields beyond Gemini
+    id: string;
+    label: string;
+    type: 'text' | 'image' | 'currency' | 'button' | 'asset';
+  }>;
   logoVariant?: LogoVariant;
   backgroundColor?: string;
   accentColor?: string;
