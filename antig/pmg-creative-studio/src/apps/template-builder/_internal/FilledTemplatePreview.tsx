@@ -1,12 +1,6 @@
-import { useEffect, useState } from 'react';
-import { injectIntoHtml } from './injectIntoHtml';
+import { useEffect, useRef, useState } from 'react';
+import { injectIntoHtml, buildInteractiveScript } from './injectIntoHtml';
 
-/**
- * Lifted verbatim from src/pages/use-cases/UseCaseWizardPage.tsx lines 239-319.
- * Same scaling strategy as TemplatePreview, but fetches the HTML source,
- * injects real mapped values (images + text) by element-ID matching, then
- * renders via `srcdoc`.
- */
 export const FilledTemplatePreview = ({
   templateFile,
   name,
@@ -14,6 +8,10 @@ export const FilledTemplatePreview = ({
   adSize = 1024,
   injections,
   cssOverrides,
+  slotOverrides,
+  onSlotClick,
+  highlightSlot,
+  slotSelectionMode = false,
 }: {
   templateFile: string;
   name: string;
@@ -21,25 +19,65 @@ export const FilledTemplatePreview = ({
   adSize?: number;
   injections: Record<string, { type: 'image' | 'text'; value: string }>;
   cssOverrides?: Record<string, string>;
+  slotOverrides?: Record<string, string>;
+  onSlotClick?: (slotId: string) => void;
+  highlightSlot?: string | null;
+  slotSelectionMode?: boolean;
 }) => {
   const [srcdoc, setSrcdoc] = useState<string>('');
   const [loaded, setLoaded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const clipSize = Math.round(adSize * scale);
+  const isInteractive = Boolean(onSlotClick || slotSelectionMode);
 
+  // Rebuild srcdoc when template or injections change
   useEffect(() => {
     setLoaded(false);
     setSrcdoc('');
     fetch(`/template_examples/social/${templateFile}`)
       .then((r) => r.text())
       .then((html) => {
-        const filled = injectIntoHtml(html, injections, cssOverrides);
+        let filled = injectIntoHtml(html, injections, cssOverrides, slotOverrides);
+        if (isInteractive) {
+          filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
+        }
         setSrcdoc(filled);
       })
       .catch((err) =>
         console.error('[FilledTemplatePreview] fetch error:', err)
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateFile, JSON.stringify(injections), JSON.stringify(cssOverrides)]);
+  }, [templateFile, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), isInteractive]);
+
+  // Send highlight-slot message when highlightSlot prop changes
+  useEffect(() => {
+    if (!loaded || !iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'highlight-slot', slotId: highlightSlot ?? null },
+      '*'
+    );
+  }, [highlightSlot, loaded]);
+
+  // Send slot-selection-mode message when prop changes
+  useEffect(() => {
+    if (!loaded || !iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'slot-selection-mode', active: slotSelectionMode },
+      '*'
+    );
+  }, [slotSelectionMode, loaded]);
+
+  // Listen for slot-click postMessages from the iframe
+  useEffect(() => {
+    if (!onSlotClick) return;
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'slot-click' && e.data.slotId) {
+        onSlotClick(e.data.slotId as string);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onSlotClick]);
 
   return (
     <div
@@ -51,7 +89,9 @@ export const FilledTemplatePreview = ({
         position: 'relative',
         flexShrink: 0,
         background: '#f3f4f6',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.07)',
+        boxShadow: slotSelectionMode
+          ? '0 0 0 2px #2563eb'
+          : '0 0 0 1px rgba(0,0,0,0.07)',
       }}
     >
       {!loaded && (
@@ -79,18 +119,20 @@ export const FilledTemplatePreview = ({
       >
         {srcdoc && (
           <iframe
+            ref={iframeRef}
             srcDoc={srcdoc}
             onLoad={() => setLoaded(true)}
             style={{
               width: `${adSize}px`,
               height: `${adSize}px`,
               border: 'none',
-              pointerEvents: 'none',
+              pointerEvents: isInteractive ? 'auto' : 'none',
               display: 'block',
+              cursor: slotSelectionMode ? 'crosshair' : 'default',
             }}
             title={name}
             scrolling="no"
-            sandbox="allow-same-origin"
+            sandbox={isInteractive ? 'allow-same-origin allow-scripts' : 'allow-same-origin'}
           />
         )}
       </div>
