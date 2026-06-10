@@ -238,6 +238,121 @@ Example output: { "headline": "product_title", "image_url": "image_link", "price
           }
           response.json(safe);
 
+        } else if (action === "chat") {
+          const { messages, templateContext } = body as {
+            messages: Array<{ role: string; content: string }>;
+            templateContext: {
+              channel: string;
+              brief?: string;
+              brand: { primaryColor?: string; fontPrimary?: string } | null;
+              fieldMappings: Record<string, string>;
+              slotMappings: Record<string, string>;
+              fieldTransforms: Record<string, string[]>;
+              requirements: Array<{ id: string; label: string; type: string }>;
+              feedColumns: string[];
+            };
+          };
+
+          if (!Array.isArray(messages) || messages.length === 0) {
+            response.status(400).json({ error: "messages array is required" });
+            return;
+          }
+
+          const chatModel = genAI.getGenerativeModel({
+            model: GEMINI_MODEL,
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  content: { type: SchemaType.STRING },
+                  actions: {
+                    type: SchemaType.ARRAY,
+                    items: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        type:      { type: SchemaType.STRING },
+                        fieldId:   { type: SchemaType.STRING },
+                        transform: { type: SchemaType.STRING },
+                        column:    { type: SchemaType.STRING },
+                        slotId:    { type: SchemaType.STRING },
+                      },
+                      required: ["type"],
+                    },
+                  },
+                },
+                required: ["content"],
+              },
+            },
+          });
+
+          const ctx = templateContext;
+          const systemPrompt = `You are Alli, an AI creative assistant helping build an ad template.
+
+Current template context:
+- Channel: ${ctx.channel}
+- Brief: "${ctx.brief || "(none)"}"
+- Brand color: ${ctx.brand?.primaryColor ?? "unknown"}, font: ${ctx.brand?.fontPrimary ?? "Inter"}
+- Fields and their feed column mappings: ${JSON.stringify(ctx.fieldMappings)}
+- Slot assignments: ${JSON.stringify(ctx.slotMappings)}
+- Transforms already applied: ${JSON.stringify(ctx.fieldTransforms)}
+- All available feed columns: ${JSON.stringify(ctx.feedColumns)}
+- Template fields: ${JSON.stringify(ctx.requirements.map((r) => ({ id: r.id, label: r.label, type: r.type })))}
+
+You can suggest structured actions when the user asks you to make changes. Available actions:
+- add_transform: apply a processing rule to a field at generation time
+  { "type": "add_transform", "fieldId": "image_url", "transform": "remove_bg" }
+- remove_transform: remove a transform rule
+  { "type": "remove_transform", "fieldId": "image_url", "transform": "remove_bg" }
+- suggest_mapping: recommend a feed column for a field
+  { "type": "suggest_mapping", "fieldId": "headline", "column": "product_title" }
+- suggest_slot: recommend a template slot for a field
+  { "type": "suggest_slot", "fieldId": "headline", "slotId": "headline1" }
+
+Available transforms for image fields: remove_bg, enhance, reframe
+Available transforms for text fields: title_case, uppercase, truncate_50
+
+Rules:
+- Only suggest actions when the user explicitly asks for a change
+- Always explain what you are doing in the "content" field
+- If no actions are needed, return "actions": []
+- Match fieldId exactly to the fields listed in template context above`;
+
+          // Build conversation history for Gemini chat
+          // Prepend system prompt to the first user message
+          const history: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+          for (let i = 0; i < messages.length - 1; i++) {
+            const m = messages[i];
+            const role = m.role === "assistant" ? "model" : "user";
+            const text = i === 0 && m.role === "user"
+              ? `${systemPrompt}\n\nUser: ${m.content}`
+              : m.content;
+            history.push({ role, parts: [{ text }] });
+          }
+
+          const lastMessage = messages[messages.length - 1];
+          const lastText = messages.length === 1 && lastMessage.role === "user"
+            ? `${systemPrompt}\n\nUser: ${lastMessage.content}`
+            : lastMessage.content;
+
+          let chatText: string;
+          try {
+            const chat = chatModel.startChat({ history });
+            const result = await chat.sendMessage(lastText);
+            chatText = result.response.text();
+          } catch (err) {
+            throw new functions.https.HttpsError("internal", `Gemini chat failed: ${(err as Error).message}`);
+          }
+
+          let parsed: { content: string; actions?: unknown[] };
+          try {
+            parsed = JSON.parse(chatText) as { content: string; actions?: unknown[] };
+          } catch {
+            throw new functions.https.HttpsError("internal", `AI returned unparseable response: ${chatText.slice(0, 200)}`);
+          }
+
+          response.json(parsed);
+
         } else {
           response.status(400).json({ error: `Unknown templateAI action: ${action}` });
         }
