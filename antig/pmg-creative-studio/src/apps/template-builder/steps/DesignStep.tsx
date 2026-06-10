@@ -274,8 +274,17 @@ function DesignStepBody({
                 const isSuggested = suggestedFields.has(field.id);
                 const currentVal = feedMappings[field.id] ?? '';
 
+                const assignedSlot = (stepData.slotMappings ?? {})[field.id];
+                const isSelectingSlot = activeSlotField === field.id;
+
                 return (
-                  <div key={field.id} className="space-y-1.5">
+                  <div
+                    key={field.id}
+                    className={cn(
+                      'space-y-1.5 p-3 rounded-xl transition-all border-2',
+                      isSelectingSlot ? 'bg-blue-50 border-blue-200' : 'border-transparent'
+                    )}
+                  >
                     <div className="flex items-center gap-2">
                       <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex-1">
                         {field.label}
@@ -327,6 +336,50 @@ function DesignStepBody({
                         <p className="text-[9px] font-bold text-amber-600">
                           "{currentVal}" may not contain image URLs — check this column has image links, not text or dates.
                         </p>
+                      </div>
+                    )}
+                    {/* Slot picker */}
+                    {discoveredSlots.length > 0 && (
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Slot</span>
+                        {isSelectingSlot ? (
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <span className="text-[9px] text-blue-600 font-bold animate-pulse">Click a zone in the preview →</span>
+                            <button type="button" onClick={() => setActiveSlotField(null)} className="text-[8px] text-gray-400 hover:text-gray-600">cancel</button>
+                          </div>
+                        ) : (
+                          <select
+                            value={assignedSlot ?? ''}
+                            onFocus={() => setActiveSlotField(field.id)}
+                            onChange={(e) => {
+                              mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [field.id]: e.target.value } });
+                              setActiveSlotField(null);
+                            }}
+                            onBlur={() => { setTimeout(() => setActiveSlotField((prev) => prev === field.id ? null : prev), 150); }}
+                            className="flex-1 px-2 py-1 rounded-lg border border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                          >
+                            <option value="">— auto —</option>
+                            {discoveredSlots.map((slot) => (
+                              <option key={slot.slotId} value={slot.slotId}>
+                                {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {assignedSlot && !isSelectingSlot && (
+                          <button
+                            type="button"
+                            title="Clear slot"
+                            onClick={() => {
+                              const next = { ...(stepData.slotMappings ?? {}) };
+                              delete next[field.id];
+                              mergeStepData({ slotMappings: next });
+                            }}
+                            className="text-gray-300 hover:text-red-400 transition-colors"
+                          >
+                            <XMarkIcon className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                     )}
                     {customFields.some((f) => f.id === field.id) && (
@@ -577,6 +630,16 @@ function DesignStepBody({
                 {wireframe.name} — Live Mapped Preview
               </span>
             </div>
+            {activeSlotField !== null && (
+              <div className="flex items-center justify-between px-4 py-2 bg-blue-600 rounded-xl text-white">
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  Click a zone to assign to "{allFields.find((r) => r.id === activeSlotField)?.label ?? activeSlotField}"
+                </span>
+                <button type="button" onClick={() => setActiveSlotField(null)} className="text-blue-200 hover:text-white text-[9px] font-bold uppercase tracking-widest">
+                  Cancel
+                </button>
+              </div>
+            )}
             <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden" style={{ minHeight: '360px' }}>
               <FilledTemplatePreview
                 templateFile={wireframe.file}
@@ -585,6 +648,15 @@ function DesignStepBody({
                 adSize={wireframe.adSize || 1024}
                 injections={injections}
                 cssOverrides={cssOverrides}
+                slotOverrides={stepData.slotMappings}
+                slotSelectionMode={activeSlotField !== null}
+                highlightSlot={activeSlotField !== null ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null) : null}
+                onSlotClick={(slotId) => {
+                  if (activeSlotField) {
+                    mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
+                    setActiveSlotField(null);
+                  }
+                }}
               />
             </div>
           </div>
