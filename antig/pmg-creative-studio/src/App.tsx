@@ -15,6 +15,7 @@ import { WizardShell } from './platform/wizard/WizardShell';
 import videoStitchManifest from './apps/video-stitch/manifest';
 import videoCutdownManifest from './apps/video-cutdown/manifest';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
+import TemplateLibraryPage from './pages/TemplateLibraryPage';
 
 /**
  * Root redirect: send the user to the AdLabs dashboard for their saved client.
@@ -119,6 +120,10 @@ export default function App() {
                 <TemplateBuilderAppRoot />
               </ClientProvider>
             }
+          />
+          <Route
+            path="/adlabs/:clientSlug/templates"
+            element={<TemplateLibraryPage />}
           />
           <Route
             path="/adlabs/:clientSlug/video-stitch/*"
