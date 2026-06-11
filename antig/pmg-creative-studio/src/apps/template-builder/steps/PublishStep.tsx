@@ -54,22 +54,30 @@ function buildFieldMappings(
 
 /**
  * Build injections for FilledTemplatePreview.
- * Resolves feed-mapped fields from the first feed sample row and adds logo
- * from assetHouse.
+ * Scans all sample rows for the first non-empty value per column (row 0 may
+ * have gaps). Includes both AI-synthesized requirements and custom fields.
  */
 function resolveInjections(
-  requirements: Array<{ id: string; type: string }>,
+  fields: Array<{ id: string; type: string }>,
   feedMappings: Record<string, string>,
-  firstRow: Record<string, unknown>,
+  sampleData: Array<Record<string, unknown>>,
   assetHouse: { logoPrimary?: string; logoInverse?: string } | null,
   logoVariant?: 'primary' | 'inverse'
 ): Record<string, { type: 'image' | 'text'; value: string }> {
   const injections: Record<string, { type: 'image' | 'text'; value: string }> = {};
 
-  for (const field of requirements) {
+  const firstVal = (col: string): string => {
+    for (const row of sampleData) {
+      const v = String(row[col] ?? '').trim();
+      if (v) return v;
+    }
+    return '';
+  };
+
+  for (const field of fields) {
     const col = feedMappings[field.id];
     if (col) {
-      const val = (firstRow[col] as string) || '';
+      const val = firstVal(col);
       if (val) {
         injections[field.id] = {
           type: field.type === 'image' ? 'image' : 'text',
@@ -127,10 +135,18 @@ function PublishStepBody({
   const [publishError, setPublishError] = useState<string | null>(null);
 
   const requirements = tbCtx.requirements;
-  const feedSampleData = tbCtx.feedSampleData;
+  const feedSampleData = tbCtx.feedSampleData as Array<Record<string, unknown>>;
   const feedMappings = stepData.feedMappings ?? {};
   const uploadValues = stepData.uploadValues ?? {};
-  const firstRow = (feedSampleData[0] ?? {}) as Record<string, unknown>;
+
+  const customFields = (stepData.customFields ?? []).map((f) => ({
+    id: f.id,
+    type: f.type,
+  }));
+  const allFields = [
+    ...requirements.filter((r) => r.category === 'Dynamic'),
+    ...customFields,
+  ];
 
   const hasWireframe = Boolean(stepData.selectedWireframeId && stepData.wireframeFile);
 
@@ -138,9 +154,9 @@ function PublishStepBody({
     tbCtx.candidates[stepData.selectedCandidateIndex ?? 0] ?? null;
 
   const injections = resolveInjections(
-    requirements,
+    allFields,
     feedMappings,
-    firstRow,
+    feedSampleData,
     assetHouse,
     stepData.logoVariant
   );
