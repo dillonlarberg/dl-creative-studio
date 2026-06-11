@@ -136,6 +136,7 @@ function DesignStepBody({
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
+  const [addFieldPendingSlot, setAddFieldPendingSlot] = useState<string | null>(null);
   const [newFieldPreset, setNewFieldPreset] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
@@ -460,7 +461,14 @@ function DesignStepBody({
               </button>
             ) : (
               <div className="border-2 border-blue-100 rounded-xl p-4 space-y-3 bg-blue-50/30 mt-2">
-                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">New Field</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">New Field</p>
+                  {addFieldPendingSlot && (
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase tracking-wide">
+                      → {addFieldPendingSlot}
+                    </span>
+                  )}
+                </div>
 
                 {/* Preset picker */}
                 <div className="grid grid-cols-3 gap-1.5">
@@ -536,8 +544,10 @@ function DesignStepBody({
                       mergeStepData({
                         customFields: [...existingCustom, { id, label, type: newFieldType }],
                         feedMappings: { ...feedMappings, [id]: newFieldColumn },
+                        ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
                       });
                       setAddFieldOpen(false);
+                      setAddFieldPendingSlot(null);
                       setNewFieldPreset('');
                       setNewFieldCustomLabel('');
                       setNewFieldColumn('');
@@ -550,6 +560,7 @@ function DesignStepBody({
                     type="button"
                     onClick={() => {
                       setAddFieldOpen(false);
+                      setAddFieldPendingSlot(null);
                       setNewFieldPreset('');
                       setNewFieldCustomLabel('');
                       setNewFieldColumn('');
@@ -729,6 +740,10 @@ function DesignStepBody({
                     if (activeSlotField) {
                       mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
                       setActiveSlotField(null);
+                    } else {
+                      // No field waiting — open Add Field pre-assigned to this zone
+                      setAddFieldPendingSlot(slotId);
+                      setAddFieldOpen(true);
                     }
                   }}
                 />

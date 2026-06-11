@@ -194,43 +194,89 @@ export function injectIntoHtml(
  */
 export function buildInteractiveScript(): string {
   const slotsJson = JSON.stringify(ALL_KNOWN_TARGETS);
+  // IDs that are structural containers, not content slots
+  const skipIds = JSON.stringify(['ad', 'base', 'background', 'bg']);
   return `<script>
 (function() {
   var KNOWN = ${slotsJson};
-  KNOWN.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('click', function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      window.parent.postMessage({ type: 'slot-click', slotId: id }, '*');
-    });
-    el.style.transition = 'outline 0.15s';
+  var SKIP = ${skipIds};
+
+  // Find the nearest ancestor (or self) that has an ID worth selecting
+  function findSlotEl(target) {
+    var node = target;
+    while (node && node.tagName !== 'BODY') {
+      if (node.id && SKIP.indexOf(node.id) === -1) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // Global click — fires for ANY element, not just known slots
+  document.addEventListener('click', function(e) {
+    var found = findSlotEl(e.target);
+    if (!found) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent.postMessage({
+      type: 'slot-click',
+      slotId: found.id,
+      isKnown: KNOWN.indexOf(found.id) !== -1,
+    }, '*');
   });
+
+  // Hover — show which element will be selected
+  var _lastHovered = null;
+  document.addEventListener('mouseover', function(e) {
+    var found = findSlotEl(e.target);
+    if (_lastHovered && _lastHovered !== found) {
+      _lastHovered.dataset.hoverOutline = '';
+      if (!_lastHovered.dataset.pinned) _lastHovered.style.outline = _lastHovered.dataset.savedOutline || '';
+    }
+    if (found) {
+      found.dataset.savedOutline = found.dataset.savedOutline || found.style.outline || '';
+      found.style.outline = '2px solid rgba(99,102,241,0.5)';
+      found.style.cursor = 'pointer';
+      _lastHovered = found;
+    }
+  });
+  document.addEventListener('mouseout', function(e) {
+    var found = findSlotEl(e.target);
+    if (found && !found.dataset.pinned) {
+      found.style.outline = found.dataset.savedOutline || '';
+      found.style.cursor = '';
+    }
+  });
+
+  // Parent messages
   window.addEventListener('message', function(e) {
     if (!e.data || !e.data.type) return;
     if (e.data.type === 'highlight-slot') {
-      KNOWN.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) { el.style.outline = ''; el.style.cursor = ''; }
+      document.querySelectorAll('[id]').forEach(function(el) {
+        if (SKIP.indexOf(el.id) !== -1) return;
+        el.style.outline = el.dataset.savedOutline || '';
+        el.style.cursor = '';
+        delete el.dataset.pinned;
       });
       if (e.data.slotId) {
         var t = document.getElementById(e.data.slotId);
-        if (t) { t.style.outline = '3px solid #2563eb'; t.style.cursor = 'default'; }
+        if (t) {
+          t.style.outline = '3px solid #2563eb';
+          t.dataset.pinned = '1';
+        }
       }
     }
     if (e.data.type === 'slot-selection-mode') {
-      KNOWN.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.style.outline = e.data.active ? '2px dashed #2563eb' : '';
-        el.style.cursor = e.data.active ? 'pointer' : '';
+      document.querySelectorAll('[id]').forEach(function(el) {
+        if (SKIP.indexOf(el.id) !== -1) return;
+        el.style.outline = e.data.active ? '2px dashed #6366f1' : (el.dataset.savedOutline || '');
+        el.style.cursor = e.data.active ? 'crosshair' : '';
       });
     }
     if (e.data.type === 'clear-highlights') {
-      KNOWN.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) { el.style.outline = ''; el.style.cursor = ''; }
+      document.querySelectorAll('[id]').forEach(function(el) {
+        el.style.outline = '';
+        el.style.cursor = '';
+        delete el.dataset.pinned;
       });
     }
   });
