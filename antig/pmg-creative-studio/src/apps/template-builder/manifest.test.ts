@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import manifest from './manifest';
 import { setupStep, designStep, publishStep } from './steps';
+import { WIREFRAME_CATALOG, SOCIAL_WIREFRAMES } from '../../constants/useCases';
 
 describe('template-builder manifest', () => {
   it('has the 3 expected step ids in order', () => {
@@ -86,5 +87,19 @@ describe('designStep.validate', () => {
 describe('publishStep.validate', () => {
   it('always passes (no hard gate)', () => {
     expect(publishStep.validate({})).toEqual({ ok: true });
+  });
+});
+
+describe('WIREFRAME_CATALOG', () => {
+  const socialIds = new Set(SOCIAL_WIREFRAMES.map((w) => w.id));
+
+  it('every WIREFRAME_CATALOG id exists in SOCIAL_WIREFRAMES', () => {
+    for (const entry of WIREFRAME_CATALOG) {
+      expect(socialIds.has(entry.id), `${entry.id} not found in SOCIAL_WIREFRAMES`).toBe(true);
+    }
+  });
+
+  it('has 15 entries matching SOCIAL_WIREFRAMES count', () => {
+    expect(WIREFRAME_CATALOG).toHaveLength(SOCIAL_WIREFRAMES.length);
   });
 });
