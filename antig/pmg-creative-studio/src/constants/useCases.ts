@@ -121,7 +121,7 @@ export const WIREFRAME_CATALOG: WireframeCatalogEntry[] = [
     slots: ['logo', 'background', 'headline1', 'headline2', 'cta', 'image1'],
     description: 'Split layout: two headlines + CTA on left panel, product image on right.',
     bestFor: 'Direct-response campaigns with a strong CTA, two-headline copy.',
-    elementTypes: { image: 1, text: 3, hasLogo: true, hasBackground: true, hasCTA: true, hasPrice: false },
+    elementTypes: { image: 1, text: 2, hasLogo: true, hasBackground: true, hasCTA: true, hasPrice: false },
   },
   {
     id: 'original_5',

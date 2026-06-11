@@ -102,4 +102,13 @@ describe('WIREFRAME_CATALOG', () => {
   it('has 15 entries matching SOCIAL_WIREFRAMES count', () => {
     expect(WIREFRAME_CATALOG).toHaveLength(SOCIAL_WIREFRAMES.length);
   });
+
+  it('file and adSize agree with SOCIAL_WIREFRAMES for every shared id', () => {
+    const socialById = new Map(SOCIAL_WIREFRAMES.map((w) => [w.id, w]));
+    for (const entry of WIREFRAME_CATALOG) {
+      const social = socialById.get(entry.id)!;
+      expect(entry.file, `${entry.id}.file mismatch`).toBe(social.file);
+      expect(entry.adSize, `${entry.id}.adSize mismatch`).toBe(social.adSize);
+    }
+  });
 });
