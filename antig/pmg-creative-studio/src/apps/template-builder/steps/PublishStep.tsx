@@ -175,7 +175,9 @@ function PublishStepBody({
     adSizes: (stepData.ratios ?? []).map((r) => parseRatio(r)),
     scaffoldId: stepData.selectedWireframeId ?? `${stepData.channel ?? 'social'}-ai-generated`,
     scaffoldSnapshot: {
-      expectedFields: requirements.map((r) => r.id),
+      expectedFields: requirements
+        .filter((r) => r.category === 'Dynamic' && r.type !== 'button' && r.type !== 'asset')
+        .map((r) => r.id),
       contentHash: 'draft',
       capturedAt: Timestamp.fromDate(new Date()),
     },
