@@ -225,6 +225,7 @@ function DesignStepBody({
   const [newFieldPreset, setNewFieldPreset] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
+  const [addFieldError, setAddFieldError] = useState<string | null>(null);
   const [newFieldColumn, setNewFieldColumn] = useState('');
 
   // Run layout generation + mapping suggestions on mount.
@@ -652,7 +653,7 @@ function DesignStepBody({
                     type="text"
                     placeholder="Field label (e.g. Sub-headline)"
                     value={newFieldCustomLabel}
-                    onChange={(e) => setNewFieldCustomLabel(e.target.value)}
+                    onChange={(e) => { setNewFieldCustomLabel(e.target.value); setAddFieldError(null); }}
                     className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
                   />
                 )}
@@ -689,8 +690,11 @@ function DesignStepBody({
                           : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
 
                       const existingCustom = stepData.customFields ?? [];
-                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) return;
-
+                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
+                        setAddFieldError(`"${label}" already exists — use a different name.`);
+                        return;
+                      }
+                      setAddFieldError(null);
                       mergeStepData({
                         customFields: [...existingCustom, { id, label, type: newFieldType }],
                         feedMappings: { ...feedMappings, [id]: newFieldColumn },
@@ -711,6 +715,7 @@ function DesignStepBody({
                     onClick={() => {
                       setAddFieldOpen(false);
                       setAddFieldPendingSlot(null);
+                      setAddFieldError(null);
                       setNewFieldPreset('');
                       setNewFieldCustomLabel('');
                       setNewFieldColumn('');
@@ -720,6 +725,9 @@ function DesignStepBody({
                     Cancel
                   </button>
                 </div>
+                {addFieldError && (
+                  <p className="text-[9px] font-bold text-red-500 mt-1">{addFieldError}</p>
+                )}
               </div>
             )}
           </div>
