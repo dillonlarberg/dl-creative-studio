@@ -249,11 +249,6 @@ function FeedList({
                         · Updated {updatedDate}
                       </span>
                     )}
-                    {feed.isCertified && (
-                      <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-green-50 text-green-600">
-                        Certified
-                      </span>
-                    )}
                   </div>
                 </div>
                 {isSelected && (
