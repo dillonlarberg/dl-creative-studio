@@ -99,7 +99,7 @@ describe('WIREFRAME_CATALOG', () => {
     }
   });
 
-  it('has 23 entries matching SOCIAL_WIREFRAMES count', () => {
+  it('has 15 entries matching SOCIAL_WIREFRAMES count', () => {
     expect(WIREFRAME_CATALOG).toHaveLength(SOCIAL_WIREFRAMES.length);
   });
 
