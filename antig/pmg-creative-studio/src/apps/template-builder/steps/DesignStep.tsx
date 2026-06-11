@@ -952,24 +952,8 @@ function DesignStepBody({
               </div>
             </div>
 
-            {/* Candidate preview below the picker (if a candidate is available) */}
-            {activeCandidate && (
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Candidate Preview
-                </h4>
-                <CandidatePreview
-                  candidate={activeCandidate}
-                  feedSampleData={feedSampleData}
-                  feedMappings={feedMappings}
-                  assetHouse={assetHouse}
-                  logoVariant={stepData.logoVariant}
-                  accentColor={stepData.accentColor}
-                  backgroundColor={stepData.backgroundColor}
-                  ratios={stepData.ratios}
-                />
-              </div>
-            )}
+            {/* AI-recommended wireframes are shown as thumbnails in the left-panel
+                candidate cards — the abstract CandidatePreview here is removed. */}
           </div>
         )}
 
