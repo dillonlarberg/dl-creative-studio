@@ -212,7 +212,6 @@ function DesignStepBody({
   const { candidates, requirements, feedColumns, setCandidates } = tbCtx;
 
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
-  const [suggestedFields, setSuggestedFields] = useState<Set<string>>(new Set());
   const [mappingConfidence, setMappingConfidence] = useState<Record<string, number>>({});
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -269,23 +268,26 @@ function DesignStepBody({
         }
       }
 
-      if (!stepData.feedMappings || Object.keys(stepData.feedMappings).length === 0) {
-        try {
-          const suggested = await suggestMappings({ requirements, feedColumns });
-          if (Object.keys(suggested).length > 0) {
-            const columns: Record<string, string> = {};
-            const confidence: Record<string, number> = {};
-            for (const [fieldId, s] of Object.entries(suggested)) {
-              columns[fieldId] = s.column;
-              confidence[fieldId] = s.confidence;
-            }
-            mergeStepData({ feedMappings: columns });
-            setSuggestedFields(new Set(Object.keys(columns)));
-            setMappingConfidence(confidence);
+      // Always run suggestMappings to get fresh confidence scores.
+      // Only apply column suggestions to feedMappings if none exist yet.
+      try {
+        const suggested = await suggestMappings({ requirements, feedColumns });
+        if (Object.keys(suggested).length > 0) {
+          const columns: Record<string, string> = {};
+          const confidence: Record<string, number> = {};
+          for (const [fieldId, s] of Object.entries(suggested)) {
+            columns[fieldId] = s.column;
+            confidence[fieldId] = s.confidence;
           }
-        } catch (err) {
-          console.error('[DesignStep] suggestMappings failed:', err);
+          const hasExisting = Object.keys(stepData.feedMappings ?? {}).length > 0;
+          mergeStepData({
+            ...(!hasExisting ? { feedMappings: columns } : {}),
+            mappingConfidence: confidence,
+          });
+          setMappingConfidence(confidence);
         }
+      } catch (err) {
+        console.error('[DesignStep] suggestMappings failed:', err);
       }
     };
     run();
@@ -438,7 +440,6 @@ function DesignStepBody({
 
             <div className="space-y-4">
               {allFields.map((field) => {
-                const isSuggested = suggestedFields.has(field.id);
                 const currentVal = feedMappings[field.id] ?? '';
 
                 const assignedSlot = (stepData.slotMappings ?? {})[field.id];
@@ -468,8 +469,11 @@ function DesignStepBody({
                       >
                         {field.type}
                       </span>
-                      {isSuggested && (() => {
-                        const conf = mappingConfidence[field.id] ?? 0.8;
+                      {(() => {
+                        // Show confidence badge if AI has scored this field (persisted in stepData or current session)
+                        const conf = (stepData.mappingConfidence as Record<string, number> | undefined)?.[field.id]
+                          ?? mappingConfidence[field.id];
+                        if (conf === undefined) return null;
                         const pct = Math.round(conf * 100);
                         const color = conf >= 0.85 ? 'text-green-600 bg-green-50' : conf >= 0.6 ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50';
                         return (
@@ -917,12 +921,16 @@ function DesignStepBody({
             <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
               <div
                 className={cn(
-                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-start justify-center overflow-hidden transition-all',
+                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-start justify-center transition-all',
                   askAlliOpen ? 'flex-1' : 'w-full'
                 )}
-                style={{ height: `${previewContainerH + 48}px` }}
               >
-                <FilledTemplatePreview
+                {/* Ratio canvas — clips or extends to show the selected aspect ratio */}
+                <div
+                  className="relative overflow-hidden rounded-xl bg-gray-50"
+                  style={{ width: previewBaseSize, height: previewContainerH }}
+                >
+                  <FilledTemplatePreview
                   templateFile={wireframe.file}
                   name={wireframe.name}
                   scale={previewBaseSize / previewAdSize}
@@ -949,6 +957,7 @@ function DesignStepBody({
                     }
                   }}
                 />
+                </div>
               </div>
 
               {askAlliOpen && (
