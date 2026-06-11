@@ -190,11 +190,11 @@ function PublishStepBody({
     fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
     fieldTransforms: stepData.fieldTransforms ?? {},
     brandOverrides: {
-      primaryColor: stepData.backgroundColor,
-      accentColor: stepData.accentColor,
-      logoUrl: assetHouse?.logoPrimary,
+      ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
+      ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),
+      ...(assetHouse?.logoPrimary ? { logoUrl: assetHouse.logoPrimary } : {}),
     },
-    brief: stepData.brief,
+    ...(stepData.brief ? { brief: stepData.brief } : {}),
     aiRequirements: {
       intent: stepData.brief ?? '',
       keyMessages: [],
