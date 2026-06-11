@@ -191,7 +191,7 @@ function CandidateCard({
 
       {/* Thumbnail — only render iframe when selected to avoid multiple simultaneous iframes */}
       {selected && wireframe && (
-        <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center" style={{ height: '210px' }}>
+        <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center" style={{ height: `${Math.round((wireframe.adSize || 1024) * 0.2) + 10}px` }}>
           <TemplatePreview
             templateFile={wireframe.file}
             name={wireframe.name}
@@ -1021,9 +1021,10 @@ const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
       setCandidates(generated);
 
       // Auto-apply the top candidate's wireframeId if the user hasn't manually selected
-      // a wireframe yet. We check stepData (snapshot from onEnter start) — if the user
-      // clicked the wireframe grid during the Gemini call, this guard may not catch it,
-      // but mergeStepData is a shallow merge so no data is lost.
+      // a wireframe yet. stepData is a snapshot captured at onEnter start — if the user
+      // clicked the wireframe grid *during* the Gemini call, this check uses the stale
+      // snapshot and may overwrite their selection. Acceptable trade-off: re-clicking
+      // the desired wireframe recovers immediately.
       const top = generated[0];
       if (top?.wireframeId && !stepData.selectedWireframeId) {
         const wf = SOCIAL_WIREFRAMES.find((w) => w.id === top.wireframeId);
