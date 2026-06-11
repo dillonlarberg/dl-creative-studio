@@ -142,6 +142,11 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
           const catalog     = wireframeCatalog ?? [];
           const validIds    = catalog.map((w) => w.id);
 
+          if (catalog.length === 0) {
+            response.status(400).json({ error: "wireframeCatalog is required for generateLayouts" });
+            return;
+          }
+
           const model = genAI.getGenerativeModel({
             model: GEMINI_MODEL,
             generationConfig: {
@@ -230,8 +235,16 @@ For each selection:
 - elements: set headline/price/image/cta/logo booleans to match the requirements above`;
 
           const result = await model.generateContent(prompt);
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const raw = JSON.parse(result.response.text()) as Array<Record<string, any>>;
+          let raw: Array<Record<string, any>>;
+          try {
+            const parsed = JSON.parse(result.response.text());
+            if (!Array.isArray(parsed)) throw new Error("expected array");
+            raw = parsed;
+          } catch (err) {
+            throw new functions.https.HttpsError("internal", `AI returned unparseable response: ${result.response.text().slice(0, 200)}`);
+          }
 
           // Server-side validation: repair any wireframeId not in the catalog.
           // Fallback to the catalog entry at that index so the client always gets a usable wireframeId.
