@@ -921,16 +921,18 @@ function DesignStepBody({
             <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
               <div
                 className={cn(
-                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-start justify-center transition-all',
+                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
                   askAlliOpen ? 'flex-1' : 'w-full'
                 )}
+                style={{
+                  // Landscape ratios: clip the card to show the correct proportion
+                  // Portrait/square: show full wireframe, no artificial clipping
+                  maxHeight: previewContainerH < previewBaseSize
+                    ? `${previewContainerH + 48}px`
+                    : undefined,
+                }}
               >
-                {/* Ratio canvas — clips or extends to show the selected aspect ratio */}
-                <div
-                  className="relative overflow-hidden rounded-xl bg-gray-50"
-                  style={{ width: previewBaseSize, height: previewContainerH }}
-                >
-                  <FilledTemplatePreview
+                <FilledTemplatePreview
                   templateFile={wireframe.file}
                   name={wireframe.name}
                   scale={previewBaseSize / previewAdSize}
@@ -951,13 +953,11 @@ function DesignStepBody({
                       mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
                       setActiveSlotField(null);
                     } else {
-                      // No field waiting — open Add Field pre-assigned to this zone
                       setAddFieldPendingSlot(slotId);
                       setAddFieldOpen(true);
                     }
                   }}
                 />
-                </div>
               </div>
 
               {askAlliOpen && (
@@ -974,6 +974,13 @@ function DesignStepBody({
                 </div>
               )}
             </div>
+
+            {/* Portrait ratio note — wireframes are 1:1; production ads will use ratio-specific layouts */}
+            {previewContainerH > previewBaseSize && (stepData.ratios?.length ?? 0) > 1 && (
+              <p className="text-[8px] font-medium text-gray-300 text-center">
+                Preview shows 1:1 wireframe — {selectedRatioStr} ads will use a portrait-optimized layout
+              </p>
+            )}
           </div>
         )}
 

@@ -288,24 +288,31 @@ Available feed columns:
 ${JSON.stringify(feedColumns)}
 
 Map each template field ID to the most semantically appropriate feed column name.
-Return a JSON object where each key is a fieldId and each value is an object with:
-  - "column": the best-matching feed column name
-  - "confidence": a float 0.0–1.0 (1.0 = exact match, 0.7 = likely match, 0.5 = uncertain)
-Only include fields you can match. Skip fields with no reasonable match.
-Example output: { "headline": { "column": "product_title", "confidence": 0.95 }, "image_url": { "column": "image_link", "confidence": 1.0 } }`;
+Return a flat JSON object: { "fieldId": "columnName" }
+Only include fields you are confident about. Skip fields with no good match.
+Example output: { "headline": "product_title", "image_url": "image_link", "price": "final_price" }`;
 
           const result = await model.generateContent(prompt);
           const raw = JSON.parse(result.response.text()) as Record<string, unknown>;
+
+          // Compute confidence server-side from name similarity — deterministic and reliable.
+          const normalize = (s: string) => s.toLowerCase().replace(/[_\s-]+/g, " ").trim();
+          const score = (fieldId: string, col: string): number => {
+            const f = normalize(fieldId);
+            const c = normalize(col);
+            if (f === c) return 1.0;
+            if (c.includes(f) || f.includes(c)) return 0.92;
+            const fWords = f.split(" ");
+            const cWords = c.split(" ");
+            const shared = fWords.filter((w) => cWords.some((cw) => cw.includes(w) || w.includes(cw)));
+            if (shared.length > 0) return 0.75;
+            return 0.6;
+          };
+
           const safe: Record<string, { column: string; confidence: number }> = {};
           for (const [k, v] of Object.entries(raw)) {
-            if (v && typeof v === "object" && "column" in v && typeof (v as Record<string, unknown>).column === "string") {
-              const conf = typeof (v as Record<string, unknown>).confidence === "number"
-                ? Math.min(1, Math.max(0, (v as Record<string, unknown>).confidence as number))
-                : 0.8;
-              safe[k] = { column: (v as Record<string, unknown>).column as string, confidence: conf };
-            } else if (typeof v === "string") {
-              // Backwards compat: plain string value treated as high-confidence match
-              safe[k] = { column: v, confidence: 0.8 };
+            if (typeof v === "string") {
+              safe[k] = { column: v, confidence: score(k, v) };
             }
           }
           response.json(safe);
