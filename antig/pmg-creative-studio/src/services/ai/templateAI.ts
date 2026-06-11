@@ -64,16 +64,11 @@ export async function generateLayouts(opts: {
   });
 }
 
-export interface MappingSuggestion {
-  column: string;
-  confidence: number;
-}
-
 export async function suggestMappings(opts: {
   requirements: RequirementField[];
   feedColumns: string[];
-}): Promise<Record<string, MappingSuggestion>> {
-  return callGemini<Record<string, MappingSuggestion>>('suggestMappings', {
+}): Promise<Record<string, string>> {
+  return callGemini<Record<string, string>>('suggestMappings', {
     requirements: opts.requirements,
     feedColumns: opts.feedColumns,
   });

@@ -39,7 +39,6 @@ export interface TemplateBuilderStepData {
     type: 'text' | 'image' | 'currency' | 'button' | 'asset';
   }>;
   fieldTransforms?: Record<string, string[]>;    // fieldId → transform IDs
-  mappingConfidence?: Record<string, number>;   // fieldId → AI confidence 0–1 (persisted)
   askAlliMessages?: Array<{                   // persistent chat history
     role: 'user' | 'assistant';
     content: string;

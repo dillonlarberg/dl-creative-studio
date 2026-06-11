@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import WizardShell from '../../platform/wizard/WizardShell';
 import { SharedDataProvider } from '../../platform/wizard/SharedDataContext';
 import { AssetHouseProvider } from '../../platform/assetHouse/AssetHouseContext';
@@ -67,18 +67,26 @@ export default function TemplateBuilderAppRoot() {
   const [searchParams] = useSearchParams();
   const fromTemplateId = searchParams.get('from');
   const isCopy = searchParams.get('copy') === '1';
+  // Read slug from the URL param directly — synchronous and always available.
+  // useCurrentClient resolves asynchronously (currentClient starts as null),
+  // which would leave slug='' on first render and cause the guard to spin forever.
+  const { clientSlug: urlSlug } = useParams<{ clientSlug: string }>();
   const { currentClient } = useCurrentClient();
-  const slug = currentClient?.slug ?? '';
+  const slug = urlSlug ?? currentClient?.slug ?? '';
 
   const [fromData, setFromData] = useState<Partial<TemplateBuilderStepData> | null>(null);
   const [loading, setLoading] = useState(!!fromTemplateId);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!fromTemplateId || !slug) {
+    if (!fromTemplateId) {
       setLoading(false);
       return;
     }
+    // Wait for the client slug to resolve before fetching.
+    // Without this guard, the early return would call setLoading(false)
+    // before the fetch runs, causing WizardShell to mount with empty stepData.
+    if (!slug) return;
     templateLibraryService
       .getTemplate(slug as ClientSlug, fromTemplateId)
       .then((template) => {

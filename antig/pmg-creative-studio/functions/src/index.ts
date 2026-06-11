@@ -295,25 +295,9 @@ Example output: { "headline": "product_title", "image_url": "image_link", "price
           const result = await model.generateContent(prompt);
           const raw = JSON.parse(result.response.text()) as Record<string, unknown>;
 
-          // Compute confidence server-side from name similarity — deterministic and reliable.
-          const normalize = (s: string) => s.toLowerCase().replace(/[_\s-]+/g, " ").trim();
-          const score = (fieldId: string, col: string): number => {
-            const f = normalize(fieldId);
-            const c = normalize(col);
-            if (f === c) return 1.0;
-            if (c.includes(f) || f.includes(c)) return 0.92;
-            const fWords = f.split(" ");
-            const cWords = c.split(" ");
-            const shared = fWords.filter((w) => cWords.some((cw) => cw.includes(w) || w.includes(cw)));
-            if (shared.length > 0) return 0.75;
-            return 0.6;
-          };
-
-          const safe: Record<string, { column: string; confidence: number }> = {};
+          const safe: Record<string, string> = {};
           for (const [k, v] of Object.entries(raw)) {
-            if (typeof v === "string") {
-              safe[k] = { column: v, confidence: score(k, v) };
-            }
+            if (typeof v === "string") safe[k] = v;
           }
           response.json(safe);
 

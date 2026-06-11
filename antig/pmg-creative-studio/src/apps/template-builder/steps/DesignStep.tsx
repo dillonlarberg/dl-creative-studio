@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CheckIcon, SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
@@ -212,7 +212,6 @@ function DesignStepBody({
   const { candidates, requirements, feedColumns, setCandidates } = tbCtx;
 
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
-  const [mappingConfidence, setMappingConfidence] = useState<Record<string, number>>({});
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
@@ -268,23 +267,12 @@ function DesignStepBody({
         }
       }
 
-      // Always run suggestMappings to get fresh confidence scores.
       // Only apply column suggestions to feedMappings if none exist yet.
       try {
         const suggested = await suggestMappings({ requirements, feedColumns });
-        if (Object.keys(suggested).length > 0) {
-          const columns: Record<string, string> = {};
-          const confidence: Record<string, number> = {};
-          for (const [fieldId, s] of Object.entries(suggested)) {
-            columns[fieldId] = s.column;
-            confidence[fieldId] = s.confidence;
-          }
-          const hasExisting = Object.keys(stepData.feedMappings ?? {}).length > 0;
-          mergeStepData({
-            ...(!hasExisting ? { feedMappings: columns } : {}),
-            mappingConfidence: confidence,
-          });
-          setMappingConfidence(confidence);
+        const hasExisting = Object.keys(stepData.feedMappings ?? {}).length > 0;
+        if (!hasExisting && Object.keys(suggested).length > 0) {
+          mergeStepData({ feedMappings: suggested });
         }
       } catch (err) {
         console.error('[DesignStep] suggestMappings failed:', err);
@@ -469,20 +457,6 @@ function DesignStepBody({
                       >
                         {field.type}
                       </span>
-                      {(() => {
-                        // Show confidence badge if AI has scored this field (persisted in stepData or current session)
-                        const conf = (stepData.mappingConfidence as Record<string, number> | undefined)?.[field.id]
-                          ?? mappingConfidence[field.id];
-                        if (conf === undefined) return null;
-                        const pct = Math.round(conf * 100);
-                        const color = conf >= 0.85 ? 'text-green-600 bg-green-50' : conf >= 0.6 ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50';
-                        return (
-                          <span className={cn('px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest flex items-center gap-1', color)}>
-                            <CheckIcon className="h-2.5 w-2.5" />
-                            AI {pct}%
-                          </span>
-                        );
-                      })()}
                       <button
                         type="button"
                         title="Ask Alli about this field"
