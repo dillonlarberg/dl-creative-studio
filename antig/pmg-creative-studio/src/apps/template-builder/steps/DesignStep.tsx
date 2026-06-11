@@ -131,6 +131,7 @@ function DesignStepBody({
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
+  const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
@@ -289,6 +290,8 @@ function DesignStepBody({
                       'space-y-1.5 p-3 rounded-xl transition-all border-2',
                       isSelectingSlot ? 'bg-blue-50 border-blue-200' : 'border-transparent'
                     )}
+                    onMouseEnter={() => setHoveredField(field.id)}
+                    onMouseLeave={() => setHoveredField(null)}
                   >
                     <div className="flex items-center gap-2">
                       <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex-1">
@@ -669,6 +672,13 @@ function DesignStepBody({
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   {wireframe.name} — Live Mapped Preview
                 </span>
+                <button
+                  type="button"
+                  onClick={() => mergeStepData({ selectedWireframeId: undefined, wireframeFile: undefined })}
+                  className="text-[9px] font-bold text-gray-300 hover:text-blue-500 transition-colors underline underline-offset-2"
+                >
+                  Change
+                </button>
               </div>
               <button
                 type="button"
@@ -708,7 +718,13 @@ function DesignStepBody({
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
                   slotSelectionMode={activeSlotField !== null}
-                  highlightSlot={activeSlotField !== null ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null) : null}
+                  highlightSlot={
+                    activeSlotField !== null
+                      ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null)
+                      : hoveredField !== null
+                      ? ((stepData.slotMappings ?? {})[hoveredField] ?? null)
+                      : null
+                  }
                   onSlotClick={(slotId) => {
                     if (activeSlotField) {
                       mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
