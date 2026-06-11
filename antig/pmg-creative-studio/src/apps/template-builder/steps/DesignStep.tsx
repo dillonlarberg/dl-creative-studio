@@ -318,14 +318,23 @@ function DesignStepBody({
 
   // Build injections for FilledTemplatePreview (when wireframe is selected)
   const wireframe = SOCIAL_WIREFRAMES.find((w) => w.id === stepData.selectedWireframeId);
-  const previewRow = (feedSampleData[0] as Record<string, unknown> | undefined) ?? {};
+
+  // Helper: find the first non-empty value for a column across all sample rows.
+  // Row 0 may have empty cells; scanning forward finds the first real value.
+  const firstVal = (col: string): string => {
+    for (const row of feedSampleData) {
+      const v = String((row as Record<string, unknown>)[col] ?? '').trim();
+      if (v) return v;
+    }
+    return '';
+  };
 
   const injections: Record<string, { type: 'image' | 'text'; value: string }> = {};
   if (wireframe) {
-    for (const field of requirements) {
+    for (const field of allFields) {
       const col = feedMappings[field.id];
       if (col) {
-        const val = (previewRow[col] as string) || '';
+        const val = firstVal(col);
         if (val) {
           injections[field.id] = {
             type: field.type === 'image' ? 'image' : 'text',
