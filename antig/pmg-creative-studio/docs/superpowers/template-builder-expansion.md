@@ -86,6 +86,16 @@ then revert `templateAI.ts` to use `httpsCallable`.
 
 ## Roadmap (Not Yet Started)
 
+### Item 3 — fieldTransforms Execution Pipeline (BLOCKED — needs design decision)
+
+`fieldTransforms` (e.g. `remove_bg`, `title_case`) are stored in Firestore on every published template and the Ask Alli AI already knows how to suggest adding/removing them. However, **there is no ad generation pipeline in this codebase** — no Puppeteer, no headless Chrome, no render step. The old process (Figma → GWD → Puppeteer → S3) is an external system not in this repo.
+
+To actually execute transforms at generation time we need to decide:
+- **Option A:** Build a generation Cloud Function in this app (headless Chrome or html-to-image in a Firebase Function) — fully self-contained but significant new build
+- **Option B:** Integrate with an external render service — needs Diego to identify/expose that service
+
+**Status:** Deferred until Diego is available to align on Option A vs B. The data model is in place; this is purely an execution gap.
+
 ### Phase 3 — Template Library Enhancements
 - Filter/search published templates by channel, feed, date
 - Template duplication (clone + edit)

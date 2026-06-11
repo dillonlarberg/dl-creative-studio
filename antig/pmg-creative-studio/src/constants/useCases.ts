@@ -62,6 +62,22 @@ export const SOCIAL_WIREFRAMES = [
     { id: 'original_15a', name: 'Duo + Center Tag', file: 'techno_vibe_a.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Image 2', 'Tag/Callout'] },
     // techno_vibe_b: #logo_1 #image_3 #left-bar #tag
     { id: 'original_15b', name: 'Sidebar + Hero Image', file: 'techno_vibe_b.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Tag/Callout'] },
+    // classic_social_retail: #image_background #logo #image_1_double #image_2_double
+    { id: 'original_16', name: 'Classic Retail Duo', file: 'classic_social_retail.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Image 2', 'Background Image'] },
+    // editorial_brand_spotlight: #background_image #cta #headline #subheadline #matchup1 #matchup2
+    { id: 'original_17', name: 'Editorial Brand Spotlight', file: 'editorial_brand_spotlight.html', adSize: 1024, minRequirements: ['Image', 'Image 2', 'Headline', 'CTA', 'Background Image'] },
+    // featured_list_grid: #background #image1 #image2 #logo #promo #full_price
+    { id: 'original_18', name: 'Featured Grid + Price', file: 'featured_list_grid.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Image 2', 'Promo', 'Price', 'Background Image'] },
+    // geometric_design_system: #background #image1 #image2 #image1_1 #logo #headline
+    { id: 'original_19', name: 'Geometric Triple', file: 'geometric_design_system.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Image 2', 'Image 3', 'Headline', 'Background Image'] },
+    // interior_design_grid: #base #headline #image1 #promo-div #logo
+    { id: 'original_20', name: 'Interior Grid + Promo', file: 'interior_design_grid.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Headline', 'Promo'] },
+    // masonry_style_showcase: #base #img1 #headline #logo
+    { id: 'original_21', name: 'Masonry Showcase', file: 'masonry_style_showcase.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Headline'] },
+    // modern_minimal_showcase: #Image #logo #label
+    { id: 'original_22', name: 'Modern Minimal Showcase', file: 'modern_minimal_showcase.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Label'] },
+    // dual_lifestyle_focus: #background #background-image #image1-single #image2
+    { id: 'original_23', name: 'Lifestyle Dual Focus', file: 'dual_lifestyle_focus.html', adSize: 1024, minRequirements: ['Image', 'Image 2', 'Background Image'] },
 ];
 
 export interface WireframeCatalogEntry {
@@ -232,5 +248,85 @@ export const WIREFRAME_CATALOG: WireframeCatalogEntry[] = [
     description: 'Hero product image with a colored sidebar accent bar, logo, and tag label.',
     bestFor: 'Single product hero with strong brand accent color, tech or fashion verticals.',
     elementTypes: { image: 1, text: 1, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_16',
+    name: 'Classic Retail Duo',
+    file: 'classic_social_retail.html',
+    adSize: 1024,
+    slots: ['image_background', 'logo', 'image_1_double', 'image_2_double'],
+    description: 'Two product images side-by-side over a brand background with logo. Classic retail format.',
+    bestFor: 'Retail duo campaigns, "shop the look", paired color/style options.',
+    elementTypes: { image: 2, text: 0, hasLogo: true, hasBackground: true, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_17',
+    name: 'Editorial Brand Spotlight',
+    file: 'editorial_brand_spotlight.html',
+    adSize: 1024,
+    slots: ['background_image', 'cta', 'headline', 'subheadline', 'matchup1', 'matchup2'],
+    description: 'Two hero images with editorial headline, subheadline, and CTA on a brand background.',
+    bestFor: 'Brand awareness with a strong CTA, campaign launches, editorial fashion.',
+    elementTypes: { image: 2, text: 2, hasLogo: false, hasBackground: true, hasCTA: true, hasPrice: false },
+  },
+  {
+    id: 'original_18',
+    name: 'Featured Grid + Price',
+    file: 'featured_list_grid.html',
+    adSize: 1024,
+    slots: ['background', 'image1', 'image2', 'logo', 'promo', 'full_price'],
+    description: 'Product duo on a background with logo, promo copy, and price callout.',
+    bestFor: 'Sale and price-driven campaigns, product comparisons, value messaging.',
+    elementTypes: { image: 2, text: 2, hasLogo: true, hasBackground: true, hasCTA: false, hasPrice: true },
+  },
+  {
+    id: 'original_19',
+    name: 'Geometric Triple',
+    file: 'geometric_design_system.html',
+    adSize: 1024,
+    slots: ['background', 'image1', 'image2', 'image1_1', 'logo', 'headline'],
+    description: 'Three product images in a geometric grid with headline and logo on a background.',
+    bestFor: 'Collections, "3 ways to wear it", multi-SKU campaigns.',
+    elementTypes: { image: 3, text: 1, hasLogo: true, hasBackground: true, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_20',
+    name: 'Interior Grid + Promo',
+    file: 'interior_design_grid.html',
+    adSize: 1024,
+    slots: ['base', 'headline', 'image1', 'promo-div', 'logo'],
+    description: 'Single product image with headline, promo block, and logo. Clean structured layout.',
+    bestFor: 'Home goods, interior design, single-product promos with descriptive headline.',
+    elementTypes: { image: 1, text: 2, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_21',
+    name: 'Masonry Showcase',
+    file: 'masonry_style_showcase.html',
+    adSize: 1024,
+    slots: ['base', 'img1', 'headline', 'logo'],
+    description: 'Single product hero in a masonry-style frame with headline and logo.',
+    bestFor: 'Premium single-product showcase, fashion editorial, clean brand moments.',
+    elementTypes: { image: 1, text: 1, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_22',
+    name: 'Modern Minimal Showcase',
+    file: 'modern_minimal_showcase.html',
+    adSize: 1024,
+    slots: ['Image', 'logo', 'label'],
+    description: 'Minimal product image with logo and a small label. Maximum whitespace.',
+    bestFor: 'Luxury, premium, or minimal brand identities where simplicity is the message.',
+    elementTypes: { image: 1, text: 1, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_23',
+    name: 'Lifestyle Dual Focus',
+    file: 'dual_lifestyle_focus.html',
+    adSize: 1024,
+    slots: ['background', 'background-image', 'image1-single', 'image2'],
+    description: 'Two lifestyle product images over a layered background. Organic, editorial feel.',
+    bestFor: 'Lifestyle and apparel brands, dual-product stories, aspirational photography.',
+    elementTypes: { image: 2, text: 0, hasLogo: false, hasBackground: true, hasCTA: false, hasPrice: false },
   },
 ];

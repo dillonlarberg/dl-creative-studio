@@ -220,17 +220,25 @@ function TemplateCard({
           )}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+        <div className="flex items-center justify-between pt-2 border-t border-gray-50 gap-2">
           {publishedDate && (
-            <p className="text-[9px] font-medium text-gray-300">Published {publishedDate}</p>
+            <p className="text-[9px] font-medium text-gray-300 shrink-0">Published {publishedDate}</p>
           )}
           {clientSlug && (
-            <Link
-              to={`/adlabs/${clientSlug}/template-builder?from=${t.id}`}
-              className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition-colors"
-            >
-              Use Template
-            </Link>
+            <div className="ml-auto flex items-center gap-1.5">
+              <Link
+                to={`/adlabs/${clientSlug}/template-builder?from=${t.id}&copy=1`}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-[9px] font-black uppercase tracking-widest hover:border-gray-400 hover:text-gray-700 transition-colors"
+              >
+                Duplicate
+              </Link>
+              <Link
+                to={`/adlabs/${clientSlug}/template-builder?from=${t.id}`}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition-colors"
+              >
+                Use Template
+              </Link>
+            </div>
           )}
         </div>
       </div>

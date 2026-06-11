@@ -213,11 +213,13 @@ function DesignStepBody({
 
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [suggestedFields, setSuggestedFields] = useState<Set<string>>(new Set());
+  const [mappingConfidence, setMappingConfidence] = useState<Record<string, number>>({});
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
+  const [previewRatioIndex, setPreviewRatioIndex] = useState(0);
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
@@ -271,8 +273,15 @@ function DesignStepBody({
         try {
           const suggested = await suggestMappings({ requirements, feedColumns });
           if (Object.keys(suggested).length > 0) {
-            mergeStepData({ feedMappings: suggested });
-            setSuggestedFields(new Set(Object.keys(suggested)));
+            const columns: Record<string, string> = {};
+            const confidence: Record<string, number> = {};
+            for (const [fieldId, s] of Object.entries(suggested)) {
+              columns[fieldId] = s.column;
+              confidence[fieldId] = s.confidence;
+            }
+            mergeStepData({ feedMappings: columns });
+            setSuggestedFields(new Set(Object.keys(columns)));
+            setMappingConfidence(confidence);
           }
         } catch (err) {
           console.error('[DesignStep] suggestMappings failed:', err);
@@ -319,6 +328,14 @@ function DesignStepBody({
 
   // Build injections for FilledTemplatePreview (when wireframe is selected)
   const wireframe = SOCIAL_WIREFRAMES.find((w) => w.id === stepData.selectedWireframeId);
+
+  // Multi-ratio preview: compute container height from the selected ratio pill
+  const previewBaseSize = askAlliOpen ? 280 : 360;
+  const previewAdSize = wireframe?.adSize || 1024;
+  const selectedRatioStr = (stepData.ratios ?? ['1:1'])[previewRatioIndex] ?? '1:1';
+  const [_rw, _rh] = selectedRatioStr.split(':').map(Number);
+  const previewAspect = (_rw && _rh) ? _rw / _rh : 1;
+  const previewContainerH = Math.round(previewBaseSize / previewAspect);
 
   // Helper: find the first non-empty value for a column across all sample rows.
   // Row 0 may have empty cells; scanning forward finds the first real value.
@@ -451,12 +468,17 @@ function DesignStepBody({
                       >
                         {field.type}
                       </span>
-                      {isSuggested && (
-                        <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-gray-50 text-gray-400 flex items-center gap-1">
-                          <CheckIcon className="h-2.5 w-2.5" />
-                          AI suggested
-                        </span>
-                      )}
+                      {isSuggested && (() => {
+                        const conf = mappingConfidence[field.id] ?? 0.8;
+                        const pct = Math.round(conf * 100);
+                        const color = conf >= 0.85 ? 'text-green-600 bg-green-50' : conf >= 0.6 ? 'text-amber-600 bg-amber-50' : 'text-gray-400 bg-gray-50';
+                        return (
+                          <span className={cn('px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest flex items-center gap-1', color)}>
+                            <CheckIcon className="h-2.5 w-2.5" />
+                            AI {pct}%
+                          </span>
+                        );
+                      })()}
                       <button
                         type="button"
                         title="Ask Alli about this field"
@@ -870,19 +892,41 @@ function DesignStepBody({
               </div>
             )}
 
+            {/* Ratio toggle — only shown when multiple ratios are selected in setup */}
+            {(stepData.ratios?.length ?? 0) > 1 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest shrink-0">Preview ratio</span>
+                {(stepData.ratios ?? []).map((ratio, i) => (
+                  <button
+                    key={ratio}
+                    type="button"
+                    onClick={() => setPreviewRatioIndex(i)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all',
+                      previewRatioIndex === i
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    )}
+                  >
+                    {ratio}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
               <div
                 className={cn(
-                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
+                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-start justify-center overflow-hidden transition-all',
                   askAlliOpen ? 'flex-1' : 'w-full'
                 )}
-                style={{ minHeight: '360px' }}
+                style={{ height: `${previewContainerH + 48}px` }}
               >
                 <FilledTemplatePreview
                   templateFile={wireframe.file}
                   name={wireframe.name}
-                  scale={askAlliOpen ? 280 / (wireframe.adSize || 1024) : 360 / (wireframe.adSize || 1024)}
-                  adSize={wireframe.adSize || 1024}
+                  scale={previewBaseSize / previewAdSize}
+                  adSize={previewAdSize}
                   injections={injections}
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
