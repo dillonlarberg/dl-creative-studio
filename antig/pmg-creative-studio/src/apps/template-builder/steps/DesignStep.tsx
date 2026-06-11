@@ -29,6 +29,26 @@ import { AskAlliPanel } from '../_internal/AskAlliPanel';
  */
 
 const IMAGE_COLUMN_KEYWORDS = ['image', 'img', 'url', 'link', 'photo', 'pic', 'src', 'thumb', 'media'] as const;
+const CURRENCY_COLUMN_KEYWORDS = ['price', 'cost', 'amount', 'sale', 'msrp', 'value', 'fee', 'regular', 'final'] as const;
+
+function rankColumns(cols: string[], fieldType: string): { suggested: string[]; rest: string[] } {
+  const keywords: readonly string[] =
+    fieldType === 'image' ? IMAGE_COLUMN_KEYWORDS :
+    fieldType === 'currency' ? CURRENCY_COLUMN_KEYWORDS :
+    // text/other: deprioritize image columns
+    IMAGE_COLUMN_KEYWORDS;
+
+  if (fieldType === 'text' || fieldType === 'button' || fieldType === 'asset') {
+    // For text: surface non-image columns first
+    const suggested = cols.filter((c) => !IMAGE_COLUMN_KEYWORDS.some((k) => c.toLowerCase().includes(k)));
+    const rest = cols.filter((c) => IMAGE_COLUMN_KEYWORDS.some((k) => c.toLowerCase().includes(k)));
+    return { suggested, rest };
+  }
+
+  const suggested = cols.filter((c) => keywords.some((k) => c.toLowerCase().includes(k)));
+  const rest = cols.filter((c) => !keywords.some((k) => c.toLowerCase().includes(k)));
+  return { suggested, rest };
+}
 
 // ── Module-level context ref ─────────────────────────────────────────────────
 
@@ -341,11 +361,27 @@ function DesignStepBody({
                       )}
                     >
                       <option value="">— Select column —</option>
-                      {feedColumns.map((col) => (
-                        <option key={col} value={col}>
-                          {col}
-                        </option>
-                      ))}
+                      {(() => {
+                        const { suggested, rest } = rankColumns(feedColumns, field.type);
+                        return (
+                          <>
+                            {suggested.length > 0 && (
+                              <optgroup label={field.type === 'image' ? 'Image columns' : field.type === 'currency' ? 'Price columns' : 'Text columns'}>
+                                {suggested.map((col) => (
+                                  <option key={col} value={col}>{col}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {rest.length > 0 && (
+                              <optgroup label="Other columns">
+                                {rest.map((col) => (
+                                  <option key={col} value={col}>{col}</option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </>
+                        );
+                      })()}
                     </select>
                     {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
                       <div className="flex items-center gap-1.5 mt-1">
