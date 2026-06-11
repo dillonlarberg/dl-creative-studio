@@ -6,6 +6,8 @@ import { templateLibraryService } from '../services/templateLibrary';
 import type { TemplateLibraryRecord } from '../services/templateLibrary.types';
 import type { ClientSlug } from '../platform/firebase/paths';
 import { cn } from '../utils/cn';
+import { TemplatePreview } from '../apps/template-builder/_internal/TemplatePreview';
+import { SOCIAL_WIREFRAMES } from '../constants/useCases';
 
 const CHANNEL_COLORS: Record<string, string> = {
   social:       'bg-blue-50 text-blue-700',
@@ -54,10 +56,17 @@ export default function TemplateLibraryPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse rounded-xl border border-gray-100 p-6 space-y-3">
-                <div className="h-4 bg-gray-100 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-                <div className="h-3 bg-gray-100 rounded w-2/3" />
+              <div key={i} className="rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+                <div className="bg-gray-100" style={{ height: '190px' }} />
+                <div className="p-5 space-y-3">
+                  <div className="flex justify-between gap-2">
+                    <div className="h-4 bg-gray-100 rounded w-3/4" />
+                    <div className="h-5 bg-gray-100 rounded-full w-14" />
+                  </div>
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  <div className="h-3 bg-gray-100 rounded w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded w-1/3" />
+                </div>
               </div>
             ))}
           </div>
@@ -82,7 +91,7 @@ export default function TemplateLibraryPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {templates.map((t) => (
-              <TemplateCard key={t.id} template={t} />
+              <TemplateCard key={t.id} template={t} clientSlug={clientSlug ?? ''} />
             ))}
           </div>
         )}
@@ -91,7 +100,13 @@ export default function TemplateLibraryPage() {
   );
 }
 
-function TemplateCard({ template: t }: { template: TemplateLibraryRecord }) {
+function TemplateCard({
+  template: t,
+  clientSlug,
+}: {
+  template: TemplateLibraryRecord;
+  clientSlug: string;
+}) {
   const channelColor = CHANNEL_COLORS[t.channel] ?? 'bg-gray-100 text-gray-600';
   const sizes = t.adSizes
     .map((s) => (s.label ? s.label : `${s.width}×${s.height}`))
@@ -99,38 +114,70 @@ function TemplateCard({ template: t }: { template: TemplateLibraryRecord }) {
   const publishedDate = t.publishedAt
     ?.toDate()
     .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const fieldCount = Object.keys(t.fieldMappings).length;
+
+  const wireframe = SOCIAL_WIREFRAMES.find((w) => w.id === t.scaffoldId);
 
   return (
-    <div className="rounded-xl border border-gray-100 p-5 space-y-3 hover:border-blue-200 hover:shadow-sm transition-all">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
-          {t.name}
-        </p>
-        <span
-          className={cn(
-            'shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest',
-            channelColor
-          )}
-        >
-          {t.channel}
-        </span>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">
-          {t.datasourceName || t.datasourceId}
-        </p>
-        {sizes && (
-          <p className="text-[10px] text-gray-400">{sizes}</p>
+    <div className="rounded-xl border border-gray-100 bg-white overflow-hidden hover:border-blue-200 hover:shadow-md transition-all flex flex-col">
+      {/* Thumbnail */}
+      <div className="bg-gray-50 border-b border-gray-100 flex items-center justify-center overflow-hidden" style={{ height: '190px' }}>
+        {wireframe ? (
+          <TemplatePreview
+            templateFile={wireframe.file}
+            name={wireframe.name}
+            scale={0.18}
+            adSize={wireframe.adSize || 1024}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-16 w-16 rounded-xl bg-gray-200" />
+            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">No preview</p>
+          </div>
         )}
-        <p className="text-[10px] text-gray-400">
-          {Object.keys(t.fieldMappings).length} field{Object.keys(t.fieldMappings).length !== 1 ? 's' : ''} mapped
-        </p>
       </div>
 
-      {publishedDate && (
-        <p className="text-[9px] font-medium text-gray-300">Published {publishedDate}</p>
-      )}
+      {/* Card body */}
+      <div className="p-5 flex flex-col flex-1 gap-3">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+            {t.name}
+          </p>
+          <span
+            className={cn(
+              'shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest',
+              channelColor
+            )}
+          >
+            {t.channel}
+          </span>
+        </div>
+
+        <div className="space-y-1 flex-1">
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate">
+            {t.datasourceName || t.datasourceId}
+          </p>
+          {sizes && <p className="text-[10px] text-gray-400">{sizes}</p>}
+          <p className="text-[10px] text-gray-400">
+            {fieldCount} {fieldCount === 1 ? 'field' : 'fields'} mapped
+          </p>
+          {wireframe && (
+            <p className="text-[10px] text-gray-300 truncate">{wireframe.name}</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+          {publishedDate && (
+            <p className="text-[9px] font-medium text-gray-300">Published {publishedDate}</p>
+          )}
+          <Link
+            to={`/adlabs/${clientSlug}/template-builder?from=${t.id}`}
+            className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition-colors"
+          >
+            Use Template
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
