@@ -195,9 +195,7 @@ function PublishStepBody({
     brief: stepData.brief,
     aiRequirements: {
       intent: stepData.brief ?? '',
-      targetAudience: undefined,
       keyMessages: [],
-      tone: undefined,
     },
   };
 
