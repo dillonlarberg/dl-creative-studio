@@ -5,6 +5,7 @@
 import type { RequirementField, Channel } from '../../apps/template-builder/types';
 import type { ClientAssetHouse } from '../clientAssetHouse';
 import type { Candidate } from '../../apps/template-builder/TemplateBuilderContext';
+import { WIREFRAME_CATALOG } from '../../constants/useCases';
 
 const PROXY = '/api/helloWorld';
 
@@ -37,6 +38,8 @@ export async function generateLayouts(opts: {
   requirements: RequirementField[];
   channel: Channel;
   brand: Pick<ClientAssetHouse, 'primaryColor' | 'fontPrimary' | 'cornerRadius' | 'logoPrimary'> | null;
+  feedColumns?: string[];
+  brief?: string;
 }): Promise<Candidate[]> {
   return callGemini<Candidate[]>('generateLayouts', {
     requirements: opts.requirements,
@@ -44,6 +47,20 @@ export async function generateLayouts(opts: {
     brand: opts.brand
       ? { primaryColor: opts.brand.primaryColor, fontPrimary: opts.brand.fontPrimary, cornerRadius: opts.brand.cornerRadius, logoPrimary: opts.brand.logoPrimary }
       : null,
+    feedColumns: opts.feedColumns ?? [],
+    brief: opts.brief ?? '',
+    wireframeCatalog: WIREFRAME_CATALOG.map((w) => ({
+      id: w.id,
+      name: w.name,
+      description: w.description,
+      bestFor: w.bestFor,
+      slots: w.slots,
+      imageCount: w.elementTypes.image,
+      hasLogo: w.elementTypes.hasLogo,
+      hasBackground: w.elementTypes.hasBackground,
+      hasCTA: w.elementTypes.hasCTA,
+      hasPrice: w.elementTypes.hasPrice,
+    })),
   });
 }
 

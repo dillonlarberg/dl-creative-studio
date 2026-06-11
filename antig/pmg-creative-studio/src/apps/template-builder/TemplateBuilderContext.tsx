@@ -5,6 +5,7 @@ export interface Candidate {
   id: string;
   name: string;
   variant: 'grid' | 'stacked' | 'wide' | 'minimal';
+  wireframeId?: string;
   description: string;
   strategy: string;
   styles: {
