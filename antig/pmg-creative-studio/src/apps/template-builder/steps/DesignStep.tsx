@@ -31,23 +31,78 @@ import { AskAlliPanel } from '../_internal/AskAlliPanel';
 const IMAGE_COLUMN_KEYWORDS = ['image', 'img', 'url', 'link', 'photo', 'pic', 'src', 'thumb', 'media'] as const;
 const CURRENCY_COLUMN_KEYWORDS = ['price', 'cost', 'amount', 'sale', 'msrp', 'value', 'fee', 'regular', 'final'] as const;
 
-function rankColumns(cols: string[], fieldType: string): { suggested: string[]; rest: string[] } {
-  const keywords: readonly string[] =
-    fieldType === 'image' ? IMAGE_COLUMN_KEYWORDS :
-    fieldType === 'currency' ? CURRENCY_COLUMN_KEYWORDS :
-    // text/other: deprioritize image columns
-    IMAGE_COLUMN_KEYWORDS;
+type ColType = 'image_url' | 'url' | 'numeric' | 'text';
 
-  if (fieldType === 'text' || fieldType === 'button' || fieldType === 'asset') {
-    // For text: surface non-image columns first
-    const suggested = cols.filter((c) => !IMAGE_COLUMN_KEYWORDS.some((k) => c.toLowerCase().includes(k)));
-    const rest = cols.filter((c) => IMAGE_COLUMN_KEYWORDS.some((k) => c.toLowerCase().includes(k)));
-    return { suggested, rest };
+const COL_TYPE_LABELS: Record<ColType, string> = {
+  image_url: 'Image URL',
+  url: 'URL',
+  numeric: 'Number',
+  text: 'Text',
+};
+
+function inferColumnTypes(
+  sampleData: Array<Record<string, unknown>>,
+  cols: string[]
+): Record<string, ColType> {
+  const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)/i;
+  const IMAGE_DOMAIN = /(cdn\.|img\.|image\.|photo\.|static\.|media\.)/i;
+  const URL_RE = /^https?:\/\//i;
+  const NUM_RE = /^[\$€£¥]?[\d,]+\.?\d*[\$€£¥%]?$/;
+
+  const result: Record<string, ColType> = {};
+  for (const col of cols) {
+    const samples = sampleData
+      .map((row) => String(row[col] ?? '').trim())
+      .filter((v) => v.length > 0)
+      .slice(0, 5);
+
+    // Column-name keyword fallback when sample data is sparse or empty
+    const colLower = col.toLowerCase();
+    if (samples.length === 0) {
+      if (IMAGE_COLUMN_KEYWORDS.some((k) => colLower.includes(k))) result[col] = 'image_url';
+      else if (CURRENCY_COLUMN_KEYWORDS.some((k) => colLower.includes(k))) result[col] = 'numeric';
+      else result[col] = 'text';
+      continue;
+    }
+
+    const allUrl = samples.every((v) => URL_RE.test(v));
+    const anyImageClue = samples.some((v) => IMAGE_EXT.test(v) || IMAGE_DOMAIN.test(v))
+      || IMAGE_COLUMN_KEYWORDS.some((k) => colLower.includes(k));
+    const allNumeric = samples.every((v) => NUM_RE.test(v))
+      || (samples.length === 0 && CURRENCY_COLUMN_KEYWORDS.some((k) => colLower.includes(k)));
+
+    if (allUrl && anyImageClue) result[col] = 'image_url';
+    else if (allUrl) result[col] = 'url';
+    else if (allNumeric) result[col] = 'numeric';
+    else result[col] = 'text';
+  }
+  return result;
+}
+
+function groupColumnsByInferredType(
+  cols: string[],
+  inferredTypes: Record<string, ColType>,
+  fieldType: string
+): Array<{ groupLabel: string; cols: string[] }> {
+  const preferredType: ColType =
+    fieldType === 'image' ? 'image_url' :
+    fieldType === 'currency' ? 'numeric' :
+    'text';
+
+  const groups: Record<ColType, string[]> = { image_url: [], url: [], numeric: [], text: [] };
+  for (const col of cols) {
+    groups[inferredTypes[col] ?? 'text'].push(col);
   }
 
-  const suggested = cols.filter((c) => keywords.some((k) => c.toLowerCase().includes(k)));
-  const rest = cols.filter((c) => !keywords.some((k) => c.toLowerCase().includes(k)));
-  return { suggested, rest };
+  const ordered: ColType[] = preferredType === 'image_url'
+    ? ['image_url', 'url', 'text', 'numeric']
+    : preferredType === 'numeric'
+    ? ['numeric', 'text', 'image_url', 'url']
+    : ['text', 'numeric', 'url', 'image_url'];
+
+  return ordered
+    .filter((t) => groups[t].length > 0)
+    .map((t) => ({ groupLabel: COL_TYPE_LABELS[t], cols: groups[t] }));
 }
 
 // ── Module-level context ref ─────────────────────────────────────────────────
@@ -197,6 +252,10 @@ function DesignStepBody({
 
   const customFields = stepData.customFields ?? [];
   const fieldTransforms = stepData.fieldTransforms ?? {};
+  const inferredColTypes = inferColumnTypes(
+    feedSampleData as Array<Record<string, unknown>>,
+    feedColumns
+  );
   const allFields: Array<RequirementField> = [
     ...requirements.filter((r) => r.category === 'Dynamic'),
     ...customFields.map((f) => ({
@@ -361,27 +420,15 @@ function DesignStepBody({
                       )}
                     >
                       <option value="">— Select column —</option>
-                      {(() => {
-                        const { suggested, rest } = rankColumns(feedColumns, field.type);
-                        return (
-                          <>
-                            {suggested.length > 0 && (
-                              <optgroup label={field.type === 'image' ? 'Image columns' : field.type === 'currency' ? 'Price columns' : 'Text columns'}>
-                                {suggested.map((col) => (
-                                  <option key={col} value={col}>{col}</option>
-                                ))}
-                              </optgroup>
-                            )}
-                            {rest.length > 0 && (
-                              <optgroup label="Other columns">
-                                {rest.map((col) => (
-                                  <option key={col} value={col}>{col}</option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </>
-                        );
-                      })()}
+                      {groupColumnsByInferredType(feedColumns, inferredColTypes, field.type).map(({ groupLabel, cols }) => (
+                        <optgroup key={groupLabel} label={groupLabel}>
+                          {cols.map((col) => (
+                            <option key={col} value={col}>
+                              {col}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
                     </select>
                     {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
                       <div className="flex items-center gap-1.5 mt-1">
@@ -554,8 +601,12 @@ function DesignStepBody({
                   className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
                 >
                   <option value="">— Select feed column —</option>
-                  {feedColumns.map((col) => (
-                    <option key={col} value={col}>{col}</option>
+                  {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
+                    <optgroup key={groupLabel} label={groupLabel}>
+                      {cols.map((col) => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
 
