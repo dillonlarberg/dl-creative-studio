@@ -105,7 +105,7 @@ function TemplateCard({
   clientSlug,
 }: {
   template: TemplateLibraryRecord;
-  clientSlug: string;
+  clientSlug: string | undefined;
 }) {
   const channelColor = CHANNEL_COLORS[t.channel] ?? 'bg-gray-100 text-gray-600';
   const sizes = t.adSizes
@@ -170,12 +170,14 @@ function TemplateCard({
           {publishedDate && (
             <p className="text-[9px] font-medium text-gray-300">Published {publishedDate}</p>
           )}
-          <Link
-            to={`/adlabs/${clientSlug}/template-builder?from=${t.id}`}
-            className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition-colors"
-          >
-            Use Template
-          </Link>
+          {clientSlug && (
+            <Link
+              to={`/adlabs/${clientSlug}/template-builder?from=${t.id}`}
+              className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition-colors"
+            >
+              Use Template
+            </Link>
+          )}
         </div>
       </div>
     </div>
