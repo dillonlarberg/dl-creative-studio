@@ -147,25 +147,30 @@ function CandidateCard({
   selected: boolean;
   onClick: () => void;
 }) {
-  const variantColors: Record<Candidate['variant'], string> = {
+  const variantColors: Record<string, string> = {
     grid: 'bg-blue-50 text-blue-700',
     stacked: 'bg-purple-50 text-purple-700',
     wide: 'bg-amber-50 text-amber-700',
     minimal: 'bg-gray-100 text-gray-600',
   };
 
+  const wireframe = candidate.wireframeId
+    ? SOCIAL_WIREFRAMES.find((w) => w.id === candidate.wireframeId)
+    : null;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left rounded-2xl border-2 p-4 transition-all',
+        'w-full text-left rounded-2xl border-2 p-4 transition-all space-y-3',
         selected
           ? 'border-blue-600 bg-blue-50/50 shadow-md shadow-blue-100'
           : 'border-gray-100 hover:border-blue-200 bg-white'
       )}
     >
-      <div className="flex items-center justify-between mb-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
         <span
           className={cn(
             'text-[11px] font-black uppercase tracking-tight',
@@ -177,13 +182,34 @@ function CandidateCard({
         <span
           className={cn(
             'px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest',
-            variantColors[candidate.variant]
+            variantColors[candidate.variant] ?? 'bg-gray-100 text-gray-600'
           )}
         >
-          {candidate.variant}
+          {wireframe ? wireframe.name : candidate.variant}
         </span>
       </div>
-      <p className="text-[9px] text-gray-500 font-medium leading-relaxed truncate">
+
+      {/* Thumbnail — only render iframe when selected to avoid multiple simultaneous iframes */}
+      {selected && wireframe && (
+        <div className="rounded-xl overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center" style={{ height: '210px' }}>
+          <TemplatePreview
+            templateFile={wireframe.file}
+            name={wireframe.name}
+            scale={0.2}
+            adSize={wireframe.adSize || 1024}
+          />
+        </div>
+      )}
+      {!selected && wireframe && (
+        <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1">
+          <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest truncate">
+            {wireframe.name}
+          </p>
+        </div>
+      )}
+
+      {/* Description */}
+      <p className="text-[9px] text-gray-500 font-medium leading-relaxed line-clamp-2">
         {candidate.description}
       </p>
     </button>
@@ -341,7 +367,15 @@ function DesignStepBody({
                   key={c.id}
                   candidate={c}
                   selected={idx === selectedCandidateIndex}
-                  onClick={() => mergeStepData({ selectedCandidateIndex: idx })}
+                  onClick={() => {
+                    const wf = c.wireframeId
+                      ? SOCIAL_WIREFRAMES.find((w) => w.id === c.wireframeId)
+                      : null;
+                    mergeStepData({
+                      selectedCandidateIndex: idx,
+                      ...(wf ? { selectedWireframeId: wf.id, wireframeFile: wf.file } : {}),
+                    });
+                  }}
                 />
               ))}
             </div>
@@ -981,8 +1015,22 @@ const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
         requirements,
         channel: stepData.channel ?? 'Social',
         brand: assetHouse,
+        feedColumns,
+        brief: stepData.brief,
       });
       setCandidates(generated);
+
+      // Auto-apply the top candidate's wireframeId if the user hasn't manually selected
+      // a wireframe yet. We check stepData (snapshot from onEnter start) — if the user
+      // clicked the wireframe grid during the Gemini call, this guard may not catch it,
+      // but mergeStepData is a shallow merge so no data is lost.
+      const top = generated[0];
+      if (top?.wireframeId && !stepData.selectedWireframeId) {
+        const wf = SOCIAL_WIREFRAMES.find((w) => w.id === top.wireframeId);
+        if (wf) {
+          mergeStepData({ selectedWireframeId: wf.id, wireframeFile: wf.file });
+        }
+      }
     } catch (err) {
       console.error('[DesignStep] generateLayouts failed:', err);
       setLayoutError('Failed to generate layouts. Please go back and try again.');
