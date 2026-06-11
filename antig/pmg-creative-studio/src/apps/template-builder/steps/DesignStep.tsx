@@ -105,22 +105,6 @@ function groupColumnsByInferredType(
     .map((t) => ({ groupLabel: COL_TYPE_LABELS[t], cols: groups[t] }));
 }
 
-// ── Module-level context ref ─────────────────────────────────────────────────
-
-interface DesignCtx {
-  candidates: Candidate[];
-  requirements: RequirementField[];
-  feedColumns: string[];
-  assetHouse: ReturnType<typeof useAssetHouse>['assetHouse'];
-  setCandidates: (c: Candidate[]) => void;
-  setIsLoadingCandidates: (v: boolean) => void;
-  setSuggestedFields: (fields: Set<string>) => void;
-  setLayoutError: (msg: string | null) => void;
-  mergeStepData: (patch: Partial<TemplateBuilderStepData>) => void;
-}
-
-let _designCtx: DesignCtx | null = null;
-
 // ── Skeleton card ─────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
@@ -243,24 +227,60 @@ function DesignStepBody({
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
   const [newFieldColumn, setNewFieldColumn] = useState('');
 
-  // Wire the module-level ref every render so onEnter can reach context.
-  _designCtx = {
-    candidates,
-    requirements,
-    feedColumns,
-    assetHouse,
-    setCandidates,
-    setIsLoadingCandidates,
-    setSuggestedFields,
-    setLayoutError,
-    mergeStepData,
-  };
-
+  // Run layout generation + mapping suggestions on mount.
+  // Cannot use onEnter for this because the wizard fires onEnter BEFORE navigating
+  // to the step, so DesignStepBody is not yet mounted and _designCtx is null.
+  // useEffect fires after mount, by which time requirements + feedColumns are
+  // already set in context from SetupStep's submit.
   useEffect(() => {
-    return () => {
-      _designCtx = null;
+    const run = async () => {
+      if (candidates.length === 0) {
+        setIsLoadingCandidates(true);
+        try {
+          const generated = await generateLayouts({
+            requirements,
+            channel: stepData.channel ?? 'Social',
+            brand: assetHouse,
+            feedColumns,
+            brief: stepData.brief,
+          });
+          setCandidates(generated);
+
+          // Auto-apply the top candidate's wireframeId if the user hasn't manually
+          // selected a wireframe yet. stepData is a snapshot from mount time — if the
+          // user clicks the wireframe grid during the Gemini call, this check uses the
+          // stale snapshot and may overwrite their selection. Acceptable trade-off:
+          // re-clicking the desired wireframe recovers immediately.
+          const top = generated[0];
+          if (top?.wireframeId && !stepData.selectedWireframeId) {
+            const wf = SOCIAL_WIREFRAMES.find((w) => w.id === top.wireframeId);
+            if (wf) {
+              mergeStepData({ selectedWireframeId: wf.id, wireframeFile: wf.file });
+            }
+          }
+        } catch (err) {
+          console.error('[DesignStep] generateLayouts failed:', err);
+          setLayoutError('Failed to generate layouts. Please go back and try again.');
+        } finally {
+          setIsLoadingCandidates(false);
+        }
+      }
+
+      if (!stepData.feedMappings || Object.keys(stepData.feedMappings).length === 0) {
+        try {
+          const suggested = await suggestMappings({ requirements, feedColumns });
+          if (Object.keys(suggested).length > 0) {
+            mergeStepData({ feedMappings: suggested });
+            setSuggestedFields(new Set(Object.keys(suggested)));
+          }
+        } catch (err) {
+          console.error('[DesignStep] suggestMappings failed:', err);
+        }
+      }
     };
-  }, []);
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run only on mount — context values are stable at this point
 
   useEffect(() => {
     if (!stepData.wireframeFile) { setDiscoveredSlots([]); return; }
@@ -998,61 +1018,9 @@ const validate: WizardStep<TemplateBuilderStepData>['validate'] = (data) => {
     : { ok: false, reason: 'Map at least one field to continue' };
 };
 
-const onEnter: WizardStep<TemplateBuilderStepData>['onEnter'] = async ({
-  stepData,
-  mergeStepData,
-}) => {
-  const ctx = _designCtx;
-  if (!ctx) return;
-
-  const { candidates, requirements, feedColumns, assetHouse, setCandidates, setIsLoadingCandidates, setSuggestedFields, setLayoutError } = ctx;
-
-  // Generate layouts if not already done
-  if (candidates.length === 0) {
-    setIsLoadingCandidates(true);
-    try {
-      const generated = await generateLayouts({
-        requirements,
-        channel: stepData.channel ?? 'Social',
-        brand: assetHouse,
-        feedColumns,
-        brief: stepData.brief,
-      });
-      setCandidates(generated);
-
-      // Auto-apply the top candidate's wireframeId if the user hasn't manually selected
-      // a wireframe yet. stepData is a snapshot captured at onEnter start — if the user
-      // clicked the wireframe grid *during* the Gemini call, this check uses the stale
-      // snapshot and may overwrite their selection. Acceptable trade-off: re-clicking
-      // the desired wireframe recovers immediately.
-      const top = generated[0];
-      if (top?.wireframeId && !stepData.selectedWireframeId) {
-        const wf = SOCIAL_WIREFRAMES.find((w) => w.id === top.wireframeId);
-        if (wf) {
-          mergeStepData({ selectedWireframeId: wf.id, wireframeFile: wf.file });
-        }
-      }
-    } catch (err) {
-      console.error('[DesignStep] generateLayouts failed:', err);
-      setLayoutError('Failed to generate layouts. Please go back and try again.');
-    } finally {
-      setIsLoadingCandidates(false);
-    }
-  }
-
-  // Auto-suggest mappings if not already done
-  if (!stepData.feedMappings || Object.keys(stepData.feedMappings).length === 0) {
-    try {
-      const suggested = await suggestMappings({ requirements, feedColumns });
-      if (Object.keys(suggested).length > 0) {
-        mergeStepData({ feedMappings: suggested });
-        setSuggestedFields(new Set(Object.keys(suggested)));
-      }
-    } catch (err) {
-      console.error('[DesignStep] suggestMappings failed:', err);
-    }
-  }
-};
+// Layout generation and mapping suggestions now live in a useEffect inside
+// DesignStepBody (above). onEnter fired before the component mounted so
+// _designCtx was always null — moved to mount-time effect instead.
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
@@ -1061,6 +1029,5 @@ export const designStep: WizardStep<TemplateBuilderStepData> = {
   name: 'Design & Map',
   description: 'Pick a layout, then map your feed columns to the template fields. The live preview updates as you go.',
   validate,
-  onEnter,
   render: (props) => <DesignStepBody {...props} />,
 };
