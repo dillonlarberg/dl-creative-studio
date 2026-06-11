@@ -24,30 +24,36 @@ export const FilledTemplatePreview = ({
   highlightSlot?: string | null;
   slotSelectionMode?: boolean;
 }) => {
+  const [rawHtml, setRawHtml] = useState<string>('');
   const [srcdoc, setSrcdoc] = useState<string>('');
   const [loaded, setLoaded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const clipSize = Math.round(adSize * scale);
   const isInteractive = Boolean(onSlotClick || slotSelectionMode);
 
-  // Rebuild srcdoc when template or injections change
+  // Fetch raw HTML only when the template file changes (not on every injection update).
   useEffect(() => {
     setLoaded(false);
-    setSrcdoc('');
+    setRawHtml('');
     fetch(`/template_examples/social/${templateFile}`)
       .then((r) => r.text())
-      .then((html) => {
-        let filled = injectIntoHtml(html, injections, cssOverrides, slotOverrides);
-        if (isInteractive) {
-          filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
-        }
-        setSrcdoc(filled);
-      })
+      .then((html) => setRawHtml(html))
       .catch((err) =>
         console.error('[FilledTemplatePreview] fetch error:', err)
       );
+  }, [templateFile]);
+
+  // Re-apply injections into cached HTML whenever mappings/overrides change.
+  // No fetch needed — rawHtml is already in memory, so updates are instant.
+  useEffect(() => {
+    if (!rawHtml) return;
+    let filled = injectIntoHtml(rawHtml, injections, cssOverrides, slotOverrides);
+    if (isInteractive) {
+      filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
+    }
+    setSrcdoc(filled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateFile, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), isInteractive]);
+  }, [rawHtml, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), isInteractive]);
 
   // Send highlight-slot message when highlightSlot prop changes
   useEffect(() => {
