@@ -108,10 +108,24 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
           response.json(JSON.parse(result.response.text()));
 
         } else if (action === "generateLayouts") {
-          const { requirements, channel, brand } = body as {
+          const { requirements, channel, brand, feedColumns, brief, wireframeCatalog } = body as {
             requirements: Array<{ id: string; type: string; category: string }>;
             channel: string;
             brand: { primaryColor?: string; fontPrimary?: string; cornerRadius?: string; logoPrimary?: string } | null;
+            feedColumns?: string[];
+            brief?: string;
+            wireframeCatalog?: Array<{
+              id: string;
+              name: string;
+              description: string;
+              bestFor: string;
+              slots: string[];
+              imageCount: number;
+              hasLogo: boolean;
+              hasBackground: boolean;
+              hasCTA: boolean;
+              hasPrice: boolean;
+            }>;
           };
           if (!channel) { response.status(400).json({ error: "channel is required" }); return; }
           if (!Array.isArray(requirements)) { response.status(400).json({ error: "requirements must be an array" }); return; }
@@ -121,9 +135,12 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
           const radius = brand?.cornerRadius ?? "12px";
           const hasHeadline = requirements.some((r) => r.id === "headline");
           const hasPrice    = requirements.some((r) => r.id === "price" || r.type === "currency");
-          const hasImage    = requirements.some((r) => r.type === "image");
+          const imageCount  = requirements.filter((r) => r.type === "image").length;
           const hasLogo     = requirements.some((r) => r.category === "Brand");
           const hasCTA      = requirements.some((r) => r.type === "button");
+          const cols        = feedColumns ?? [];
+          const catalog     = wireframeCatalog ?? [];
+          const validIds    = catalog.map((w) => w.id);
 
           const model = genAI.getGenerativeModel({
             model: GEMINI_MODEL,
@@ -136,6 +153,7 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
                   properties: {
                     id:          { type: SchemaType.STRING },
                     name:        { type: SchemaType.STRING },
+                    wireframeId: { type: SchemaType.STRING },
                     variant:     { type: SchemaType.STRING },
                     description: { type: SchemaType.STRING },
                     strategy:    { type: SchemaType.STRING },
@@ -163,39 +181,67 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
                       required: ["headline", "price", "image", "cta", "logo"],
                     },
                   },
-                  required: ["id", "name", "variant", "description", "strategy", "styles", "elements"],
+                  required: ["id", "name", "wireframeId", "variant", "description", "strategy", "styles", "elements"],
                 },
               },
             },
           });
 
-          const prompt = `You are a visual ad creative director. Propose exactly 3 distinct layout candidates for a ${channel} ad template.
+          const catalogJson = JSON.stringify(catalog, null, 2);
+          const validIdsStr = validIds.join(", ");
 
-Brand color: "${color}", font: "${font}", border radius: "${radius}"
-Required elements — headline: ${hasHeadline}, image: ${hasImage}, price: ${hasPrice}, cta: ${hasCTA}, logo: ${hasLogo}
+          const prompt = `You are a creative technologist selecting ad template wireframes for an ad campaign.
 
-Return exactly 3 candidates. Each must be meaningfully different (e.g. editorial, bold/high-contrast, minimal/premium).
+Available wireframe catalog — pick ONLY from these entries:
+${catalogJson}
 
-For each:
-- id: kebab-case unique identifier
-- name: creative 2-3 word name
-- variant: one of "grid", "stacked", "wide", "minimal"
-- description: 1 sentence describing the visual approach
-- strategy: 1 sentence on when/why to use it (campaign type, audience)
-- styles.primaryColor: use "${color}"
-- styles.fontFamily: use "${font}"
-- styles.borderRadius: use "${radius}" (or "0px" for a bold variant)
-- styles.shadow: optional box-shadow CSS string (omit for minimal)
-- styles.gradient: optional CSS gradient using "${color}" (omit for minimal)
-- styles.accentRotation: optional slight skew like "-2deg" (bold variant only)
-- elements.headline: ${hasHeadline}
-- elements.price: ${hasPrice}
-- elements.image: ${hasImage}
-- elements.cta: ${hasCTA}
-- elements.logo: ${hasLogo}`;
+IMPORTANT: wireframeId MUST be exactly one of these IDs (copy verbatim, no variations):
+${validIdsStr}
+
+Template field requirements:
+- Creative brief: "${brief || "(none provided)"}"
+- Channel: "${channel}"
+- Needs headline: ${hasHeadline} | image count needed: ${imageCount} | needs price: ${hasPrice} | needs CTA: ${hasCTA} | has logo: ${hasLogo}
+- All fields: ${JSON.stringify(requirements.map((r) => ({ id: r.id, type: r.type, category: r.category })))}
+
+Available feed columns (actual data available): ${JSON.stringify(cols)}
+Brand: color "${color}", font "${font}", border radius "${radius}"
+
+Select exactly 3 wireframes. Rules:
+1. wireframeId MUST be one of the IDs listed above — do not invent or modify IDs
+2. Prefer wireframes whose imageCount matches ${imageCount} image field(s) needed
+3. Prefer wireframes where hasPrice=true when price fields are required (hasPrice: ${hasPrice})
+4. Prefer wireframes where hasCTA=true when CTA is required (hasCTA: ${hasCTA})
+5. Prefer wireframes where hasLogo=true when brand logo is needed (hasLogo: ${hasLogo})
+6. Let the creative brief influence which style/mood fits best
+7. Diversify: all 3 must be different wireframes with meaningfully different visual approaches
+
+For each selection:
+- id: unique kebab-case string (e.g. "pick-1")
+- name: 2-3 creative words describing this selection
+- wireframeId: exact id from the list above
+- variant: closest match from "grid" | "stacked" | "wide" | "minimal"
+- description: 1 sentence on why this wireframe fits the brief and field requirements
+- strategy: 1 sentence on campaign type / audience this layout suits
+- styles.primaryColor: "${color}"
+- styles.fontFamily: "${font}"
+- styles.borderRadius: "${radius}" (or "0px" for a bold pick)
+- styles.shadow: optional CSS box-shadow string (omit for minimal)
+- elements: set headline/price/image/cta/logo booleans to match the requirements above`;
 
           const result = await model.generateContent(prompt);
-          response.json(JSON.parse(result.response.text()));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = JSON.parse(result.response.text()) as Array<Record<string, any>>;
+
+          // Server-side validation: repair any wireframeId not in the catalog.
+          // Fallback to the catalog entry at that index so the client always gets a usable wireframeId.
+          const validated = raw.map((candidate, i) => {
+            const wid = typeof candidate.wireframeId === "string" ? candidate.wireframeId : "";
+            const repaired = validIds.includes(wid) ? wid : (validIds[i] ?? validIds[0] ?? "");
+            return { ...candidate, wireframeId: repaired };
+          });
+
+          response.json(validated);
 
         } else if (action === "suggestMappings") {
           const { requirements, feedColumns } = body as {
