@@ -82,11 +82,13 @@ export default function TemplateLibraryPage() {
                 <button
                   key={ch}
                   type="button"
-                  onClick={() => setChannelFilter(ch)}
+                  onClick={() => { setChannelFilter(ch); setSearch(''); }}
                   className={cn(
                     'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition-all',
                     channelFilter === ch
-                      ? 'bg-gray-900 text-white'
+                      ? ch === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : (CHANNEL_COLORS[ch] ?? 'bg-gray-100 text-gray-600') + ' ring-1 ring-inset ring-current'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   )}
                 >
