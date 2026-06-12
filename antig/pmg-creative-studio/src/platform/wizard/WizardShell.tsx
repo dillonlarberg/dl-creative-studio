@@ -497,7 +497,10 @@ export function WizardShell<S extends StepData = StepData>({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={reset}
+                onClick={() => {
+                  reset();
+                  navigateToStep(manifest.steps[0].id, false);
+                }}
                 data-testid="wizard-reset"
                 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 hover:text-gray-500"
               >
