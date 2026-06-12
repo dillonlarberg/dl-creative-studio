@@ -99,8 +99,15 @@ describe('WIREFRAME_CATALOG', () => {
     }
   });
 
-  it('has 15 entries matching SOCIAL_WIREFRAMES count', () => {
+  it('WIREFRAME_CATALOG and SOCIAL_WIREFRAMES have the same count', () => {
     expect(WIREFRAME_CATALOG).toHaveLength(SOCIAL_WIREFRAMES.length);
+  });
+
+  it('has entries for all 45 wireframe HTML files', () => {
+    expect(WIREFRAME_CATALOG.length).toBeGreaterThanOrEqual(45);
+    for (const entry of WIREFRAME_CATALOG) {
+      expect(entry.slots.length, `${entry.id} has no slots`).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('file and adSize agree with SOCIAL_WIREFRAMES for every shared id', () => {
