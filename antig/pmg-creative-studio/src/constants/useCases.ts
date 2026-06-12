@@ -122,6 +122,8 @@ export const SOCIAL_WIREFRAMES = [
     { id: 'original_15a_v2', name: 'Duo + Center Tag V2', file: 'original_15a_copy.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Image 2', 'Tag/Callout'] },
     // original_15b_copy: #image_3 #left-bar #logo_1 #tag
     { id: 'original_15b_v2', name: 'Sidebar + Hero Image V2', file: 'original_15b_copy.html', adSize: 1024, minRequirements: ['Logo', 'Image', 'Tag/Callout'] },
+    // original_1_copy: #logo #main-image #label
+    { id: 'original_1_v2', name: 'Full Bleed Hero V2', file: 'original_1_copy.html', adSize: 1080, minRequirements: ['Logo', 'Image', 'Promo Label'] },
 ];
 
 export interface WireframeCatalogEntry {
@@ -144,8 +146,8 @@ export interface WireframeCatalogEntry {
 
 export const WIREFRAME_CATALOG: WireframeCatalogEntry[] = [
   {
-    id: 'original_1',
-    name: 'Full Bleed Hero',
+    id: 'original_1_v2',
+    name: 'Full Bleed Hero V2',
     file: 'original_1_copy.html',
     adSize: 1080,
     slots: ['main-image', 'logo', 'label'],
@@ -591,6 +593,16 @@ export const WIREFRAME_CATALOG: WireframeCatalogEntry[] = [
     slots: ['image_3', 'left-bar', 'logo_1', 'tag'],
     description: 'Updated hero product image with sidebar accent, logo, and tag — revised proportions.',
     bestFor: 'Single product hero with brand accent color — alternate treatment for tech or fashion.',
+    elementTypes: { image: 1, text: 1, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
+  },
+  {
+    id: 'original_1_v2',
+    name: 'Full Bleed Hero V2',
+    file: 'original_1_copy.html',
+    adSize: 1080,
+    slots: ['main-image', 'logo', 'label'],
+    description: 'Refreshed full-bleed product image fills the entire frame. Logo at top, promo label at bottom.',
+    bestFor: 'Brand awareness, hero product shots, lifestyle imagery where the image IS the message — alternate treatment.',
     elementTypes: { image: 1, text: 1, hasLogo: true, hasBackground: false, hasCTA: false, hasPrice: false },
   },
 ];
