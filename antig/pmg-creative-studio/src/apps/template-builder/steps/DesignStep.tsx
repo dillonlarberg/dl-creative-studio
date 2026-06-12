@@ -327,6 +327,7 @@ function DesignStepBody({
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
   const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [feedRowIndex, setFeedRowIndex] = useState(0);
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
@@ -483,6 +484,13 @@ function DesignStepBody({
   // Helper: find the first non-empty value for a column across all sample rows.
   // Row 0 may have empty cells; scanning forward finds the first real value.
   const firstVal = (col: string): string => {
+    // Try the currently-previewed row first
+    const currentRow = feedSampleData[feedRowIndex] as Record<string, unknown> | undefined;
+    if (currentRow) {
+      const v = String(currentRow[col] ?? '').trim();
+      if (v) return v;
+    }
+    // Fallback: scan all rows for any non-empty value
     for (const row of feedSampleData) {
       const v = String((row as Record<string, unknown>)[col] ?? '').trim();
       if (v) return v;
@@ -1313,6 +1321,31 @@ function DesignStepBody({
                 </div>
               )}
             </div>
+
+            {/* Feed row navigator */}
+            {feedSampleData.length > 0 && (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setFeedRowIndex((i) => Math.max(0, i - 1))}
+                  disabled={feedRowIndex === 0}
+                  className="text-[8px] font-black text-gray-400 uppercase tracking-widest disabled:opacity-30 hover:text-blue-600 transition-colors"
+                >
+                  ← Prev
+                </button>
+                <span className="text-[8px] font-medium text-gray-400">
+                  Row {feedRowIndex + 1} of {feedSampleData.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFeedRowIndex((i) => Math.min(feedSampleData.length - 1, i + 1))}
+                  disabled={feedRowIndex >= feedSampleData.length - 1}
+                  className="text-[8px] font-black text-blue-600 uppercase tracking-widest disabled:opacity-30 hover:text-blue-800 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
 
             {/* Portrait ratio note — wireframes are 1:1; production ads will use ratio-specific layouts */}
             {previewContainerH > previewBaseSize && (stepData.ratios?.length ?? 0) > 1 && (
