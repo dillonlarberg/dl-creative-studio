@@ -715,6 +715,48 @@ function DesignStepBody({
               })}
             </div>
 
+            {/* Zone Coverage panel — shows slot mapping status */}
+            {discoveredSlots.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
+                  <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Zone Coverage</span>
+                  <span className="text-[8px] text-gray-400">
+                    {Object.values(stepData.slotMappings ?? {}).filter(Boolean).length}/{discoveredSlots.length} mapped
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {discoveredSlots.map((slot) => {
+                    const isMapped = Object.values(stepData.slotMappings ?? {}).includes(slot.slotId);
+                    return (
+                      <div key={slot.slotId} className="flex items-center justify-between px-3 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[7px] font-black ${
+                            isMapped ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {isMapped ? '✓' : '!'}
+                          </span>
+                          <span className="text-[9px] font-medium text-gray-700 truncate">{slot.label}</span>
+                          <span className="shrink-0 text-[7px] text-gray-400 font-mono">{slot.slotId}</span>
+                        </div>
+                        {!isMapped && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddFieldPendingSlot(slot.slotId);
+                              setAddFieldOpen(true);
+                            }}
+                            className="shrink-0 text-[8px] font-black text-indigo-600 hover:text-indigo-800 ml-2"
+                          >
+                            Add →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Add Field */}
             {!addFieldOpen ? (
               <button
