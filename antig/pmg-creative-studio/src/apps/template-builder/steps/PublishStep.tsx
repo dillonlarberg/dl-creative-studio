@@ -14,6 +14,9 @@ import { CandidatePreview } from '../_internal/CandidatePreview';
 import { templateLibraryService } from '../../../services/templateLibrary';
 import type { NewTemplateData, FieldMapping } from '../../../services/templateLibrary.types';
 import type { ClientSlug } from '../../../platform/firebase/paths';
+import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
+import { auth } from '../../../firebase';
+import { applyClientTransforms } from '../_internal/transformExecutor';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,7 +65,8 @@ function resolveInjections(
   feedMappings: Record<string, string>,
   sampleData: Array<Record<string, unknown>>,
   assetHouse: { logoPrimary?: string; logoInverse?: string } | null,
-  logoVariant?: 'primary' | 'inverse'
+  logoVariant?: 'primary' | 'inverse',
+  fieldTransforms?: Record<string, string[]>
 ): Record<string, { type: 'image' | 'text'; value: string }> {
   const injections: Record<string, { type: 'image' | 'text'; value: string }> = {};
 
@@ -77,8 +81,11 @@ function resolveInjections(
   for (const field of fields) {
     const col = feedMappings[field.id];
     if (col) {
-      const val = firstVal(col);
-      if (val) {
+      const raw = firstVal(col);
+      if (raw) {
+        const transforms = fieldTransforms?.[field.id] ?? [];
+        const fieldType = field.type as 'text' | 'image' | 'currency' | 'button' | 'asset';
+        const val = applyClientTransforms(raw, transforms, fieldType);
         injections[field.id] = {
           type: field.type === 'image' ? 'image' : 'text',
           value: val,
@@ -133,6 +140,9 @@ function PublishStepBody({
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [isDrafting, setIsDrafting] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const requirements = tbCtx.requirements;
   const feedSampleData = tbCtx.feedSampleData as Array<Record<string, unknown>>;
@@ -158,7 +168,8 @@ function PublishStepBody({
     feedMappings,
     feedSampleData,
     assetHouse,
-    stepData.logoVariant
+    stepData.logoVariant,
+    stepData.fieldTransforms
   );
 
   const cssOverrides: Record<string, string> = {
@@ -189,6 +200,7 @@ function PublishStepBody({
     },
     fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
     fieldTransforms: stepData.fieldTransforms ?? {},
+    zoneStyles: stepData.zoneStyles,
     brandOverrides: {
       ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
       ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),
@@ -202,6 +214,19 @@ function PublishStepBody({
   };
 
   // ── Publish handler ──────────────────────────────────────────────────────
+
+  const handleSaveDraft = async () => {
+    setIsDrafting(true);
+    setDraftError(null);
+    try {
+      await templateLibraryService.saveDraft(client.slug as ClientSlug, newTemplateData);
+      setDraftSaved(true);
+    } catch (err: unknown) {
+      setDraftError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setIsDrafting(false);
+    }
+  };
 
   const handlePublish = async () => {
     setIsPublishing(true);
@@ -220,12 +245,15 @@ function PublishStepBody({
     }
   };
 
+  const fieldsMappedCount = Object.keys(feedMappings).length;
+  const templateNameOk = Boolean((stepData.templateName ?? '').trim()) && !(stepData.templateName ?? '').startsWith('Untitled');
+  const isReady = templateNameOk && fieldsMappedCount > 0;
+
   const isPublishDisabled =
     isPublishing ||
     Boolean(publishedId) ||
-    !(stepData.templateName ?? '').trim();
-
-  const fieldsMappedCount = Object.keys(feedMappings).length;
+    !(stepData.templateName ?? '').trim() ||
+    !auth.currentUser;
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -241,9 +269,10 @@ function PublishStepBody({
             templateFile={stepData.wireframeFile}
             name={stepData.templateName ?? 'Template Preview'}
             scale={0.45}
-            adSize={1024}
+            adSize={SOCIAL_WIREFRAMES.find((w) => w.id === stepData.selectedWireframeId)?.adSize ?? 1024}
             injections={injections}
             cssOverrides={cssOverrides}
+            slotOverrides={stepData.slotMappings}
           />
         ) : selectedCandidate ? (
           <CandidatePreview
@@ -306,7 +335,17 @@ function PublishStepBody({
           <MetaRow label="Fields mapped">
             {fieldsMappedCount} {fieldsMappedCount === 1 ? 'field' : 'fields'}
           </MetaRow>
-          <MetaRow label="Created by">You</MetaRow>
+          <MetaRow label="Status">
+            {isReady ? (
+              <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-[10px] font-black text-green-700 uppercase tracking-widest">
+                Ready to publish
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-black text-amber-700 uppercase tracking-widest">
+                Review required
+              </span>
+            )}
+          </MetaRow>
         </div>
 
         {/* Success state */}
@@ -320,11 +359,17 @@ function PublishStepBody({
               </p>
             </div>
             <a
+              href={`/adlabs/${client.slug}/templates`}
+              className="w-full rounded-xl py-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 bg-gray-900 text-white hover:bg-gray-700 active:scale-[0.98]"
+            >
+              View in Template Library
+              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+            </a>
+            <a
               href={`/adlabs/${client.slug}`}
-              className="inline-flex items-center gap-1.5 text-[10px] font-black text-green-700 uppercase tracking-[0.15em] hover:text-green-900 transition-colors"
+              className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-gray-700 transition-colors"
             >
               Back to Dashboard
-              <ArrowTopRightOnSquareIcon className="h-3 w-3" />
             </a>
           </div>
         ) : (
@@ -386,6 +431,25 @@ function PublishStepBody({
                 'Publish to Template Library'
               )}
             </button>
+
+            {/* Save as Draft */}
+            {draftSaved ? (
+              <p className="text-center text-[10px] font-bold text-gray-400">Draft saved — not yet published.</p>
+            ) : (
+              <div className="flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => void handleSaveDraft()}
+                  disabled={isDrafting || !(stepData.templateName ?? '').trim()}
+                  className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] hover:text-gray-700 disabled:opacity-40 transition-colors"
+                >
+                  {isDrafting ? 'Saving…' : 'Save as Draft'}
+                </button>
+                {draftError && (
+                  <p className="text-[9px] text-red-500">{draftError}</p>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

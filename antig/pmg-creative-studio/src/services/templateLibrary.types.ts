@@ -1,5 +1,6 @@
 // src/services/templateLibrary.types.ts
 import type { Timestamp } from 'firebase/firestore';
+import type { ZoneStyle } from '../apps/template-builder/types';
 
 export type FieldMappingSource = 'feed' | 'upload' | 'brand' | 'static';
 
@@ -41,6 +42,7 @@ export interface TemplateLibraryRecord {
 
   fieldMappings: Record<string, FieldMapping>;
   fieldTransforms?: Record<string, string[]>;
+  zoneStyles?: Record<string, ZoneStyle>;
 
   brandOverrides: {
     primaryColor?: string;
@@ -93,6 +95,7 @@ export type NewTemplateData = Pick<
   brief?: string;
   aiRequirements?: TemplateLibraryRecord['aiRequirements'];
   fieldTransforms?: Record<string, string[]>;
+  zoneStyles?: Record<string, ZoneStyle>;
 };
 
 export class TemplateNotFoundError extends Error {

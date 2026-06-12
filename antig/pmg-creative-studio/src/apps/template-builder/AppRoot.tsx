@@ -52,6 +52,7 @@ function mapTemplateToStepData(t: TemplateLibraryRecord): Partial<TemplateBuilde
     ...(Object.keys(uploadValues).length > 0 ? { uploadValues } : {}),
     ...(Object.keys(slotMappings).length > 0 ? { slotMappings } : {}),
     fieldTransforms: t.fieldTransforms ?? {},
+    zoneStyles: t.zoneStyles,
     selectedWireframeId: t.scaffoldId,
     ...(wireframe ? { wireframeFile: wireframe.file } : {}),
     ...(t.brandOverrides?.primaryColor ? { backgroundColor: t.brandOverrides.primaryColor } : {}),
