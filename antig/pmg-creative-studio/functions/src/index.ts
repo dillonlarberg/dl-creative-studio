@@ -108,7 +108,7 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
           response.json(JSON.parse(result.response.text()));
 
         } else if (action === "generateLayouts") {
-          const { requirements, channel, brand, feedColumns, brief, wireframeCatalog } = body as {
+          const { requirements, channel, brand, feedColumns, brief, wireframeCatalog, feedSampleRow } = body as {
             requirements: Array<{ id: string; type: string; category: string }>;
             channel: string;
             brand: { primaryColor?: string; fontPrimary?: string; cornerRadius?: string; logoPrimary?: string } | null;
@@ -126,6 +126,7 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
               hasCTA: boolean;
               hasPrice: boolean;
             }>;
+            feedSampleRow?: Record<string, string> | null;
           };
           if (!channel) { response.status(400).json({ error: "channel is required" }); return; }
           if (!Array.isArray(requirements)) { response.status(400).json({ error: "requirements must be an array" }); return; }
@@ -185,6 +186,7 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
                       },
                       required: ["headline", "price", "image", "cta", "logo"],
                     },
+                    suggestedZoneStylesJson: { type: SchemaType.STRING },
                   },
                   required: ["id", "name", "wireframeId", "variant", "description", "strategy", "styles", "elements"],
                 },
@@ -194,6 +196,10 @@ Also include if brief mentions product, sale, deal, price, shop, or buy (or brie
 
           const catalogJson = JSON.stringify(catalog, null, 2);
           const validIdsStr = validIds.join(", ");
+
+          const feedSampleSection = feedSampleRow && Object.keys(feedSampleRow).length > 0
+            ? `\nSample feed row (real product data — use these values to write concrete, realistic zone style suggestions):\n${JSON.stringify(feedSampleRow, null, 2)}\n`
+            : "";
 
           const prompt = `You are a creative technologist selecting ad template wireframes for an ad campaign.
 
@@ -211,7 +217,7 @@ Template field requirements:
 
 Available feed columns (actual data available): ${JSON.stringify(cols)}
 Brand: color "${color}", font "${font}", border radius "${radius}"
-
+${feedSampleSection}
 Select exactly 3 wireframes. Rules:
 1. wireframeId MUST be one of the IDs listed above — do not invent or modify IDs
 2. Prefer wireframes whose imageCount matches ${imageCount} image field(s) needed
@@ -232,7 +238,8 @@ For each selection:
 - styles.fontFamily: "${font}"
 - styles.borderRadius: "${radius}" (or "0px" for a bold pick)
 - styles.shadow: optional CSS box-shadow string (omit for minimal)
-- elements: set headline/price/image/cta/logo booleans to match the requirements above`;
+- elements: set headline/price/image/cta/logo booleans to match the requirements above
+- suggestedZoneStylesJson: a JSON string (stringified object) mapping each slot ID from the selected wireframe's slots array to a CSS style object with relevant overrides (e.g. fontSize, color, fontFamily, textAlign). Use the feed sample data and brand tokens to make suggestions concrete and realistic. Only include slots that exist in the wireframe's slots array.`;
 
           const result = await model.generateContent(prompt);
 
@@ -248,13 +255,52 @@ For each selection:
 
           // Server-side validation: repair any wireframeId not in the catalog.
           // Fallback to the catalog entry at that index so the client always gets a usable wireframeId.
-          const validated = raw.map((candidate, i) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const validated: Array<Record<string, any>> = raw.map((candidate, i) => {
             const wid = typeof candidate.wireframeId === "string" ? candidate.wireframeId : "";
             const repaired = validIds.includes(wid) ? wid : (validIds[i] ?? validIds[0] ?? "");
             return { ...candidate, wireframeId: repaired };
           });
 
-          response.json(validated);
+          // Post-process: parse suggestedZoneStylesJson, filter to known slots, attach suggestedZoneStyles.
+          const processedCandidates = validated.map((candidate) => {
+            const wireframe = catalog.find((w) => w.id === candidate.wireframeId);
+            const allowedSlots = new Set(wireframe?.slots ?? []);
+
+            let suggestedZoneStyles: Record<string, Record<string, string>> = {};
+            const raw_json = candidate.suggestedZoneStylesJson;
+            if (typeof raw_json === "string" && raw_json.trim().length > 0) {
+              try {
+                const parsed = JSON.parse(raw_json) as Record<string, unknown>;
+                const dropped: string[] = [];
+                for (const [slotId, styles] of Object.entries(parsed)) {
+                  if (allowedSlots.has(slotId)) {
+                    suggestedZoneStyles[slotId] = styles as Record<string, string>;
+                  } else {
+                    dropped.push(slotId);
+                  }
+                }
+                if (dropped.length > 0) {
+                  functions.logger.info("[generateLayouts] Dropped unknown slot IDs from suggestedZoneStylesJson", {
+                    candidateId: candidate.id,
+                    wireframeId: candidate.wireframeId,
+                    droppedSlotIds: dropped,
+                  });
+                }
+              } catch (parseErr) {
+                functions.logger.warn("[generateLayouts] Failed to parse suggestedZoneStylesJson", {
+                  candidateId: candidate.id,
+                  error: (parseErr as Error).message,
+                });
+              }
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { suggestedZoneStylesJson: _raw, ...rest } = candidate;
+            return { ...rest, suggestedZoneStyles };
+          });
+
+          response.json(processedCandidates);
 
         } else if (action === "suggestMappings") {
           const { requirements, feedColumns } = body as {
