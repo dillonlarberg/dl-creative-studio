@@ -272,8 +272,12 @@ For each selection:
             if (typeof raw_json === "string" && raw_json.trim().length > 0) {
               try {
                 const parsed = JSON.parse(raw_json) as Record<string, unknown>;
+                // keep only entries where the value is a plain object (a ZoneStyle)
+                const filtered = Object.fromEntries(
+                  Object.entries(parsed).filter(([, v]) => v !== null && typeof v === "object" && !Array.isArray(v))
+                );
                 const dropped: string[] = [];
-                for (const [slotId, styles] of Object.entries(parsed)) {
+                for (const [slotId, styles] of Object.entries(filtered)) {
                   if (allowedSlots.has(slotId)) {
                     suggestedZoneStyles[slotId] = styles as Record<string, string>;
                   } else {
@@ -281,7 +285,7 @@ For each selection:
                   }
                 }
                 if (dropped.length > 0) {
-                  functions.logger.info("[generateLayouts] Dropped unknown slot IDs from suggestedZoneStylesJson", {
+                  functions.logger.debug("[generateLayouts] Dropped unknown slot IDs from suggestedZoneStylesJson", {
                     candidateId: candidate.id,
                     wireframeId: candidate.wireframeId,
                     droppedSlotIds: dropped,
@@ -293,6 +297,8 @@ For each selection:
                   error: (parseErr as Error).message,
                 });
               }
+            } else {
+              functions.logger.debug("[generateLayouts] suggestedZoneStylesJson absent or empty", { wireframeId: candidate.wireframeId });
             }
 
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
