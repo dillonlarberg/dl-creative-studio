@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { RequirementField } from './types';
+import type { ZoneStyle } from './types';
 
 export interface Candidate {
   id: string;
@@ -24,6 +25,7 @@ export interface Candidate {
     cta: boolean;
     logo: boolean;
   };
+  suggestedZoneStyles?: Record<string, ZoneStyle>;
 }
 
 interface TemplateBuilderContextValue {
