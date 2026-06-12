@@ -146,8 +146,8 @@ export interface WireframeCatalogEntry {
 
 export const WIREFRAME_CATALOG: WireframeCatalogEntry[] = [
   {
-    id: 'original_1_v2',
-    name: 'Full Bleed Hero V2',
+    id: 'original_1',
+    name: 'Full Bleed Hero',
     file: 'original_1_copy.html',
     adSize: 1080,
     slots: ['main-image', 'logo', 'label'],
