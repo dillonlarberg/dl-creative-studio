@@ -51,6 +51,9 @@ export interface TemplateBuilderStepData {
   fontFamily?: string;
 
   zoneStyles?: Record<string, ZoneStyle>;       // slotId → per-zone style overrides
+  staticValues?: Record<string, string>;           // fieldId → static text value (when source mode is 'static')
+  fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;  // fieldId → active source tab per field
+  aiSuggestedMappings?: Record<string, true>;      // fieldId → true when AI auto-suggested; cleared on Accept
 
   // ── wireframe (Social channel only) ───────────────────────────────
   selectedWireframeId?: string;
@@ -64,4 +67,7 @@ export interface ZoneStyle {
   fontSize?: number;        // applied as font-size: Npx
   color?: string;           // applied as color
   backgroundColor?: string; // applied as background-color
+  fontWeight?: 'bold' | 'normal';
+  fontStyle?: 'italic' | 'normal';
+  textDecoration?: 'underline' | 'none';
 }
