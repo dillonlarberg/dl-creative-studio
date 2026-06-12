@@ -493,17 +493,22 @@ function DesignStepBody({
   const injections: Record<string, { type: 'image' | 'text'; value: string }> = {};
   if (wireframe) {
     for (const field of allFields) {
-      const col = feedMappings[field.id];
-      if (col) {
-        const raw = firstVal(col);
-        if (raw) {
-          const transforms = fieldTransforms[field.id] ?? [];
-          const val = applyClientTransforms(raw, transforms, field.type);
-          injections[field.id] = {
-            type: field.type === 'image' ? 'image' : 'text',
-            value: val,
-          };
-        }
+      const sourceMode = stepData.fieldSourceMode?.[field.id] ?? 'feed';
+      let raw = '';
+      if (sourceMode === 'static') {
+        raw = stepData.staticValues?.[field.id] ?? '';
+      } else if (sourceMode === 'feed') {
+        const col = feedMappings[field.id];
+        if (col) raw = firstVal(col);
+      }
+      // 'ai' mode: Ask Alli writes back into feedMappings; handled naturally on next render
+      if (raw) {
+        const transforms = fieldTransforms[field.id] ?? [];
+        const val = applyClientTransforms(raw, transforms, field.type);
+        injections[field.id] = {
+          type: field.type === 'image' ? 'image' : 'text',
+          value: val,
+        };
       }
     }
     // Inject logo from asset house
@@ -651,41 +656,87 @@ function DesignStepBody({
                         </button>
                       </div>
                     )}
-                    <select
-                      value={currentVal}
-                      onChange={(e) =>
-                        mergeStepData({
-                          feedMappings: {
-                            ...feedMappings,
-                            [field.id]: e.target.value,
-                          },
-                        })
-                      }
-                      className={cn(
-                        'w-full px-3 py-2 rounded-xl border-2 focus:ring-4 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white',
-                        field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k))
-                          ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-50'
-                          : 'border-gray-100 focus:border-blue-600 focus:ring-blue-50'
-                      )}
-                    >
-                      <option value="">— Select column —</option>
-                      {groupColumnsByInferredType(feedColumns, inferredColTypes, field.type).map(({ groupLabel, cols }) => (
-                        <optgroup key={groupLabel} label={groupLabel}>
-                          {cols.map((col) => (
-                            <option key={col} value={col}>
-                              {col}
-                            </option>
-                          ))}
-                        </optgroup>
+                    {/* Source mode: Feed | Static | AI */}
+                    <div className="flex gap-1 mb-1">
+                      {(['feed', 'static', 'ai'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            const next = { ...(stepData.fieldSourceMode ?? {}), [field.id]: mode };
+                            mergeStepData({ fieldSourceMode: next });
+                            if (mode === 'ai') {
+                              setAskAlliTargetField(field.id);
+                              setAskAlliOpen(true);
+                            }
+                          }}
+                          className={cn(
+                            'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
+                            (stepData.fieldSourceMode?.[field.id] ?? 'feed') === mode
+                              ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          )}
+                        >
+                          {mode === 'ai' ? '✦ AI' : mode}
+                        </button>
                       ))}
-                    </select>
-                    {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <ExclamationTriangleIcon className="h-3 w-3 text-amber-500 shrink-0" />
-                        <p className="text-[9px] font-bold text-amber-600">
-                          "{currentVal}" may not contain image URLs — check this column has image links, not text or dates.
-                        </p>
+                    </div>
+                    {(stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'static' ? (
+                      <input
+                        type="text"
+                        placeholder={`Enter ${field.label.toLowerCase()}…`}
+                        value={stepData.staticValues?.[field.id] ?? ''}
+                        onChange={(e) =>
+                          mergeStepData({
+                            staticValues: { ...(stepData.staticValues ?? {}), [field.id]: e.target.value },
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900"
+                      />
+                    ) : (stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'ai' ? (
+                      <div className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
+                        onClick={() => { setAskAlliTargetField(field.id); setAskAlliOpen(true); }}>
+                        Generate via Ask Alli →
                       </div>
+                    ) : (
+                      <>
+                        <select
+                          value={currentVal}
+                          onChange={(e) =>
+                            mergeStepData({
+                              feedMappings: {
+                                ...feedMappings,
+                                [field.id]: e.target.value,
+                              },
+                            })
+                          }
+                          className={cn(
+                            'w-full px-3 py-2 rounded-xl border-2 focus:ring-4 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white',
+                            field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k))
+                              ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-50'
+                              : 'border-gray-100 focus:border-blue-600 focus:ring-blue-50'
+                          )}
+                        >
+                          <option value="">— Select column —</option>
+                          {groupColumnsByInferredType(feedColumns, inferredColTypes, field.type).map(({ groupLabel, cols }) => (
+                            <optgroup key={groupLabel} label={groupLabel}>
+                              {cols.map((col) => (
+                                <option key={col} value={col}>
+                                  {col}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                        {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <ExclamationTriangleIcon className="h-3 w-3 text-amber-500 shrink-0" />
+                            <p className="text-[9px] font-bold text-amber-600">
+                              "{currentVal}" may not contain image URLs — check this column has image links, not text or dates.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                     {/* Slot picker */}
                     {discoveredSlots.length > 0 && (
