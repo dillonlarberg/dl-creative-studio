@@ -583,6 +583,36 @@ function DesignStepBody({
                   }}
                 />
               ))}
+              {/* Regenerate button */}
+              <button
+                type="button"
+                disabled={isLoadingCandidates}
+                onClick={async () => {
+                  setIsLoadingCandidates(true);
+                  setLayoutError(null);
+                  try {
+                    const generated = await generateLayouts({
+                      requirements,
+                      channel: stepData.channel ?? 'Social',
+                      brand: assetHouse,
+                      feedColumns,
+                      brief: stepData.brief,
+                    });
+                    setCandidates(generated);
+                  } catch (err) {
+                    console.error('[DesignStep] regenerate failed:', err);
+                    setLayoutError('Failed to regenerate layouts. Please try again.');
+                  } finally {
+                    setIsLoadingCandidates(false);
+                  }
+                }}
+                className="w-full py-2 border border-gray-200 rounded-xl text-[9px] font-black text-gray-400 uppercase tracking-widest hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+                Regenerate
+              </button>
             </div>
           )}
         </div>
@@ -1346,6 +1376,58 @@ function DesignStepBody({
                 </button>
               </div>
             )}
+
+            {/* Compact brand overrides */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2.5">
+              <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Brand Overrides</label>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-medium text-gray-500">Colors</span>
+                <div className="flex gap-1.5">
+                  <input
+                    type="color"
+                    value={stepData.backgroundColor || '#2563eb'}
+                    onChange={(e) => mergeStepData({ backgroundColor: e.target.value })}
+                    title="Background color"
+                    className="h-6 w-6 rounded-full cursor-pointer border-0 p-0"
+                    style={{ borderRadius: '50%' }}
+                  />
+                  <input
+                    type="color"
+                    value={stepData.accentColor || '#1f2937'}
+                    onChange={(e) => mergeStepData({ accentColor: e.target.value })}
+                    title="Accent color"
+                    className="h-6 w-6 rounded-full cursor-pointer border-0 p-0"
+                    style={{ borderRadius: '50%' }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-medium text-gray-500">Font</span>
+                <span className="text-[9px] font-black text-gray-900 truncate max-w-[120px]">
+                  {stepData.fontFamily ?? assetHouse?.fontPrimary ?? 'Inter'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-medium text-gray-500">Logo</span>
+                <div className="flex gap-1">
+                  {(['primary', 'inverse'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => mergeStepData({ logoVariant: v })}
+                      className={cn(
+                        'px-2 py-0.5 rounded text-[7px] font-black uppercase transition-colors',
+                        (stepData.logoVariant ?? 'primary') === v
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-200 text-gray-500 hover:border-gray-300'
+                      )}
+                    >
+                      {v === 'primary' ? 'Color' : 'White'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             {/* Portrait ratio note — wireframes are 1:1; production ads will use ratio-specific layouts */}
             {previewContainerH > previewBaseSize && (stepData.ratios?.length ?? 0) > 1 && (
