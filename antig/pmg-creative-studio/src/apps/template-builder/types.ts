@@ -57,3 +57,9 @@ export interface TemplateBuilderStepData {
   // index signature — required by WizardStep<S> constraint
   [k: string]: unknown;
 }
+
+export interface ZoneStyle {
+  fontSize?: number;        // applied as font-size: Npx
+  color?: string;           // applied as color
+  backgroundColor?: string; // applied as background-color
+}

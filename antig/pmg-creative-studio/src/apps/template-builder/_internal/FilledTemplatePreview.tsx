@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { injectIntoHtml, buildInteractiveScript } from './injectIntoHtml';
+import type { ZoneStyle } from '../types';
 
 export const FilledTemplatePreview = ({
   templateFile,
@@ -9,6 +10,7 @@ export const FilledTemplatePreview = ({
   injections,
   cssOverrides,
   slotOverrides,
+  zoneStyles,
   onSlotClick,
   highlightSlot,
   slotSelectionMode = false,
@@ -20,6 +22,7 @@ export const FilledTemplatePreview = ({
   injections: Record<string, { type: 'image' | 'text'; value: string }>;
   cssOverrides?: Record<string, string>;
   slotOverrides?: Record<string, string>;
+  zoneStyles?: Record<string, ZoneStyle>;
   onSlotClick?: (slotId: string) => void;
   highlightSlot?: string | null;
   slotSelectionMode?: boolean;
@@ -47,13 +50,13 @@ export const FilledTemplatePreview = ({
   // No fetch needed — rawHtml is already in memory, so updates are instant.
   useEffect(() => {
     if (!rawHtml) return;
-    let filled = injectIntoHtml(rawHtml, injections, cssOverrides, slotOverrides);
+    let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles });
     if (isInteractive) {
       filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
     }
     setSrcdoc(filled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawHtml, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), isInteractive]);
+  }, [rawHtml, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), JSON.stringify(zoneStyles), isInteractive]);
 
   // Send highlight-slot message when highlightSlot prop changes
   useEffect(() => {

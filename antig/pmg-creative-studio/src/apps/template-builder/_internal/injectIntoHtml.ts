@@ -4,6 +4,16 @@
  * priority order), and CSS injection rules for color/font overrides.
  */
 
+import type { ZoneStyle } from '../types';
+
+export interface InjectOptions {
+  injections: Record<string, { type: 'image' | 'text'; value: string }>;
+  cssOverrides?: Record<string, string>;
+  slotOverrides?: Record<string, string>;
+  fieldTransforms?: Record<string, string[]>;
+  zoneStyles?: Record<string, ZoneStyle>;
+}
+
 export const FIELD_ID_MAP: Record<
   string,
   { type: 'image' | 'text'; targets: string[] }
@@ -112,12 +122,8 @@ const ALL_KNOWN_TARGETS: string[] = Array.from(
   new Set(Object.values(FIELD_ID_MAP).flatMap((m) => m.targets))
 );
 
-export function injectIntoHtml(
-  html: string,
-  injections: Record<string, { type: 'image' | 'text'; value: string }>,
-  cssOverrides?: Record<string, string>,
-  slotOverrides?: Record<string, string>
-): string {
+export function injectIntoHtml(html: string, options: InjectOptions): string {
+  const { injections, cssOverrides, slotOverrides, zoneStyles } = options;
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
@@ -178,6 +184,26 @@ export function injectIntoHtml(
       styleEl.id = '__dynamic-overrides__';
       styleEl.textContent = styleRules;
       doc.head.appendChild(styleEl);
+    }
+  }
+
+  // --- Per-zone style overrides (font size, color, background) ---
+  if (zoneStyles && Object.keys(zoneStyles).length > 0) {
+    let zoneRules = '';
+    for (const [slotId, style] of Object.entries(zoneStyles)) {
+      const el = doc.getElementById(slotId);
+      if (!el) continue;
+      let rules = '';
+      if (style.fontSize != null) rules += `font-size: ${style.fontSize}px !important; `;
+      if (style.color) rules += `color: ${style.color} !important; `;
+      if (style.backgroundColor) rules += `background-color: ${style.backgroundColor} !important; `;
+      if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
+    }
+    if (zoneRules) {
+      const zoneStyleEl = doc.createElement('style');
+      zoneStyleEl.id = '__zone-style-overrides__';
+      zoneStyleEl.textContent = zoneRules;
+      doc.head.appendChild(zoneStyleEl);
     }
   }
 
