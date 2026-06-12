@@ -35,14 +35,19 @@ function parseRatio(ratio: string): { width: number; height: number } {
   return { width: 1, height: 1 };
 }
 
-/** Convert feedMappings + uploadValues into the FieldMapping discriminated union. */
+/** Convert feedMappings + uploadValues + staticValues into the FieldMapping discriminated union. */
 function buildFieldMappings(
   feedMappings: Record<string, string>,
   uploadValues: Record<string, string>,
-  slotMappings?: Record<string, string>
+  slotMappings?: Record<string, string>,
+  staticValues?: Record<string, string>,
+  fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>
 ): Record<string, FieldMapping> {
   const result: Record<string, FieldMapping> = {};
   for (const [fieldId, column] of Object.entries(feedMappings)) {
+    // Skip fields that have been switched to static or ai mode
+    const mode = fieldSourceMode?.[fieldId] ?? 'feed';
+    if (mode !== 'feed') continue;
     result[fieldId] = {
       source: 'feed',
       column,
@@ -51,6 +56,16 @@ function buildFieldMappings(
   }
   for (const [fieldId, assetPath] of Object.entries(uploadValues)) {
     result[fieldId] = { source: 'upload', assetPath };
+  }
+  // Static-mode fields
+  for (const [fieldId, value] of Object.entries(staticValues ?? {})) {
+    const mode = fieldSourceMode?.[fieldId] ?? 'feed';
+    if (mode === 'static' && value) {
+      result[fieldId] = {
+        source: 'static',
+        value,
+      } as FieldMapping;
+    }
   }
   return result;
 }
@@ -198,7 +213,13 @@ function PublishStepBody({
       columns: tbCtx.feedColumns,
       capturedAt: Timestamp.fromDate(new Date()),
     },
-    fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
+    fieldMappings: buildFieldMappings(
+      feedMappings,
+      uploadValues,
+      stepData.slotMappings,
+      stepData.staticValues,
+      stepData.fieldSourceMode
+    ),
     fieldTransforms: stepData.fieldTransforms ?? {},
     zoneStyles: stepData.zoneStyles,
     staticValues: stepData.staticValues,
