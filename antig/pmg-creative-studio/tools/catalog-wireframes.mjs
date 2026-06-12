@@ -62,7 +62,7 @@ function deriveAdSize(html) {
 function countType(slots, type) {
   if (type === 'image') {
     return slots.filter(s =>
-      s.includes('image') || s.includes('background') || s === 'logo' || s === 'bg'
+      s.includes('image') || s.includes('background') || s.includes('logo') || s === 'bg'
     ).length;
   }
   // All known text/copy zone IDs
