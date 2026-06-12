@@ -7,7 +7,7 @@ import { cn } from '../../../utils/cn';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
 import type { Candidate } from '../TemplateBuilderContext';
-import { generateLayouts, suggestMappings } from '../../../services/ai/templateAI';
+import { generateLayouts, suggestMappings, bestSampleRow } from '../../../services/ai/templateAI';
 import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
 import { FIELD_ID_MAP } from '../_internal/injectIntoHtml';
 import CanvasOverlay from '../_internal/CanvasOverlay';
@@ -329,12 +329,16 @@ function DesignStepBody({
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [zoneCoverageStyleSlot, setZoneCoverageStyleSlot] = useState<string | null>(null);
   const [feedRowIndex, setFeedRowIndex] = useState(0);
+  const [userHasEditedStyles, setUserHasEditedStyles] = useState(
+    () => Object.keys(stepData.zoneStyles ?? {}).length > 0
+  );
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
   const zoneStyleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleZoneStyleChange(slotId: string, partial: Partial<ZoneStyle>) {
+    setUserHasEditedStyles(true);
     const next = {
       ...(stepData.zoneStyles ?? {}),
       [slotId]: { ...(stepData.zoneStyles?.[slotId] ?? {}), ...partial },
@@ -366,6 +370,11 @@ function DesignStepBody({
             brand: assetHouse,
             feedColumns,
             brief: stepData.brief,
+            feedSampleRow: bestSampleRow(
+              (feedSampleData ?? []).map(row =>
+                Object.fromEntries(Object.entries(row as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')]))
+              )
+            ),
           });
           setCandidates(generated);
 
@@ -581,6 +590,14 @@ function DesignStepBody({
                       selectedCandidateIndex: idx,
                       ...(wf ? { selectedWireframeId: wf.id, wireframeFile: wf.file } : {}),
                     });
+                    // auto-apply AI zone style suggestions if user hasn't manually edited styles
+                    if (
+                      !userHasEditedStyles &&
+                      c.suggestedZoneStyles &&
+                      Object.keys(c.suggestedZoneStyles).length > 0
+                    ) {
+                      mergeStepData({ zoneStyles: c.suggestedZoneStyles });
+                    }
                   }}
                 />
               ))}
@@ -598,6 +615,11 @@ function DesignStepBody({
                       brand: assetHouse,
                       feedColumns,
                       brief: stepData.brief,
+                      feedSampleRow: bestSampleRow(
+                        (feedSampleData ?? []).map(row =>
+                          Object.fromEntries(Object.entries(row as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')]))
+                        )
+                      ),
                     });
                     setCandidates(generated);
                   } catch (err) {
