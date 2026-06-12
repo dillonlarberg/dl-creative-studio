@@ -306,6 +306,32 @@ export function buildInteractiveScript(): string {
       });
     }
   });
+
+  // Zone reporter — posts {type:'zone-bounds', zones:{id:{x,y,w,h}}} to parent on load.
+  // Uses document.fonts.ready so web fonts have rendered before measuring.
+  // 2000ms fallback in case fonts never resolve (e.g. 404).
+  function reportZones() {
+    var zones = {};
+    document.querySelectorAll('[id]').forEach(function(el) {
+      var r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        zones[el.id] = { x: r.left, y: r.top, w: r.width, h: r.height };
+      }
+    });
+    window.parent.postMessage({ type: 'zone-bounds', zones: zones }, '*');
+  }
+
+  var _zoneReportFired = false;
+  function _fireZoneReport() {
+    if (_zoneReportFired) return;
+    _zoneReportFired = true;
+    requestAnimationFrame(reportZones);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(_fireZoneReport);
+  }
+  setTimeout(_fireZoneReport, 2000); // fallback if fonts never resolve
 })();
 </script>`;
 }
