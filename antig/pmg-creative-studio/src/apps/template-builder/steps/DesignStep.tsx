@@ -1055,6 +1055,7 @@ function DesignStepBody({
                         setNewFieldPreset(preset.id);
                         setNewFieldType(preset.type);
                         if (preset.id !== '__custom__') setNewFieldCustomLabel('');
+                        setAddFieldError(null);
                       }}
                       className={cn(
                         'px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wide border-2 transition-all',
