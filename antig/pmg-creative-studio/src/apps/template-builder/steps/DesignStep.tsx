@@ -9,6 +9,7 @@ import { useTemplateBuilder } from '../TemplateBuilderContext';
 import type { Candidate } from '../TemplateBuilderContext';
 import { generateLayouts, suggestMappings } from '../../../services/ai/templateAI';
 import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
+import { FIELD_ID_MAP } from '../_internal/injectIntoHtml';
 import CanvasOverlay from '../_internal/CanvasOverlay';
 import type { ZoneBound } from '../_internal/CanvasOverlay';
 import { TemplatePreview } from '../_internal/TemplatePreview';
@@ -33,6 +34,8 @@ import { applyClientTransforms } from '../_internal/transformExecutor';
 
 const IMAGE_COLUMN_KEYWORDS = ['image', 'img', 'url', 'link', 'photo', 'pic', 'src', 'thumb', 'media'] as const;
 const CURRENCY_COLUMN_KEYWORDS = ['price', 'cost', 'amount', 'sale', 'msrp', 'value', 'fee', 'regular', 'final'] as const;
+// Structural container IDs reported by zone-reporter that should not render as selectable overlay handles
+const SKIP_ZONE_IDS = new Set(['ad', 'base', 'background', 'bg', 'body', 'ad-container', 'wrapper']);
 
 type ColType = 'image_url' | 'url' | 'numeric' | 'text';
 
@@ -214,8 +217,29 @@ function ZoneStyleToolbar({
   current: ZoneStyle | undefined;
   onChange: (slotId: string, partial: Partial<ZoneStyle>) => void;
 }) {
+  const toggleBtn = (
+    label: string,
+    active: boolean,
+    onToggle: () => void,
+    style?: React.CSSProperties
+  ) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={style}
+      className={cn(
+        'w-6 h-6 rounded-md border text-[10px] leading-none transition-all flex items-center justify-center',
+        active
+          ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+          : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-300'
+      )}
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 mt-1">
+    <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 mt-1">
       <label className="flex items-center gap-1.5">
         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Size</span>
         <input
@@ -249,6 +273,26 @@ function ZoneStyleToolbar({
           className="w-6 h-6 rounded cursor-pointer border-0 p-0"
         />
       </label>
+      <div className="flex items-center gap-1">
+        {toggleBtn(
+          'B',
+          current?.fontWeight === 'bold',
+          () => onChange(slotId, { fontWeight: current?.fontWeight === 'bold' ? 'normal' : 'bold' }),
+          { fontWeight: 700 }
+        )}
+        {toggleBtn(
+          'I',
+          current?.fontStyle === 'italic',
+          () => onChange(slotId, { fontStyle: current?.fontStyle === 'italic' ? 'normal' : 'italic' }),
+          { fontStyle: 'italic' }
+        )}
+        {toggleBtn(
+          'U',
+          current?.textDecoration === 'underline',
+          () => onChange(slotId, { textDecoration: current?.textDecoration === 'underline' ? 'none' : 'underline' }),
+          { textDecoration: 'underline' }
+        )}
+      </div>
     </div>
   );
 }
@@ -299,6 +343,11 @@ function DesignStepBody({
     }, 150);
   }
 
+  // Effective target slot for a field: explicit override wins, otherwise use FIELD_ID_MAP's first target.
+  // Lets users style any field without having to manually assign a slot override first.
+  const getEffectiveSlotId = (fieldId: string): string =>
+    stepData.slotMappings?.[fieldId] ?? FIELD_ID_MAP[fieldId]?.targets[0] ?? fieldId;
+
   // Run layout generation + mapping suggestions on mount.
   // Cannot use onEnter for this because the wizard fires onEnter BEFORE navigating
   // to the step, so DesignStepBody is not yet mounted and _designCtx is null.
@@ -343,7 +392,11 @@ function DesignStepBody({
         const suggested = await suggestMappings({ requirements, feedColumns });
         const hasExisting = Object.keys(stepData.feedMappings ?? {}).length > 0;
         if (!hasExisting && Object.keys(suggested).length > 0) {
-          mergeStepData({ feedMappings: suggested });
+          const aiSuggestedMappings: Record<string, true> = {};
+          for (const fieldId of Object.keys(suggested)) {
+            aiSuggestedMappings[fieldId] = true;
+          }
+          mergeStepData({ feedMappings: suggested, aiSuggestedMappings });
         }
       } catch (err) {
         console.error('[DesignStep] suggestMappings failed:', err);
@@ -366,7 +419,11 @@ function DesignStepBody({
   useEffect(() => {
     function handler(e: MessageEvent) {
       if (e.data?.type === 'zone-bounds' && e.data.zones) {
-        setZoneBounds(e.data.zones as Record<string, ZoneBound>);
+        const filtered = Object.fromEntries(
+          Object.entries(e.data.zones as Record<string, ZoneBound>)
+            .filter(([id]) => !SKIP_ZONE_IDS.has(id))
+        );
+        setZoneBounds(filtered);
       }
     }
     window.addEventListener('message', handler);
@@ -574,6 +631,26 @@ function DesignStepBody({
                         <SparklesIconSolid className="h-3.5 w-3.5" />
                       </button>
                     </div>
+                    {/* AI suggested badge + Accept */}
+                    {stepData.aiSuggestedMappings?.[field.id] && (
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 rounded-full">
+                          <SparklesIconSolid className="h-2.5 w-2.5 text-purple-600" />
+                          <span className="text-[7px] font-black text-purple-700 uppercase tracking-widest">AI suggested</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...(stepData.aiSuggestedMappings ?? {}) };
+                            delete next[field.id];
+                            mergeStepData({ aiSuggestedMappings: next });
+                          }}
+                          className="px-2 py-0.5 rounded-lg border border-green-100 bg-green-50 text-[8px] font-black text-green-700 uppercase tracking-widest hover:bg-green-100 transition-colors"
+                        >
+                          Accept ✓
+                        </button>
+                      </div>
+                    )}
                     <select
                       value={currentVal}
                       onChange={(e) =>
@@ -649,13 +726,12 @@ function DesignStepBody({
                               onClick={() => setStyleOpenFieldId(
                                 styleOpenFieldId === field.id ? null : field.id
                               )}
-                              disabled={!stepData.slotMappings?.[field.id]}
-                              title={stepData.slotMappings?.[field.id] ? 'Edit zone styles' : 'Assign a zone first'}
+                              title="Edit zone styles"
                               className={cn(
                                 'p-1 rounded-lg transition-colors',
                                 styleOpenFieldId === field.id
                                   ? 'bg-indigo-100 text-indigo-600'
-                                  : 'text-gray-300 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed'
+                                  : 'text-gray-500 hover:text-indigo-500'
                               )}
                             >
                               <PaintBrushIcon className="w-3 h-3" />
@@ -678,11 +754,11 @@ function DesignStepBody({
                         )}
                       </div>
                     )}
-                    {/* Zone style toolbar — shown when palette button is toggled and slot is assigned */}
-                    {styleOpenFieldId === field.id && stepData.slotMappings?.[field.id] && (
+                    {/* Zone style toolbar — shown when palette button is toggled */}
+                    {styleOpenFieldId === field.id && (
                       <ZoneStyleToolbar
-                        slotId={stepData.slotMappings[field.id]}
-                        current={stepData.zoneStyles?.[stepData.slotMappings[field.id]]}
+                        slotId={getEffectiveSlotId(field.id)}
+                        current={stepData.zoneStyles?.[getEffectiveSlotId(field.id)]}
                         onChange={handleZoneStyleChange}
                       />
                     )}
@@ -735,6 +811,18 @@ function DesignStepBody({
                 );
               })}
             </div>
+
+                    {/* Accept All AI Suggestions */}
+                    {Object.keys(stepData.aiSuggestedMappings ?? {}).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => mergeStepData({ aiSuggestedMappings: {} })}
+                        className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-[9px] font-black uppercase tracking-[0.2em] hover:bg-purple-700 flex items-center justify-center gap-2 transition-colors mt-2"
+                      >
+                        <SparklesIconSolid className="h-3.5 w-3.5" />
+                        Accept All AI Suggestions
+                      </button>
+                    )}
 
             {/* Zone Coverage panel — shows slot mapping status */}
             {discoveredSlots.length > 0 && (
@@ -1052,6 +1140,14 @@ function DesignStepBody({
                   Change
                 </button>
               </div>
+              {Object.keys(stepData.aiSuggestedMappings ?? {}).length > 0 && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-100 rounded-full">
+                  <SparklesIconSolid className="h-3 w-3 text-purple-600" />
+                  <span className="text-[8px] font-black text-purple-700 uppercase tracking-widest">
+                    Claude auto-mapped {Object.keys(stepData.aiSuggestedMappings ?? {}).length} of {allFields.length} fields
+                  </span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => { setAskAlliTargetField(null); setAskAlliOpen((v) => !v); }}
@@ -1098,6 +1194,8 @@ function DesignStepBody({
                     : undefined,
                 }}
               >
+                {/* Inner wrapper sized exactly to the preview so CanvasOverlay inset:0 aligns with iframe coordinates */}
+                <div style={{ position: 'relative', width: `${previewBaseSize}px`, height: `${previewBaseSize}px`, flexShrink: 0 }}>
                 <FilledTemplatePreview
                   templateFile={wireframe.file}
                   name={wireframe.name}
@@ -1106,6 +1204,7 @@ function DesignStepBody({
                   injections={injections}
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
+                  zoneStyles={stepData.zoneStyles}
                   slotSelectionMode={activeSlotField !== null}
                   highlightSlot={
                     activeSlotField !== null
@@ -1136,6 +1235,7 @@ function DesignStepBody({
                   }}
                   onResizeDetected={() => setZoneBounds({})}
                 />
+                </div>{/* end inner preview wrapper */}
               {activeSlotField !== null && (
                 <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2.5 bg-blue-600/90 backdrop-blur-sm" style={{ borderRadius: '0 0 1.5rem 1.5rem' }}>
                   <span className="text-[10px] font-black uppercase tracking-widest text-white">
