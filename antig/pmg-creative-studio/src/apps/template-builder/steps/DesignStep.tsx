@@ -9,6 +9,8 @@ import { useTemplateBuilder } from '../TemplateBuilderContext';
 import type { Candidate } from '../TemplateBuilderContext';
 import { generateLayouts, suggestMappings } from '../../../services/ai/templateAI';
 import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
+import CanvasOverlay from '../_internal/CanvasOverlay';
+import type { ZoneBound } from '../_internal/CanvasOverlay';
 import { TemplatePreview } from '../_internal/TemplatePreview';
 import { CandidatePreview } from '../_internal/CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
@@ -279,6 +281,8 @@ function DesignStepBody({
   const [addFieldError, setAddFieldError] = useState<string | null>(null);
   const [newFieldColumn, setNewFieldColumn] = useState('');
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
+  const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
@@ -355,6 +359,23 @@ function DesignStepBody({
       .then((r) => r.text())
       .then((html) => setDiscoveredSlots(discoverSlots(html)))
       .catch(() => setDiscoveredSlots([]));
+  }, [stepData.wireframeFile]);
+
+  // Listen for zone-bounds postMessages from the iframe (sent by buildInteractiveScript).
+  // Clears when the wireframe changes so stale bounds don't linger during reload.
+  useEffect(() => {
+    function handler(e: MessageEvent) {
+      if (e.data?.type === 'zone-bounds' && e.data.zones) {
+        setZoneBounds(e.data.zones as Record<string, ZoneBound>);
+      }
+    }
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Clear zone bounds on wireframe change so the overlay hides until the next natural load.
+  useEffect(() => {
+    setZoneBounds({});
   }, [stepData.wireframeFile]);
 
   // Derived values
@@ -1102,6 +1123,18 @@ function DesignStepBody({
                       setAddFieldOpen(true);
                     }
                   }}
+                />
+                <CanvasOverlay
+                  zoneBounds={zoneBounds}
+                  adSize={previewAdSize}
+                  displaySize={previewBaseSize}
+                  selectedZoneId={selectedZoneId}
+                  onZoneSelect={(slotId) => {
+                    setSelectedZoneId(slotId);
+                    const fieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slotId)?.[0];
+                    if (fieldId) setStyleOpenFieldId(fieldId);
+                  }}
+                  onResizeDetected={() => setZoneBounds({})}
                 />
               {activeSlotField !== null && (
                 <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2.5 bg-blue-600/90 backdrop-blur-sm" style={{ borderRadius: '0 0 1.5rem 1.5rem' }}>
