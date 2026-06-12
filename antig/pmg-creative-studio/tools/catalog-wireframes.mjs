@@ -65,9 +65,16 @@ function countType(slots, type) {
       s.includes('image') || s.includes('background') || s === 'logo' || s === 'bg'
     ).length;
   }
-  return slots.filter(s =>
-    ['headline', 'headline1', 'headline2', 'callout', 'promo', 'label', 'tag', 'cta', 'price'].includes(s)
-  ).length;
+  // All known text/copy zone IDs
+  const TEXT_IDS = new Set([
+    'headline', 'headline1', 'headline2', 'headline_1', 'headline_2',
+    'callout', 'callout_text', 'callout-container',
+    'promo', 'promo_label',
+    'label', 'tag', 'tag_callout',
+    'cta', 'price', 'price-note',
+    'left-bar',
+  ]);
+  return slots.filter(s => TEXT_IDS.has(s)).length;
 }
 
 const files = readdirSync(WIREFRAMES_DIR).filter(f => f.endsWith('.html')).sort();
