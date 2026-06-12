@@ -40,6 +40,7 @@ export async function generateLayouts(opts: {
   brand: Pick<ClientAssetHouse, 'primaryColor' | 'fontPrimary' | 'cornerRadius' | 'logoPrimary'> | null;
   feedColumns?: string[];
   brief?: string;
+  feedSampleRow?: Record<string, string> | null;
 }): Promise<Candidate[]> {
   return callGemini<Candidate[]>('generateLayouts', {
     requirements: opts.requirements,
@@ -49,6 +50,7 @@ export async function generateLayouts(opts: {
       : null,
     feedColumns: opts.feedColumns ?? [],
     brief: opts.brief ?? '',
+    feedSampleRow: opts.feedSampleRow ?? null,
     wireframeCatalog: WIREFRAME_CATALOG.map((w) => ({
       id: w.id,
       name: w.name,
@@ -62,6 +64,29 @@ export async function generateLayouts(opts: {
       hasPrice: w.elementTypes.hasPrice,
     })),
   });
+}
+
+/**
+ * Returns the first row from sampleRows where at least 3 values are non-empty.
+ * Falls back to row 0 if no such row exists. Truncates each value to 80 chars.
+ */
+export function bestSampleRow(
+  sampleRows: Record<string, string>[]
+): Record<string, string> | null {
+  if (!sampleRows || sampleRows.length === 0) return null;
+  const truncate = (v: string) => (v.length > 80 ? v.slice(0, 80) : v);
+  for (const row of sampleRows.slice(0, 5)) {
+    const nonEmpty = Object.values(row).filter((v) => v && v.trim().length > 0);
+    if (nonEmpty.length >= 3) {
+      return Object.fromEntries(
+        Object.entries(row).map(([k, v]) => [k, truncate(v)])
+      );
+    }
+  }
+  // fallback: row 0 with truncation
+  return Object.fromEntries(
+    Object.entries(sampleRows[0]).map(([k, v]) => [k, truncate(v)])
+  );
 }
 
 export async function suggestMappings(opts: {
