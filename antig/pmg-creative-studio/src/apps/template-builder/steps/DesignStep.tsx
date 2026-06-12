@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { useEffect, useRef, useState } from 'react';
+import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { WizardStep, StepRenderProps } from '../../types';
-import type { TemplateBuilderStepData, RequirementField } from '../types';
+import type { TemplateBuilderStepData, RequirementField, ZoneStyle } from '../types';
 import { cn } from '../../../utils/cn';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
@@ -15,6 +15,7 @@ import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
 import { discoverSlots } from '../_internal/discoverSlots';
 import type { TemplateSlot } from '../_internal/discoverSlots';
 import { AskAlliPanel } from '../_internal/AskAlliPanel';
+import { applyClientTransforms } from '../_internal/transformExecutor';
 
 /**
  * Design step — "Design & Map" (Step 2 of 3: Setup → Design → Publish).
@@ -200,6 +201,56 @@ function CandidateCard({
   );
 }
 
+// ── Zone style toolbar ────────────────────────────────────────────────────────
+
+function ZoneStyleToolbar({
+  slotId,
+  current,
+  onChange,
+}: {
+  slotId: string;
+  current: ZoneStyle | undefined;
+  onChange: (slotId: string, partial: Partial<ZoneStyle>) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 mt-1">
+      <label className="flex items-center gap-1.5">
+        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Size</span>
+        <input
+          type="number"
+          min={8}
+          max={120}
+          placeholder="—"
+          value={current?.fontSize ?? ''}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            onChange(slotId, { fontSize: isNaN(v) ? undefined : v });
+          }}
+          className="w-14 px-1.5 py-1 rounded-lg border border-gray-200 text-[9px] font-medium text-gray-700 bg-white focus:border-blue-400 focus:outline-none"
+        />
+      </label>
+      <label className="flex items-center gap-1.5">
+        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Color</span>
+        <input
+          type="color"
+          value={current?.color ?? '#000000'}
+          onChange={(e) => onChange(slotId, { color: e.target.value })}
+          className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+        />
+      </label>
+      <label className="flex items-center gap-1.5">
+        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">BG</span>
+        <input
+          type="color"
+          value={current?.backgroundColor ?? '#ffffff'}
+          onChange={(e) => onChange(slotId, { backgroundColor: e.target.value })}
+          className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+        />
+      </label>
+    </div>
+  );
+}
+
 // ── Step body ─────────────────────────────────────────────────────────────────
 
 function DesignStepBody({
@@ -227,6 +278,22 @@ function DesignStepBody({
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
   const [addFieldError, setAddFieldError] = useState<string | null>(null);
   const [newFieldColumn, setNewFieldColumn] = useState('');
+  const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
+
+  // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
+  // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
+  const zoneStyleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleZoneStyleChange(slotId: string, partial: Partial<ZoneStyle>) {
+    const next = {
+      ...(stepData.zoneStyles ?? {}),
+      [slotId]: { ...(stepData.zoneStyles?.[slotId] ?? {}), ...partial },
+    };
+    if (zoneStyleDebounceRef.current) clearTimeout(zoneStyleDebounceRef.current);
+    zoneStyleDebounceRef.current = setTimeout(() => {
+      mergeStepData({ zoneStyles: next });
+    }, 150);
+  }
 
   // Run layout generation + mapping suggestions on mount.
   // Cannot use onEnter for this because the wizard fires onEnter BEFORE navigating
@@ -313,6 +380,14 @@ function DesignStepBody({
     })),
   ];
 
+  // Map slotId → fieldIds that use it (for duplicate-slot warning)
+  const slotUseCounts: Record<string, string[]> = {};
+  for (const [fieldId, slotId] of Object.entries(stepData.slotMappings ?? {})) {
+    if (slotId) {
+      slotUseCounts[slotId] = [...(slotUseCounts[slotId] ?? []), fieldId];
+    }
+  }
+
   const isSocial = stepData.channel === 'Social';
   const hasWireframe = Boolean(stepData.selectedWireframeId && stepData.wireframeFile);
 
@@ -342,8 +417,10 @@ function DesignStepBody({
     for (const field of allFields) {
       const col = feedMappings[field.id];
       if (col) {
-        const val = firstVal(col);
-        if (val) {
+        const raw = firstVal(col);
+        if (raw) {
+          const transforms = fieldTransforms[field.id] ?? [];
+          const val = applyClientTransforms(raw, transforms, field.type);
           injections[field.id] = {
             type: field.type === 'image' ? 'image' : 'text',
             value: val,
@@ -425,6 +502,11 @@ function DesignStepBody({
             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
               Field Mapping
             </h4>
+            {stepData.wireframeFile && discoveredSlots.length === 0 && (
+              <p className="text-[9px] text-gray-400 italic">
+                No injectable slots found — this template may not support zone assignment.
+              </p>
+            )}
 
             <div className="space-y-4">
               {allFields.map((field) => {
@@ -457,6 +539,11 @@ function DesignStepBody({
                       >
                         {field.type}
                       </span>
+                      {assignedSlot && (slotUseCounts[assignedSlot]?.length ?? 0) > 1 && (
+                        <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-red-50 text-red-500" title="Two fields share this slot — only one will render">
+                          Dup slot
+                        </span>
+                      )}
                       <button
                         type="button"
                         title="Ask Alli about this field"
@@ -508,43 +595,75 @@ function DesignStepBody({
                         <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Slot</span>
                         {isSelectingSlot ? (
                           <div className="flex items-center gap-1.5 flex-1">
-                            <span className="text-[9px] text-blue-600 font-bold animate-pulse">Click a zone in the preview →</span>
+                            <span className="text-[9px] text-blue-600 font-bold">Click a zone in the preview →</span>
                             <button type="button" onClick={() => setActiveSlotField(null)} className="text-[8px] text-gray-400 hover:text-gray-600">cancel</button>
                           </div>
                         ) : (
-                          <select
-                            value={assignedSlot ?? ''}
-                            onFocus={() => setActiveSlotField(field.id)}
-                            onChange={(e) => {
-                              mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [field.id]: e.target.value } });
-                              setActiveSlotField(null);
-                            }}
-                            onBlur={() => { setTimeout(() => setActiveSlotField((prev) => prev === field.id ? null : prev), 150); }}
-                            className="flex-1 px-2 py-1 rounded-lg border border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
-                          >
-                            <option value="">— auto —</option>
-                            {discoveredSlots.map((slot) => (
-                              <option key={slot.slotId} value={slot.slotId}>
-                                {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {assignedSlot && !isSelectingSlot && (
-                          <button
-                            type="button"
-                            title="Clear slot"
-                            onClick={() => {
-                              const next = { ...(stepData.slotMappings ?? {}) };
-                              delete next[field.id];
-                              mergeStepData({ slotMappings: next });
-                            }}
-                            className="text-gray-300 hover:text-red-400 transition-colors"
-                          >
-                            <XMarkIcon className="h-3 w-3" />
-                          </button>
+                          <>
+                            <select
+                              value={assignedSlot ?? ''}
+                              onChange={(e) => {
+                                mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [field.id]: e.target.value } });
+                              }}
+                              className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                            >
+                              <option value="">— auto —</option>
+                              {discoveredSlots.map((slot) => (
+                                <option key={slot.slotId} value={slot.slotId}>
+                                  {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              title="Assign by clicking a zone in the preview"
+                              onClick={() => setActiveSlotField(field.id)}
+                              className="text-gray-300 hover:text-blue-500 transition-colors"
+                            >
+                              <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                            </button>
+                            {/* Palette button — toggle per-zone style toolbar */}
+                            <button
+                              type="button"
+                              onClick={() => setStyleOpenFieldId(
+                                styleOpenFieldId === field.id ? null : field.id
+                              )}
+                              disabled={!stepData.slotMappings?.[field.id]}
+                              title={stepData.slotMappings?.[field.id] ? 'Edit zone styles' : 'Assign a zone first'}
+                              className={cn(
+                                'p-1 rounded-lg transition-colors',
+                                styleOpenFieldId === field.id
+                                  ? 'bg-indigo-100 text-indigo-600'
+                                  : 'text-gray-300 hover:text-indigo-400 disabled:opacity-30 disabled:cursor-not-allowed'
+                              )}
+                            >
+                              <PaintBrushIcon className="w-3 h-3" />
+                            </button>
+                            {assignedSlot && (
+                              <button
+                                type="button"
+                                title="Clear slot"
+                                onClick={() => {
+                                  const next = { ...(stepData.slotMappings ?? {}) };
+                                  delete next[field.id];
+                                  mergeStepData({ slotMappings: next });
+                                }}
+                                className="text-gray-300 hover:text-red-400 transition-colors"
+                              >
+                                <XMarkIcon className="h-3 w-3" />
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
+                    )}
+                    {/* Zone style toolbar — shown when palette button is toggled and slot is assigned */}
+                    {styleOpenFieldId === field.id && stepData.slotMappings?.[field.id] && (
+                      <ZoneStyleToolbar
+                        slotId={stepData.slotMappings[field.id]}
+                        current={stepData.zoneStyles?.[stepData.slotMappings[field.id]]}
+                        onChange={handleZoneStyleChange}
+                      />
                     )}
                     {/* Transform badges */}
                     {(fieldTransforms[field.id] ?? []).length > 0 && (
@@ -674,6 +793,25 @@ function DesignStepBody({
                   ))}
                 </select>
 
+                {/* Slot assignment (optional) */}
+                {discoveredSlots.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Zone</span>
+                    <select
+                      value={addFieldPendingSlot ?? ''}
+                      onChange={(e) => setAddFieldPendingSlot(e.target.value || null)}
+                      className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                    >
+                      <option value="">— Skip for now —</option>
+                      {discoveredSlots.map((slot) => (
+                        <option key={slot.slotId} value={slot.slotId}>
+                          {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                   <button
@@ -748,9 +886,11 @@ function DesignStepBody({
                 Adjust colors, font, and logo variant for this template
               </p>
             </div>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0 mt-0.5">
-              {brandOpen ? 'Hide ▲' : 'Show ▼'}
-            </span>
+            {brandOpen ? (
+              <ChevronUpIcon className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            ) : (
+              <ChevronDownIcon className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            )}
           </button>
 
           {brandOpen && (
@@ -859,17 +999,6 @@ function DesignStepBody({
               </button>
             </div>
 
-            {activeSlotField !== null && (
-              <div className="flex items-center justify-between px-4 py-2 bg-blue-600 rounded-xl text-white">
-                <span className="text-[10px] font-black uppercase tracking-widest">
-                  Click a zone to assign to "{allFields.find((r) => r.id === activeSlotField)?.label ?? activeSlotField}"
-                </span>
-                <button type="button" onClick={() => setActiveSlotField(null)} className="text-blue-200 hover:text-white text-[9px] font-bold uppercase tracking-widest">
-                  Cancel
-                </button>
-              </div>
-            )}
-
             {/* Ratio toggle — only shown when multiple ratios are selected in setup */}
             {(stepData.ratios?.length ?? 0) > 1 && (
               <div className="flex items-center gap-2 flex-wrap">
@@ -895,7 +1024,7 @@ function DesignStepBody({
             <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
               <div
                 className={cn(
-                  'bg-white rounded-3xl p-6 shadow-xl border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
+                  'relative bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
                   askAlliOpen ? 'flex-1' : 'w-full'
                 )}
                 style={{
@@ -932,10 +1061,20 @@ function DesignStepBody({
                     }
                   }}
                 />
+              {activeSlotField !== null && (
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2.5 bg-blue-600/90 backdrop-blur-sm" style={{ borderRadius: '0 0 1.5rem 1.5rem' }}>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                    Click a zone → "{allFields.find((r) => r.id === activeSlotField)?.label ?? activeSlotField}"
+                  </span>
+                  <button type="button" onClick={() => setActiveSlotField(null)} className="text-blue-200 hover:text-white text-[9px] font-bold uppercase tracking-widest ml-4 shrink-0">
+                    Cancel
+                  </button>
+                </div>
+              )}
               </div>
 
               {askAlliOpen && (
-                <div className="w-72 rounded-3xl border border-gray-100 shadow-xl overflow-hidden flex flex-col" style={{ minHeight: '360px' }}>
+                <div className="w-72 rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ minHeight: '360px' }}>
                   <AskAlliPanel
                     stepData={stepData}
                     mergeStepData={mergeStepData}
