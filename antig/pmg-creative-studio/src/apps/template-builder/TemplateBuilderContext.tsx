@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { RequirementField } from './types';
-import type { ZoneStyle } from './types';
+import type { RequirementField, ZoneStyle } from './types';
 
 export interface Candidate {
   id: string;
