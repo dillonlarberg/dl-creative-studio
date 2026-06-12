@@ -44,6 +44,10 @@ export interface TemplateLibraryRecord {
   fieldTransforms?: Record<string, string[]>;
   zoneStyles?: Record<string, ZoneStyle>;
 
+  staticValues?: Record<string, string>;
+  fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;
+  aiSuggestedMappings?: Record<string, true>;
+
   brandOverrides: {
     primaryColor?: string;
     accentColor?: string;
@@ -96,6 +100,9 @@ export type NewTemplateData = Pick<
   aiRequirements?: TemplateLibraryRecord['aiRequirements'];
   fieldTransforms?: Record<string, string[]>;
   zoneStyles?: Record<string, ZoneStyle>;
+  staticValues?: Record<string, string>;
+  fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;
+  aiSuggestedMappings?: Record<string, true>;
 };
 
 export class TemplateNotFoundError extends Error {

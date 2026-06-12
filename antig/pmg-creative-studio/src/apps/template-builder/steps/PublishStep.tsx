@@ -201,6 +201,9 @@ function PublishStepBody({
     fieldMappings: buildFieldMappings(feedMappings, uploadValues, stepData.slotMappings),
     fieldTransforms: stepData.fieldTransforms ?? {},
     zoneStyles: stepData.zoneStyles,
+    staticValues: stepData.staticValues,
+    fieldSourceMode: stepData.fieldSourceMode,
+    aiSuggestedMappings: stepData.aiSuggestedMappings,
     brandOverrides: {
       ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
       ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),
