@@ -273,6 +273,7 @@ function PublishStepBody({
             injections={injections}
             cssOverrides={cssOverrides}
             slotOverrides={stepData.slotMappings}
+            zoneStyles={stepData.zoneStyles}
           />
         ) : selectedCandidate ? (
           <CandidatePreview
