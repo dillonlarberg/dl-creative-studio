@@ -50,6 +50,8 @@ export interface TemplateBuilderStepData {
   textColor?: string;
   fontFamily?: string;
 
+  zoneStyles?: Record<string, ZoneStyle>;       // slotId → per-zone style overrides
+
   // ── wireframe (Social channel only) ───────────────────────────────
   selectedWireframeId?: string;
   wireframeFile?: string;
