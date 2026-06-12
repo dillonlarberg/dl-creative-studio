@@ -327,6 +327,7 @@ function DesignStepBody({
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
   const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [zoneCoverageStyleSlot, setZoneCoverageStyleSlot] = useState<string | null>(null);
   const [feedRowIndex, setFeedRowIndex] = useState(0);
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
@@ -925,28 +926,67 @@ function DesignStepBody({
                 <div className="divide-y divide-gray-50">
                   {discoveredSlots.map((slot) => {
                     const isMapped = Object.values(stepData.slotMappings ?? {}).includes(slot.slotId);
+                    const ownerFieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slot.slotId)?.[0];
+                    const styleOpen = zoneCoverageStyleSlot === slot.slotId;
                     return (
-                      <div key={slot.slotId} className="flex items-center justify-between px-3 py-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[7px] font-black ${
-                            isMapped ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                          }`}>
-                            {isMapped ? '✓' : '!'}
-                          </span>
-                          <span className="text-[9px] font-medium text-gray-700 truncate">{slot.label}</span>
-                          <span className="shrink-0 text-[7px] text-gray-400 font-mono">{slot.slotId}</span>
+                      <div key={slot.slotId} className="px-3 py-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[7px] font-black ${
+                              isMapped ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {isMapped ? '✓' : '!'}
+                            </span>
+                            <span className="text-[9px] font-medium text-gray-700 truncate">{slot.label}</span>
+                            <span className="shrink-0 text-[7px] text-gray-400 font-mono">{slot.slotId}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {/* Cursor — assign/reassign slot to a field */}
+                            <button
+                              type="button"
+                              title={isMapped ? 'Reassign this zone' : 'Assign to a field'}
+                              onClick={() => {
+                                if (isMapped && ownerFieldId) {
+                                  setActiveSlotField(ownerFieldId);
+                                } else {
+                                  setAddFieldPendingSlot(slot.slotId);
+                                  setAddFieldOpen(true);
+                                }
+                              }}
+                              className="text-gray-400 hover:text-blue-500 transition-colors"
+                            >
+                              <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                            </button>
+                            {/* Paintbrush — style this zone directly */}
+                            <button
+                              type="button"
+                              title="Edit zone styles"
+                              onClick={() => setZoneCoverageStyleSlot(styleOpen ? null : slot.slotId)}
+                              className={cn(
+                                'p-0.5 rounded transition-colors',
+                                styleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
+                              )}
+                            >
+                              <PaintBrushIcon className="h-3 w-3" />
+                            </button>
+                            {!isMapped && (
+                              <button
+                                type="button"
+                                onClick={() => { setAddFieldPendingSlot(slot.slotId); setAddFieldOpen(true); }}
+                                className="text-[8px] font-black text-indigo-600 hover:text-indigo-800"
+                              >
+                                Add →
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {!isMapped && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAddFieldPendingSlot(slot.slotId);
-                              setAddFieldOpen(true);
-                            }}
-                            className="shrink-0 text-[8px] font-black text-indigo-600 hover:text-indigo-800 ml-2"
-                          >
-                            Add →
-                          </button>
+                        {/* Inline zone style toolbar */}
+                        {styleOpen && (
+                          <ZoneStyleToolbar
+                            slotId={slot.slotId}
+                            current={stepData.zoneStyles?.[slot.slotId]}
+                            onChange={handleZoneStyleChange}
+                          />
                         )}
                       </div>
                     );
