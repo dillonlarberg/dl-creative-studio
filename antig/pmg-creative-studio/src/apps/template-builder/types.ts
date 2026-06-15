@@ -59,6 +59,12 @@ export interface TemplateBuilderStepData {
   selectedWireframeId?: string;
   wireframeFile?: string;
 
+  // ── publish step ──────────────────────────────────────────────────
+  /** Firestore ID of the templateLibrary document created on first save.
+   *  Stored here so subsequent saves call upsertDraft instead of saveDraft,
+   *  preventing duplicate records from repeated "Save as Draft" / "Publish" clicks. */
+  templateLibraryId?: string;
+
   // index signature — required by WizardStep<S> constraint
   [k: string]: unknown;
 }

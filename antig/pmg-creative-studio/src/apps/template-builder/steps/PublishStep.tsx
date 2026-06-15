@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import {
   CheckCircleIcon,
@@ -248,34 +248,63 @@ function PublishStepBody({
   };
 
   // ── Publish handler ──────────────────────────────────────────────────────
+  // useRef guards prevent a double-click from triggering two saveDraft() calls
+  // before React re-renders the disabled button state (setState is async).
+  const draftingRef = useRef(false);
+  const publishingRef = useRef(false);
 
   const handleSaveDraft = async () => {
+    if (draftingRef.current) return;
+    draftingRef.current = true;
     setIsDrafting(true);
     setDraftError(null);
     try {
-      await templateLibraryService.saveDraft(client.slug as ClientSlug, newTemplateData);
+      if (stepData.templateLibraryId) {
+        await templateLibraryService.upsertDraft(
+          client.slug as ClientSlug,
+          stepData.templateLibraryId,
+          newTemplateData
+        );
+      } else {
+        const id = await templateLibraryService.saveDraft(client.slug as ClientSlug, newTemplateData);
+        mergeStepData({ templateLibraryId: id });
+      }
       setDraftSaved(true);
     } catch (err: unknown) {
       setDraftError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setIsDrafting(false);
+      draftingRef.current = false;
     }
   };
 
   const handlePublish = async () => {
+    if (publishingRef.current) return;
+    publishingRef.current = true;
     setIsPublishing(true);
     setPublishError(null);
     try {
-      const templateId = await templateLibraryService.saveDraft(
-        client.slug as ClientSlug,
-        newTemplateData
-      );
-      await templateLibraryService.publish(client.slug as ClientSlug, templateId);
-      setPublishedId(templateId);
+      let templateId = stepData.templateLibraryId;
+      if (templateId) {
+        await templateLibraryService.upsertDraft(
+          client.slug as ClientSlug,
+          templateId,
+          newTemplateData
+        );
+      } else {
+        templateId = await templateLibraryService.saveDraft(
+          client.slug as ClientSlug,
+          newTemplateData
+        );
+        mergeStepData({ templateLibraryId: templateId });
+      }
+      await templateLibraryService.publish(client.slug as ClientSlug, templateId!);
+      setPublishedId(templateId!);
     } catch (err: unknown) {
       setPublishError(err instanceof Error ? err.message : 'Publish failed');
     } finally {
       setIsPublishing(false);
+      publishingRef.current = false;
     }
   };
 
