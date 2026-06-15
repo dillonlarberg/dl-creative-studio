@@ -332,6 +332,8 @@ function DesignStepBody({
   const [userHasEditedStyles, setUserHasEditedStyles] = useState(
     () => Object.keys(stepData.zoneStyles ?? {}).length > 0
   );
+  const [newFieldSourceMode, setNewFieldSourceMode] = useState<'feed' | 'static' | 'ai'>('feed');
+  const [newFieldStaticValue, setNewFieldStaticValue] = useState('');
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
@@ -763,17 +765,50 @@ function DesignStepBody({
                       ))}
                     </div>
                     {(stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'static' ? (
-                      <input
-                        type="text"
-                        placeholder={`Enter ${field.label.toLowerCase()}…`}
-                        value={stepData.staticValues?.[field.id] ?? ''}
-                        onChange={(e) =>
-                          mergeStepData({
-                            staticValues: { ...(stepData.staticValues ?? {}), [field.id]: e.target.value },
-                          })
-                        }
-                        className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900"
-                      />
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          placeholder={field.type === 'image' ? 'Paste image URL…' : `Enter ${field.label.toLowerCase()}…`}
+                          value={stepData.staticValues?.[field.id] ?? ''}
+                          onChange={(e) =>
+                            mergeStepData({
+                              staticValues: { ...(stepData.staticValues ?? {}), [field.id]: e.target.value },
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900"
+                        />
+                        {field.type === 'image' && (
+                          <label className="flex items-center gap-2 cursor-pointer w-fit">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              id={`upload-static-${field.id}`}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                  if (ev.target?.result) {
+                                    mergeStepData({ staticValues: { ...(stepData.staticValues ?? {}), [field.id]: ev.target.result as string } });
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                            <label
+                              htmlFor={`upload-static-${field.id}`}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                            >
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                              Upload image
+                            </label>
+                            {stepData.staticValues?.[field.id]?.startsWith('data:') && (
+                              <span className="text-[8px] font-bold text-green-600">✓ uploaded</span>
+                            )}
+                          </label>
+                        )}
+                      </div>
                     ) : (stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'ai' ? (
                       <div className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
                         onClick={() => { setAskAlliTargetField(field.id); setAskAlliOpen(true); }}>
@@ -1100,21 +1135,117 @@ function DesignStepBody({
                   />
                 )}
 
-                {/* Column picker */}
-                <select
-                  value={newFieldColumn}
-                  onChange={(e) => setNewFieldColumn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
-                >
-                  <option value="">— Select feed column —</option>
-                  {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
-                    <optgroup key={groupLabel} label={groupLabel}>
-                      {cols.map((col) => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </optgroup>
+                {/* Source mode tabs */}
+                <div className="flex gap-1">
+                  {(['feed', 'static', 'ai'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setNewFieldSourceMode(mode); setNewFieldStaticValue(''); }}
+                      className={cn(
+                        'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
+                        newFieldSourceMode === mode
+                          ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      )}
+                    >
+                      {mode === 'ai' ? '✦ AI' : mode}
+                    </button>
                   ))}
-                </select>
+                </div>
+
+                {/* Column picker / static input / AI — conditional on source mode */}
+                {newFieldSourceMode === 'feed' ? (
+                  <select
+                    value={newFieldColumn}
+                    onChange={(e) => setNewFieldColumn(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
+                  >
+                    <option value="">— Select feed column —</option>
+                    {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
+                      <optgroup key={groupLabel} label={groupLabel}>
+                        {cols.map((col) => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                ) : newFieldSourceMode === 'static' ? (
+                  <div className="space-y-1.5">
+                    <input
+                      type="text"
+                      placeholder={newFieldType === 'image' ? 'Paste image URL…' : 'Enter static value…'}
+                      value={newFieldStaticValue}
+                      onChange={(e) => setNewFieldStaticValue(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
+                    />
+                    {newFieldType === 'image' && (
+                      <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id="upload-new-field"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              if (ev.target?.result) setNewFieldStaticValue(ev.target.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                        <label
+                          htmlFor="upload-new-field"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                        >
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                          Upload image
+                        </label>
+                        {newFieldStaticValue.startsWith('data:') && (
+                          <span className="text-[8px] font-bold text-green-600">✓ uploaded</span>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => {
+                      // Field doesn't exist yet — commit it first, then open Ask Alli
+                      if (!newFieldPreset) return;
+                      const id = newFieldPreset === '__custom__'
+                        ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+                        : newFieldPreset;
+                      const label = newFieldPreset === '__custom__'
+                        ? newFieldCustomLabel.trim()
+                        : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
+                      if (!id || !label) return;
+                      const existingCustom = stepData.customFields ?? [];
+                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
+                        setAddFieldError(`"${label}" already exists — use a different name.`);
+                        return;
+                      }
+                      mergeStepData({
+                        customFields: [...existingCustom, { id, label, type: newFieldType }],
+                        fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'ai' },
+                        ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
+                      });
+                      setAddFieldOpen(false);
+                      setAddFieldPendingSlot(null);
+                      setNewFieldPreset('');
+                      setNewFieldCustomLabel('');
+                      setNewFieldColumn('');
+                      setNewFieldSourceMode('feed');
+                      setNewFieldStaticValue('');
+                      setAskAlliTargetField(id);
+                      setAskAlliOpen(true);
+                    }}
+                  >
+                    Generate via Ask Alli →
+                  </div>
+                )}
 
                 {/* Slot assignment (optional) */}
                 {discoveredSlots.length > 0 && (
@@ -1139,7 +1270,13 @@ function DesignStepBody({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={!newFieldPreset || !newFieldColumn || (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim())}
+                    disabled={
+                      !newFieldPreset ||
+                      (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim()) ||
+                      (newFieldSourceMode === 'feed' && !newFieldColumn) ||
+                      (newFieldSourceMode === 'static' && !newFieldStaticValue.trim()) ||
+                      newFieldSourceMode === 'ai'
+                    }
                     onClick={() => {
                       const id =
                         newFieldPreset === '__custom__'
@@ -1158,7 +1295,10 @@ function DesignStepBody({
                       setAddFieldError(null);
                       mergeStepData({
                         customFields: [...existingCustom, { id, label, type: newFieldType }],
-                        feedMappings: { ...feedMappings, [id]: newFieldColumn },
+                        ...(newFieldSourceMode === 'feed'
+                          ? { feedMappings: { ...feedMappings, [id]: newFieldColumn } }
+                          : { fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'static' },
+                              staticValues: { ...(stepData.staticValues ?? {}), [id]: newFieldStaticValue } }),
                         ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
                       });
                       setAddFieldOpen(false);
@@ -1166,6 +1306,8 @@ function DesignStepBody({
                       setNewFieldPreset('');
                       setNewFieldCustomLabel('');
                       setNewFieldColumn('');
+                      setNewFieldSourceMode('feed');
+                      setNewFieldStaticValue('');
                     }}
                     className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:bg-gray-100 disabled:text-gray-300 transition-all"
                   >
@@ -1180,6 +1322,8 @@ function DesignStepBody({
                       setNewFieldPreset('');
                       setNewFieldCustomLabel('');
                       setNewFieldColumn('');
+                      setNewFieldSourceMode('feed');
+                      setNewFieldStaticValue('');
                     }}
                     className="py-2 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600"
                   >
@@ -1380,9 +1524,9 @@ function DesignStepBody({
                   slotSelectionMode={activeSlotField !== null}
                   highlightSlot={
                     activeSlotField !== null
-                      ? ((stepData.slotMappings ?? {})[activeSlotField] ?? null)
+                      ? getEffectiveSlotId(activeSlotField)
                       : hoveredField !== null
-                      ? ((stepData.slotMappings ?? {})[hoveredField] ?? null)
+                      ? getEffectiveSlotId(hoveredField)
                       : null
                   }
                   onSlotClick={(slotId) => {
