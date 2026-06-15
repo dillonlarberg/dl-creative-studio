@@ -509,6 +509,7 @@ export function WizardShell<S extends StepData = StepData>({
               <button
                 type="button"
                 onClick={async () => {
+                  if (!window.confirm('Discard this template? All unsaved work will be lost and cannot be recovered.')) return;
                   await discard();
                   navigateRouter(`/adlabs/${clientSlug}`);
                 }}

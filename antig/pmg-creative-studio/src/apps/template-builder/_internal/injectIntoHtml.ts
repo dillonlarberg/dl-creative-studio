@@ -210,7 +210,7 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
     }
   }
 
-  return new XMLSerializer().serializeToString(doc);
+  return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
 }
 
 /**
