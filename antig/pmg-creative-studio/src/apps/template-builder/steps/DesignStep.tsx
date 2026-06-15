@@ -710,6 +710,32 @@ function DesignStepBody({
                           Dup slot
                         </span>
                       )}
+                      {/* Cursor — click-assign zone in preview */}
+                      {discoveredSlots.length > 0 && (
+                        <button
+                          type="button"
+                          title={isSelectingSlot ? 'Cancel zone selection' : 'Click a zone in the preview to assign'}
+                          onClick={() => setActiveSlotField(isSelectingSlot ? null : field.id)}
+                          className={cn(
+                            'h-4 w-4 transition-colors shrink-0',
+                            isSelectingSlot ? 'text-blue-600' : 'text-gray-300 hover:text-blue-500'
+                          )}
+                        >
+                          <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {/* Paintbrush — toggle zone style toolbar */}
+                      <button
+                        type="button"
+                        title="Edit zone styles"
+                        onClick={() => setStyleOpenFieldId(styleOpenFieldId === field.id ? null : field.id)}
+                        className={cn(
+                          'h-4 w-4 transition-colors shrink-0',
+                          styleOpenFieldId === field.id ? 'text-indigo-600' : 'text-gray-300 hover:text-indigo-500'
+                        )}
+                      >
+                        <PaintBrushIcon className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         title="Ask Alli about this field"
