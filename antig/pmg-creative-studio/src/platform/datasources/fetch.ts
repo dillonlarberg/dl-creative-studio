@@ -289,7 +289,7 @@ export async function fetchDataSources(opts: {
     >;
 
     let feeds = models.filter((m) => {
-      const searchStr = `${m.name || ''} ${m.description || ''} ${m.label || ''}`
+      const searchStr = `${m.name || ''} ${m.description || ''} ${m.title || ''}`
         .toString()
         .toLowerCase();
       return searchStr.includes('feed') || m.name === 'creative_insights_data_export';

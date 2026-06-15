@@ -1,91 +1,79 @@
-/**
- * Step-data shape for the template-builder app.
- *
- * Field set is reverse-engineered from UseCaseWizardPage.tsx — every field
- * the monolith reads or writes via setStepData / stepData.X inside a
- * `useCaseId === 'template-builder'` branch ends up here.
- *
- * The shape is intentionally permissive (mostly optionals). New creative
- * runs start with `{}` from manifest.initialStepData(); each step fills
- * in only the fields it owns.
- */
+import type { SelectedFeed } from '../../platform/datasources/types';
+export type { SelectedFeed };
 
 export type Channel = 'Social' | 'Programmatic' | 'Print' | 'Digital Signage';
 export type LogoVariant = 'primary' | 'inverse';
-export type StressTest = 'normal' | 'shortest' | 'longest';
 
 export interface RequirementField {
   id: string;
   label: string;
   category: 'Brand' | 'Dynamic' | 'System';
   source: string;
-  type: 'text' | 'image' | 'currency' | 'button' | 'asset' | string;
+  type: 'text' | 'image' | 'currency' | 'button' | 'asset';
   value?: string;
 }
 
-import type { SelectedFeed } from '../../platform/datasources/types';
-export type { SelectedFeed };
+export type AlliAction =
+  | { type: 'add_transform'; fieldId: string; transform: string }
+  | { type: 'remove_transform'; fieldId: string; transform: string }
+  | { type: 'suggest_mapping'; fieldId: string; column: string }
+  | { type: 'suggest_slot'; fieldId: string; slotId: string };
 
 export interface TemplateBuilderStepData {
-  // --- context step ---
-  jobTitle?: string;
+  // ── setup step ────────────────────────────────────────────────────
+  templateName?: string;
   channel?: Channel;
   ratios?: string[];
-  selectedWireframe?: string;
+  selectedFeedId?: string;
+  selectedFeedName?: string;
+  brief?: string;
+
+  // ── design step ───────────────────────────────────────────────────
+  selectedCandidateIndex?: number | null;
+  feedMappings?: Record<string, string>;    // fieldId → columnName
+  uploadValues?: Record<string, string>;    // fieldId → dataURL or URL
+  slotMappings?: Record<string, string>;    // fieldId → explicit slotId override
+  customFields?: Array<{                    // user-added fields beyond Gemini
+    id: string;
+    label: string;
+    type: 'text' | 'image' | 'currency' | 'button' | 'asset';
+  }>;
+  fieldTransforms?: Record<string, string[]>;    // fieldId → transform IDs
+  askAlliMessages?: Array<{                   // persistent chat history
+    role: 'user' | 'assistant';
+    content: string;
+    actions?: AlliAction[];
+  }>;
+  logoVariant?: LogoVariant;
+  backgroundColor?: string;
+  accentColor?: string;
+  textColor?: string;
+  fontFamily?: string;
+
+  zoneStyles?: Record<string, ZoneStyle>;       // slotId → per-zone style overrides
+  staticValues?: Record<string, string>;           // fieldId → static text value (when source mode is 'static')
+  fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;  // fieldId → active source tab per field
+  aiSuggestedMappings?: Record<string, true>;      // fieldId → true when AI auto-suggested; cleared on Accept
+
+  // ── wireframe (Social channel only) ───────────────────────────────
+  selectedWireframeId?: string;
   wireframeFile?: string;
 
-  // BASELINE_ASSETS spread (pre-fills when a wireframe is picked)
-  headline1?: string;
-  cta?: string;
-  promo?: string;
-  logo?: string;
-  image1?: string;
-  image2?: string;
-  backgroundimage?: string;
-  font?: string;
-  background_color?: string;
-  cta_button_color?: string;
-  headline_color?: string;
-  headline?: string;
-  image_url?: string;
+  // ── publish step ──────────────────────────────────────────────────
+  /** Firestore ID of the templateLibrary document created on first save.
+   *  Stored here so subsequent saves call upsertDraft instead of saveDraft,
+   *  preventing duplicate records from repeated "Save as Draft" / "Publish" clicks. */
+  templateLibraryId?: string;
 
-  // --- intent step ---
-  prompt?: string;
-  requirements?: RequirementField[];
-  areRequirementsApproved?: boolean;
-
-  // --- source step ---
-  selectedFeed?: SelectedFeed | null;
-  feedSampleData?: Array<Record<string, unknown>>;
-  feedMetadata?: unknown;
-  stressMap?: { shortest: Record<string, unknown>; longest: Record<string, unknown> };
-
-  // --- mapping step ---
-  feedMappings?: Record<string, string>;
-
-  // --- generate step ---
-  candidates?: unknown[];
-  selectedCandidateIndex?: number | null;
-
-  // --- refine step ---
-  textStressTest?: StressTest;
-  logoScale?: number;
-  logoVariant?: LogoVariant;
-  headlineSize?: number;
-  priceSize?: number;
-  accentColor?: string;
-  activeFont?: string;
-  backgroundColor?: string;
-  overrideHeadline?: string;
-  showLogo?: boolean;
-  showPrice?: boolean;
-  showCTA?: boolean;
-
-  // --- export step ---
-  selectedRatios?: string[];
-
-  // Index signature so TemplateBuilderStepData satisfies the
-  // `StepData = Record<string, unknown>` constraint on WizardStep<S>
-  // and StepRenderProps<S>.
+  // index signature — required by WizardStep<S> constraint
   [k: string]: unknown;
+}
+
+export interface ZoneStyle {
+  fontSize?: number;        // applied as font-size: Npx
+  color?: string;           // applied as color
+  backgroundColor?: string; // applied as background-color
+  fontWeight?: 'bold' | 'normal';
+  fontStyle?: 'italic' | 'normal';
+  textDecoration?: 'underline' | 'none';
 }

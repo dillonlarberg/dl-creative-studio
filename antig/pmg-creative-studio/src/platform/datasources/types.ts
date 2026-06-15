@@ -6,6 +6,14 @@
  */
 export interface SelectedFeed {
   name: string;
+  /** Human-readable name when the model author set one; empty string otherwise. */
+  title?: string;
+  /** Source connector type from Alli (e.g. "alliclientfile", "googledrive"). */
+  datasourceType?: string;
+  /** ISO-ish timestamp string of when the model was last modified in Alli. */
+  lastModified?: string;
+  /** Whether this model is an Alli-managed certified data source. */
+  isCertified?: boolean;
   dimensions?: Array<string | { name: string }>;
   measures?: Array<string | { name: string }>;
   [k: string]: unknown;

@@ -4,6 +4,16 @@
  * priority order), and CSS injection rules for color/font overrides.
  */
 
+import type { ZoneStyle } from '../types';
+
+export interface InjectOptions {
+  injections: Record<string, { type: 'image' | 'text'; value: string }>;
+  cssOverrides?: Record<string, string>;
+  slotOverrides?: Record<string, string>;
+  fieldTransforms?: Record<string, string[]>;
+  zoneStyles?: Record<string, ZoneStyle>;
+}
+
 export const FIELD_ID_MAP: Record<
   string,
   { type: 'image' | 'text'; targets: string[] }
@@ -107,11 +117,13 @@ export const CSS_INJECTION_MAP: Record<
   ],
 };
 
-export function injectIntoHtml(
-  html: string,
-  injections: Record<string, { type: 'image' | 'text'; value: string }>,
-  cssOverrides?: Record<string, string>
-): string {
+// All known injectable target IDs (flattened from FIELD_ID_MAP, deduplicated)
+const ALL_KNOWN_TARGETS: string[] = Array.from(
+  new Set(Object.values(FIELD_ID_MAP).flatMap((m) => m.targets))
+);
+
+export function injectIntoHtml(html: string, options: InjectOptions): string {
+  const { injections, cssOverrides, slotOverrides, zoneStyles } = options;
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
@@ -122,9 +134,14 @@ export function injectIntoHtml(
     const lowerField = fieldId.toLowerCase();
     let targetIds: string[] = [];
 
-    if (FIELD_ID_MAP[lowerField]) {
+    // 1. Explicit slot override takes priority
+    if (slotOverrides?.[lowerField]) {
+      targetIds = [slotOverrides[lowerField]];
+    } else if (FIELD_ID_MAP[lowerField]) {
+      // 2. Direct FIELD_ID_MAP lookup
       targetIds = FIELD_ID_MAP[lowerField].targets;
     } else {
+      // 3. Partial match fallback
       for (const [key, mapping] of Object.entries(FIELD_ID_MAP)) {
         if (lowerField.includes(key) || key.includes(lowerField)) {
           targetIds = mapping.targets;
@@ -170,5 +187,154 @@ export function injectIntoHtml(
     }
   }
 
-  return new XMLSerializer().serializeToString(doc);
+  // --- Per-zone style overrides (font size, color, background) ---
+  if (zoneStyles && Object.keys(zoneStyles).length > 0) {
+    let zoneRules = '';
+    for (const [slotId, style] of Object.entries(zoneStyles)) {
+      const el = doc.getElementById(slotId);
+      if (!el) continue;
+      let rules = '';
+      if (style.fontSize != null) rules += `font-size: ${style.fontSize}px !important; `;
+      if (style.color) rules += `color: ${style.color} !important; `;
+      if (style.backgroundColor) rules += `background-color: ${style.backgroundColor} !important; `;
+      if (style.fontWeight) rules += `font-weight: ${style.fontWeight} !important; `;
+      if (style.fontStyle) rules += `font-style: ${style.fontStyle} !important; `;
+      if (style.textDecoration) rules += `text-decoration: ${style.textDecoration} !important; `;
+      if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
+    }
+    if (zoneRules) {
+      const zoneStyleEl = doc.createElement('style');
+      zoneStyleEl.id = '__zone-style-overrides__';
+      zoneStyleEl.textContent = zoneRules;
+      doc.head.appendChild(zoneStyleEl);
+    }
+  }
+
+  return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+}
+
+/**
+ * Returns a self-contained <script> string to append to wireframe HTML when
+ * the preview needs to be interactive (slot-selection mode). The script:
+ * - Sends `{ type: 'slot-click', slotId }` to the parent when a known slot is clicked
+ * - Listens for `{ type: 'highlight-slot', slotId }` to outline a single slot
+ * - Listens for `{ type: 'slot-selection-mode', active }` to pulse all known slots
+ * - Listens for `{ type: 'clear-highlights' }` to remove all outlines
+ */
+export function buildInteractiveScript(): string {
+  const slotsJson = JSON.stringify(ALL_KNOWN_TARGETS);
+  // IDs that are structural containers, not content slots
+  const skipIds = JSON.stringify(['ad', 'base', 'background', 'bg']);
+  return `<script>
+(function() {
+  var KNOWN = ${slotsJson};
+  var SKIP = ${skipIds};
+
+  // Find the nearest ancestor (or self) that has an ID worth selecting
+  function findSlotEl(target) {
+    var node = target;
+    while (node && node.tagName !== 'BODY') {
+      if (node.id && SKIP.indexOf(node.id) === -1) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  // Global click — fires for ANY element, not just known slots
+  document.addEventListener('click', function(e) {
+    var found = findSlotEl(e.target);
+    if (!found) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.parent.postMessage({
+      type: 'slot-click',
+      slotId: found.id,
+      isKnown: KNOWN.indexOf(found.id) !== -1,
+    }, '*');
+  });
+
+  // Hover — show which element will be selected
+  var _lastHovered = null;
+  document.addEventListener('mouseover', function(e) {
+    var found = findSlotEl(e.target);
+    if (_lastHovered && _lastHovered !== found) {
+      _lastHovered.dataset.hoverOutline = '';
+      if (!_lastHovered.dataset.pinned) _lastHovered.style.outline = _lastHovered.dataset.savedOutline || '';
+    }
+    if (found) {
+      found.dataset.savedOutline = found.dataset.savedOutline || found.style.outline || '';
+      found.style.outline = '2px solid rgba(99,102,241,0.5)';
+      found.style.cursor = 'pointer';
+      _lastHovered = found;
+    }
+  });
+  document.addEventListener('mouseout', function(e) {
+    var found = findSlotEl(e.target);
+    if (found && !found.dataset.pinned) {
+      found.style.outline = found.dataset.savedOutline || '';
+      found.style.cursor = '';
+    }
+  });
+
+  // Parent messages
+  window.addEventListener('message', function(e) {
+    if (!e.data || !e.data.type) return;
+    if (e.data.type === 'highlight-slot') {
+      document.querySelectorAll('[id]').forEach(function(el) {
+        if (SKIP.indexOf(el.id) !== -1) return;
+        el.style.outline = el.dataset.savedOutline || '';
+        el.style.cursor = '';
+        delete el.dataset.pinned;
+      });
+      if (e.data.slotId) {
+        var t = document.getElementById(e.data.slotId);
+        if (t) {
+          t.style.outline = '3px solid #2563eb';
+          t.dataset.pinned = '1';
+        }
+      }
+    }
+    if (e.data.type === 'slot-selection-mode') {
+      document.querySelectorAll('[id]').forEach(function(el) {
+        if (SKIP.indexOf(el.id) !== -1) return;
+        el.style.outline = e.data.active ? '2px dashed #6366f1' : (el.dataset.savedOutline || '');
+        el.style.cursor = e.data.active ? 'crosshair' : '';
+      });
+    }
+    if (e.data.type === 'clear-highlights') {
+      document.querySelectorAll('[id]').forEach(function(el) {
+        el.style.outline = '';
+        el.style.cursor = '';
+        delete el.dataset.pinned;
+      });
+    }
+  });
+
+  // Zone reporter — posts {type:'zone-bounds', zones:{id:{x,y,w,h}}} to parent on load.
+  // Uses document.fonts.ready so web fonts have rendered before measuring.
+  // 2000ms fallback in case fonts never resolve (e.g. 404).
+  function reportZones() {
+    var zones = {};
+    document.querySelectorAll('[id]').forEach(function(el) {
+      var r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        zones[el.id] = { x: r.left, y: r.top, w: r.width, h: r.height };
+      }
+    });
+    window.parent.postMessage({ type: 'zone-bounds', zones: zones }, '*');
+  }
+
+  var _zoneReportFired = false;
+  function _fireZoneReport() {
+    if (_zoneReportFired) return;
+    _zoneReportFired = true;
+    requestAnimationFrame(reportZones);
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(_fireZoneReport);
+  }
+  setTimeout(_fireZoneReport, 2000); // fallback if fonts never resolve
+})();
+</script>`;
 }

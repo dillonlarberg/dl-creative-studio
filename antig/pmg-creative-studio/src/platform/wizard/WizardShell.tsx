@@ -127,7 +127,7 @@ export function WizardShell<S extends StepData = StepData>({
   const { currentClient } = useCurrentClient();
   const clientSlug = currentClient?.slug ?? 'test-client';
 
-  const { stepData, mergeStepData, creativeId, reset } = usePersistedStepData<S>({
+  const { stepData, mergeStepData, creativeId, discard } = usePersistedStepData<S>({
     manifest,
     clientSlug,
     resumeId,
@@ -326,31 +326,6 @@ export function WizardShell<S extends StepData = StepData>({
 
   return (
     <div className="space-y-8" data-testid="wizard-shell">
-      {import.meta.env.DEV && (
-        <div
-          data-testid="wizard-debug-pill"
-          className="flex flex-wrap items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10px] font-mono text-red-900"
-        >
-          <span className="font-black uppercase tracking-widest">dev</span>
-          <span>step={currentStep.id}</span>
-          <span>
-            wireframe=
-            <strong>
-              {(stepData as Record<string, unknown>).selectedWireframe
-                ? String((stepData as Record<string, unknown>).selectedWireframe)
-                : '(none)'}
-            </strong>
-          </span>
-          <span>
-            reqs=
-            {Array.isArray((stepData as Record<string, unknown>).requirements)
-              ? ((stepData as Record<string, unknown>).requirements as unknown[]).length
-              : 0}
-          </span>
-          <span>creativeId={creativeId ?? '(none)'}</span>
-          <span>slug={clientSlug}</span>
-        </div>
-      )}
       {/* Back link + title + description */}
       <div>
         <Link
@@ -454,6 +429,9 @@ export function WizardShell<S extends StepData = StepData>({
       <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
         <div className="text-center">
           <h2 className="text-lg font-semibold text-gray-900">{currentStep.name}</h2>
+          {currentStep.description && (
+            <p className="mt-1 text-sm text-blue-gray-500">{currentStep.description}</p>
+          )}
           <div className="mt-8" data-testid={`step-body-${currentStep.id}`}>
             {currentStep.render(renderProps)}
           </div>
@@ -519,11 +497,26 @@ export function WizardShell<S extends StepData = StepData>({
             <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={reset}
-                data-testid="wizard-reset"
-                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 hover:text-gray-500"
+                onClick={() => {
+                  navigateRouter(`/adlabs/${clientSlug}`);
+                }}
+                data-testid="wizard-save-exit"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50"
               >
-                Reset
+                Save &amp; Exit
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!window.confirm('Discard this template? All unsaved work will be lost and cannot be recovered.')) return;
+                  await discard();
+                  navigateRouter(`/adlabs/${clientSlug}`);
+                }}
+                data-testid="wizard-discard"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-red-500"
+              >
+                Discard
               </button>
 
               {!isLastStep && (
@@ -539,7 +532,9 @@ export function WizardShell<S extends StepData = StepData>({
                   )}
                 >
                   {isLoading && <ArrowPathIcon className="h-3 w-3 animate-spin" />}
-                  {isLoading ? 'Synchronizing...' : 'Continue Upstream →'}
+                  {isLoading
+                    ? 'Loading...'
+                    : `Next: ${manifest.steps[currentStepIndex + 1]?.name ?? 'Continue'} →`}
                 </button>
               )}
             </div>

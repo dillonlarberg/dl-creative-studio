@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
+  DocumentDuplicateIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
@@ -107,6 +108,19 @@ export default function DashboardPage() {
           </div>
 
           <WaveAnimation width="100%" />
+
+          {/* Template Library quick link */}
+          {client && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <Link
+                to={`/adlabs/${clientSlug}/templates`}
+                className="inline-flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-colors"
+              >
+                <DocumentDuplicateIcon className="h-4 w-4" />
+                View Template Library
+              </Link>
+            </div>
+          )}
 
           {/* Search Apps + grid */}
           <div className="mt-6">

@@ -27,7 +27,7 @@ describe('firestore.rules', () => {
   describe('clients/{slug}/** subtree', () => {
     it('allows read+write for an allowlisted user with verified email', async () => {
       const ctx = env.authenticatedContext('test-uid', { email: allowedEmail, email_verified: true });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.set({ primaryColor: '#000' })).resolves.not.toThrow();
       await expect(ref.get()).resolves.toBeDefined();
     });
@@ -38,7 +38,7 @@ describe('firestore.rules', () => {
         email_verified: false,
         firebase: { sign_in_provider: 'password' },
       });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).rejects.toThrow();
     });
 
@@ -50,7 +50,7 @@ describe('firestore.rules', () => {
         email_verified: false,
         firebase: { sign_in_provider: 'oidc.alli' },
       });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).resolves.toBeDefined();
     });
 
@@ -60,7 +60,7 @@ describe('firestore.rules', () => {
         email_verified: false,
         firebase: { sign_in_provider: 'oidc.alli' },
       });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).rejects.toThrow();
     });
 
@@ -70,19 +70,19 @@ describe('firestore.rules', () => {
         email_verified: false,
         firebase: { sign_in_provider: 'oidc.evil' },
       });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).rejects.toThrow();
     });
 
     it('denies read for a non-allowlisted user', async () => {
       const ctx = env.authenticatedContext('test-uid', { email: deniedEmail, email_verified: true });
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).rejects.toThrow();
     });
 
     it('denies read for an unauthenticated request', async () => {
       const ctx = env.unauthenticatedContext();
-      const ref = ctx.firestore().doc('clients/ralph_lauren/profile/data');
+      const ref = ctx.firestore().doc('clients/ralph_lauren/assets/brand_test');
       await expect(ref.get()).rejects.toThrow();
     });
 

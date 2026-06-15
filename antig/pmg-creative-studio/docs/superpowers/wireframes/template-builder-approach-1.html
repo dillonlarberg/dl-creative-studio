@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Template Builder — Approach 1 Wireframes</title>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          'blue-gray': {
+            400: '#8F97AA',
+            500: '#6F768B',
+            600: '#5A6076',
+            700: '#42485C',
+          }
+        }
+      }
+    }
+  }
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #c8cdd6; }
+  .screen-label { font-size: 10px; font-weight: 900; letter-spacing: 0.25em; text-transform: uppercase; color: #6F768B; margin-bottom: 10px; }
+  .shadow-card { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .shimmer { background: linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  /* connector line helpers */
+  .step-connector-left { height: 2px; width: 50%; }
+  .step-connector-right { height: 2px; width: 50%; }
+</style>
+</head>
+<body class="py-16 px-8">
+
+<!-- ─────────────────────────────────────────────────────────
+     PAGE HEADER
+───────────────────────────────────────────────────────── -->
+<div class="max-w-5xl mx-auto mb-14 text-center">
+  <p class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600 mb-2">Approach 1 — Incremental Polish</p>
+  <h1 class="text-3xl font-black text-gray-900">Template Builder — Wireframes</h1>
+  <p class="text-sm text-blue-gray-500 mt-2">7-step wizard · real Claude AI · all four channels · Template Library publish</p>
+  <div class="mt-6 flex justify-center gap-6 flex-wrap">
+    <a href="#s1" class="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:underline">1 Context</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s2" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">2 Intent</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s3" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">3 Source</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s4" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">4 Mapping</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s5" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">5 Generate</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s6" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">6 Refine</a>
+    <span class="text-gray-300">·</span>
+    <a href="#s7" class="text-[10px] font-black uppercase tracking-widest text-blue-gray-400 hover:underline">7 Publish</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 1 — DEFINE CONTEXT
+══════════════════════════════════════════════════════════ -->
+<div id="s1" class="mb-20">
+  <p class="screen-label">Step 1 of 7 — Define Context</p>
+  <!-- Browser chrome -->
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5">
+        <div class="h-3 w-3 rounded-full bg-red-400"></div>
+        <div class="h-3 w-3 rounded-full bg-amber-400"></div>
+        <div class="h-3 w-3 rounded-full bg-green-400"></div>
+      </div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/context</div>
+    </div>
+    <!-- App shell -->
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <!-- Back link + title -->
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+            Back to workflows
+          </a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- 7-step stepper (step 1 = current) -->
+        <nav>
+          <ol class="flex w-full items-center">
+            <!-- Step 1: Context (current) -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center">
+                <div class="h-full w-1/2 bg-transparent"></div>
+                <div class="h-full w-1/2 bg-gray-300"></div>
+              </div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-600">Context</span>
+            </li>
+            <!-- Step 2: Intent (upcoming) -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center">
+                <div class="h-full w-1/2 bg-gray-300"></div>
+                <div class="h-full w-1/2 bg-gray-300"></div>
+              </div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Intent</span>
+            </li>
+            <!-- Step 3 -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Connect Data</span>
+            </li>
+            <!-- Step 4 -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Map Fields</span>
+            </li>
+            <!-- Step 5 -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Generate</span>
+            </li>
+            <!-- Step 6 -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Refine</span>
+            </li>
+            <!-- Step 7 -->
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 whitespace-nowrap text-xs font-medium text-blue-gray-500">Publish</span>
+            </li>
+          </ol>
+        </nav>
+        <!-- Content card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8">
+            <h2 class="text-lg font-semibold text-gray-900">Define Context</h2>
+          </div>
+          <!-- Step body -->
+          <div class="space-y-8 text-left">
+
+            <!-- CHANNEL -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Channel</label>
+              <div class="grid grid-cols-4 gap-4">
+                <!-- Social (SELECTED) -->
+                <div class="flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 border-blue-600 bg-blue-50 ring-4 ring-blue-50 cursor-pointer shadow-xl shadow-blue-100/40">
+                  <div class="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z"/></svg>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[11px] font-black text-blue-700 uppercase tracking-widest">Social</p>
+                    <p class="text-[9px] font-medium text-blue-gray-500 mt-0.5">Meta · TikTok · LinkedIn</p>
+                  </div>
+                </div>
+                <!-- Programmatic -->
+                <div class="flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 border-gray-100 bg-white cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="h-10 w-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[11px] font-black text-gray-500 uppercase tracking-widest">Programmatic</p>
+                    <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">Display · DV360 · TTD</p>
+                  </div>
+                </div>
+                <!-- Print -->
+                <div class="flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 border-gray-100 bg-white cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="h-10 w-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[11px] font-black text-gray-500 uppercase tracking-widest">Print</p>
+                    <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">Flyers · Mailers · OOH</p>
+                  </div>
+                </div>
+                <!-- Digital Signage -->
+                <div class="flex flex-col items-center gap-2.5 p-5 rounded-2xl border-2 border-gray-100 bg-white cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="h-10 w-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"/></svg>
+                  </div>
+                  <div class="text-center">
+                    <p class="text-[11px] font-black text-gray-500 uppercase tracking-widest">Digital Signage</p>
+                    <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">DOOH · In-Store</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- AD SIZES -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Ad Sizes</label>
+              <div class="flex flex-wrap gap-2">
+                <button class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white">1:1</button>
+                <button class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500">9:16</button>
+                <button class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-500">2:3</button>
+              </div>
+            </div>
+
+            <!-- WIREFRAME GRID (Social only) -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Choose a Starting Wireframe</label>
+              <div class="grid grid-cols-3 gap-5">
+                <!-- WF1: Selected -->
+                <div class="border-2 border-blue-600 bg-white rounded-2xl p-4 ring-4 ring-blue-50 shadow-xl shadow-blue-100/40 cursor-pointer">
+                  <!-- mini ad preview 1:1 -->
+                  <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden relative">
+                    <div class="absolute inset-0 flex flex-col">
+                      <div class="flex-1 bg-gray-200 m-2 rounded-lg"></div>
+                      <div class="px-2 pb-1">
+                        <div class="h-3 bg-gray-800 rounded mb-1 w-3/4"></div>
+                        <div class="h-2.5 bg-blue-600 rounded w-1/2"></div>
+                        <div class="mt-1 h-4 bg-blue-600 rounded-lg"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Social Square Hero</p>
+                  <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">1:1 · image + price + CTA</p>
+                  <div class="mt-2 flex items-center gap-1">
+                    <div class="h-3.5 w-3.5 bg-green-500 rounded-full flex items-center justify-center shrink-0">
+                      <svg class="h-2 w-2 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                    </div>
+                    <span class="text-[8px] font-black text-green-600 uppercase tracking-widest">Selected</span>
+                  </div>
+                </div>
+                <!-- WF2 -->
+                <div class="border-2 border-gray-100 bg-white rounded-2xl p-4 cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden relative">
+                    <div class="absolute inset-0 flex flex-col">
+                      <div class="flex-1 bg-gray-200 m-2 rounded-lg"></div>
+                      <div class="px-2 pb-1">
+                        <div class="h-2 bg-gray-700 rounded mb-1 w-2/3"></div>
+                        <div class="h-2 bg-gray-400 rounded w-1/2 mb-1"></div>
+                        <div class="mt-1 h-3.5 bg-gray-800 rounded-lg"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Vertical Split</p>
+                  <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">9:16 · lifestyle image + text</p>
+                </div>
+                <!-- WF3 -->
+                <div class="border-2 border-gray-100 bg-white rounded-2xl p-4 cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden relative">
+                    <div class="absolute inset-0 p-2 flex flex-col gap-1.5">
+                      <div class="h-1/2 bg-gray-200 rounded-lg"></div>
+                      <div class="h-2 bg-gray-800 rounded w-3/4"></div>
+                      <div class="h-2 bg-gray-400 rounded w-1/2"></div>
+                      <div class="h-3 bg-blue-600 rounded-lg mt-auto"></div>
+                    </div>
+                  </div>
+                  <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Minimal Card</p>
+                  <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">1:1 · clean / luxury layout</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- HISTORICAL TEMPLATES -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Recent Templates — ACME Automotive</label>
+              <div class="flex gap-3">
+                <div class="flex items-center gap-3 border border-gray-100 rounded-xl p-3 bg-white flex-1 max-w-xs">
+                  <div class="h-12 w-12 bg-blue-50 rounded-lg shrink-0 border border-blue-100 flex items-center justify-center">
+                    <div class="h-8 w-8 bg-blue-200 rounded"></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-black text-gray-900 truncate">Q1 Spring Sale</p>
+                    <p class="text-[9px] text-blue-gray-400">Social · 1:1 · Vehicle</p>
+                  </div>
+                  <button class="text-[9px] font-black text-blue-600 uppercase tracking-widest shrink-0">Use</button>
+                </div>
+                <div class="flex items-center gap-3 border border-gray-100 rounded-xl p-3 bg-white flex-1 max-w-xs">
+                  <div class="h-12 w-12 bg-gray-50 rounded-lg shrink-0 border border-gray-100 flex items-center justify-center">
+                    <div class="h-8 w-8 bg-gray-200 rounded"></div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] font-black text-gray-900 truncate">Luxury EV Showcase</p>
+                    <p class="text-[9px] text-blue-gray-400">Social · 9:16 · Vehicle</p>
+                  </div>
+                  <button class="text-[9px] font-black text-blue-600 uppercase tracking-widest shrink-0">Use</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100 space-y-4">
+            <!-- Requirements checklist -->
+            <div class="flex items-center justify-end gap-6">
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600">
+                <div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                Channel
+              </div>
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600">
+                <div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                Ad Sizes
+              </div>
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600">
+                <div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                Wireframe
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button class="cursor-not-allowed text-gray-200 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 2 — DEFINE INTENT
+══════════════════════════════════════════════════════════ -->
+<div id="s2" class="mb-20">
+  <p class="screen-label">Step 2 of 7 — Define Intent (post AI synthesis)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/intent</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <!-- Back + title -->
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+            Back to workflows
+          </a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- 7-step stepper (1 complete, 2 current) -->
+        <nav>
+          <ol class="flex w-full items-center">
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div>
+              <span class="mt-2 text-xs font-medium text-blue-600">Intent</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Connect Data</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Map Fields</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Generate</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Refine</span>
+            </li>
+            <li class="relative flex w-full flex-1 flex-col items-center text-center">
+              <div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div>
+              <div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div>
+              <span class="mt-2 text-xs font-medium text-blue-gray-500">Publish</span>
+            </li>
+          </ol>
+        </nav>
+        <!-- Content card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8">
+            <h2 class="text-lg font-semibold text-gray-900">Define Intent</h2>
+          </div>
+          <!-- Step body -->
+          <div class="max-w-2xl mx-auto space-y-8">
+            <!-- Claude badge -->
+            <div class="flex items-center justify-center">
+              <div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-100 rounded-full">
+                <svg class="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                <span class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Claude Sonnet — Requirement Analysis</span>
+              </div>
+            </div>
+            <!-- Prompt textarea -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Creative Brief</label>
+              <textarea rows="5" class="w-full px-5 py-4 rounded-2xl border-2 border-blue-600 ring-4 ring-blue-50 outline-none font-medium text-gray-900 text-sm shadow-inner bg-white resize-none" readonly>High-impact social ads for our Q2 vehicle inventory push. Highlight current pricing, model year, and dealership name prominently. The look should feel bold yet attainable — not too luxury. Strong CTA to drive dealership visits. Each ad should feel personal to the specific vehicle shown.</textarea>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-[9px] text-blue-gray-400 font-medium">193 characters</span>
+                <button class="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700">
+                  <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                  Re-synthesize
+                </button>
+              </div>
+            </div>
+            <!-- Synthesized requirements (post-AI) -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">AI-Synthesized Requirements</label>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-100 rounded-full">
+                  <span class="h-1.5 w-1.5 bg-green-500 rounded-full"></span>
+                  <span class="text-[8px] font-black text-green-700 uppercase tracking-widest">5 extracted</span>
+                </span>
+              </div>
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <div class="h-5 w-5 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                      <svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                    </div>
+                    <span class="text-[11px] font-bold text-gray-900">Vehicle Image</span>
+                  </div>
+                  <span class="text-[9px] font-medium text-blue-gray-400">Full-bleed vehicle photo, dominant focal point</span>
+                </div>
+                <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <div class="h-5 w-5 bg-blue-600 rounded-lg flex items-center justify-center shrink-0"><svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                    <span class="text-[11px] font-bold text-gray-900">Price Display</span>
+                  </div>
+                  <span class="text-[9px] font-medium text-blue-gray-400">Bold, large-format pricing — top-3 visual hierarchy</span>
+                </div>
+                <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <div class="h-5 w-5 bg-blue-600 rounded-lg flex items-center justify-center shrink-0"><svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                    <span class="text-[11px] font-bold text-gray-900">Dealership Name</span>
+                  </div>
+                  <span class="text-[9px] font-medium text-blue-gray-400">Branded, secondary placement — builds local trust</span>
+                </div>
+                <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <div class="h-5 w-5 bg-blue-600 rounded-lg flex items-center justify-center shrink-0"><svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                    <span class="text-[11px] font-bold text-gray-900">Model Year + Trim</span>
+                  </div>
+                  <span class="text-[9px] font-medium text-blue-gray-400">Subtle headline callout, paired with vehicle name</span>
+                </div>
+                <div class="flex items-center justify-between p-3.5 rounded-xl border border-gray-100 bg-gray-50">
+                  <div class="flex items-center gap-3">
+                    <div class="h-5 w-5 bg-blue-600 rounded-lg flex items-center justify-center shrink-0"><svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                    <span class="text-[11px] font-bold text-gray-900">CTA Button</span>
+                  </div>
+                  <span class="text-[9px] font-medium text-blue-gray-400">"Shop Now" or "View Inventory" — high contrast</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100 space-y-4">
+            <div class="flex items-center justify-end gap-6">
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600">
+                <div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                Creative Brief
+              </div>
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600">
+                <div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+                Requirements
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 3 — CONNECT DATA
+══════════════════════════════════════════════════════════ -->
+<div id="s3" class="mb-20">
+  <p class="screen-label">Step 3 of 7 — Connect Data (feed selected + sample preview)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/source</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>Back to workflows</a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- Stepper: 1+2 complete, 3 current -->
+        <nav><ol class="flex w-full items-center">
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Intent</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div><span class="mt-2 text-xs font-medium text-blue-600">Connect Data</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Map Fields</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Generate</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Refine</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Publish</span></li>
+        </ol></nav>
+        <!-- Content card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8"><h2 class="text-lg font-semibold text-gray-900">Connect Data</h2></div>
+          <div class="space-y-8 text-left">
+
+            <!-- Feed Selector -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Select a Data Feed</label>
+              <div class="grid grid-cols-3 gap-4">
+                <!-- Feed 1: Selected -->
+                <div class="border-2 border-blue-600 bg-blue-50 ring-4 ring-blue-50 rounded-2xl p-5 cursor-pointer shadow-lg shadow-blue-100/40">
+                  <div class="flex items-start gap-3">
+                    <div class="h-9 w-9 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                      <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+                    </div>
+                    <div class="flex-1">
+                      <p class="text-[11px] font-black text-blue-900 uppercase tracking-widest">Vehicle Inventory</p>
+                      <p class="text-[9px] font-medium text-blue-gray-500 mt-0.5">6 columns · 1,247 rows · updated 2h ago</p>
+                      <div class="mt-2 flex flex-wrap gap-1">
+                        <span class="px-1.5 py-0.5 bg-white border border-blue-100 rounded text-[7px] font-bold text-blue-600">vehicle_title</span>
+                        <span class="px-1.5 py-0.5 bg-white border border-blue-100 rounded text-[7px] font-bold text-blue-600">price</span>
+                        <span class="px-1.5 py-0.5 bg-white border border-blue-100 rounded text-[7px] font-bold text-blue-600">image_url</span>
+                        <span class="px-1.5 py-0.5 bg-white border border-blue-100 rounded text-[7px] font-bold text-blue-600">+3</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Feed 2 -->
+                <div class="border-2 border-gray-100 bg-white rounded-2xl p-5 cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="flex items-start gap-3">
+                    <div class="h-9 w-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                      <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[11px] font-black text-gray-600 uppercase tracking-widest">Financing Offers</p>
+                      <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">4 columns · 28 rows · updated 1d ago</p>
+                    </div>
+                  </div>
+                </div>
+                <!-- Feed 3 -->
+                <div class="border-2 border-gray-100 bg-white rounded-2xl p-5 cursor-pointer hover:border-blue-200 transition-all">
+                  <div class="flex items-start gap-3">
+                    <div class="h-9 w-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                      <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[11px] font-black text-gray-600 uppercase tracking-widest">Dealership Directory</p>
+                      <p class="text-[9px] font-medium text-blue-gray-400 mt-0.5">8 columns · 14 rows · updated 3d ago</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sample Data Preview -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Sample Data Preview — Vehicle Inventory</label>
+                <span class="text-[9px] font-medium text-blue-gray-400">Showing 3 of 1,247 rows</span>
+              </div>
+              <div class="rounded-xl border border-gray-100 overflow-hidden">
+                <table class="w-full text-left">
+                  <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">vehicle_title</th>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">price</th>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">model_year</th>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">dealership_name</th>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">trim</th>
+                      <th class="px-4 py-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">image_url</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-50">
+                    <tr class="bg-blue-50/40">
+                      <td class="px-4 py-3 text-[10px] font-bold text-gray-900">2026 Toyota Camry XSE</td>
+                      <td class="px-4 py-3 text-[10px] font-bold text-blue-600">$31,490</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">2026</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">ACME North Dallas</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">XSE V6</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-blue-gray-400 truncate max-w-[120px]">cdn.acme.com/img/camry-xse.jpg</td>
+                    </tr>
+                    <tr>
+                      <td class="px-4 py-3 text-[10px] font-bold text-gray-900">2026 Honda CR-V EX-L</td>
+                      <td class="px-4 py-3 text-[10px] font-bold text-blue-600">$38,150</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">2026</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">ACME Plano</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">EX-L AWD</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-blue-gray-400 truncate max-w-[120px]">cdn.acme.com/img/crv-exl.jpg</td>
+                    </tr>
+                    <tr class="bg-gray-50/50">
+                      <td class="px-4 py-3 text-[10px] font-bold text-gray-900">2025 Ford F-150 Lariat</td>
+                      <td class="px-4 py-3 text-[10px] font-bold text-blue-600">$52,990</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">2025</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">ACME Fort Worth</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-gray-600">Lariat 4WD</td>
+                      <td class="px-4 py-3 text-[10px] font-medium text-blue-gray-400 truncate max-w-[120px]">cdn.acme.com/img/f150-lariat.jpg</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100 space-y-4">
+            <div class="flex items-center justify-end gap-6">
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600"><div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>Feed Selected</div>
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600"><div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>Sample Loaded</div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 4 — MAP FIELDS
+══════════════════════════════════════════════════════════ -->
+<div id="s4" class="mb-20">
+  <p class="screen-label">Step 4 of 7 — Map Fields (feed columns → template slots)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/mapping</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>Back to workflows</a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- Stepper: 1+2+3 complete, 4 current -->
+        <nav><ol class="flex w-full items-center">
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Intent</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Connect Data</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div><span class="mt-2 text-xs font-medium text-blue-600">Map Fields</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Generate</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Refine</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Publish</span></li>
+        </ol></nav>
+        <!-- Content card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8"><h2 class="text-lg font-semibold text-gray-900">Map Fields</h2></div>
+          <!-- 3-col layout: field list | config | live preview -->
+          <div class="grid grid-cols-3 gap-6 text-left">
+            <!-- LEFT: Field list + modes -->
+            <div class="col-span-1 space-y-4">
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Template Slots</label>
+              <!-- Field: Vehicle Image -->
+              <div class="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Vehicle Image</span>
+                  <span class="px-2 py-0.5 bg-green-50 border border-green-100 text-green-700 rounded-full text-[7px] font-black uppercase tracking-widest">Mapped</span>
+                </div>
+                <div class="flex gap-1 text-[9px]">
+                  <button class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black uppercase tracking-widest">Feed</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">Static</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">AI</button>
+                </div>
+                <select class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold text-gray-900 appearance-none">
+                  <option>image_url</option>
+                </select>
+              </div>
+              <!-- Field: Headline -->
+              <div class="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Headline</span>
+                  <span class="px-2 py-0.5 bg-green-50 border border-green-100 text-green-700 rounded-full text-[7px] font-black uppercase tracking-widest">Mapped</span>
+                </div>
+                <div class="flex gap-1 text-[9px]">
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">Feed</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">Static</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black uppercase tracking-widest">AI</button>
+                </div>
+                <div class="px-3 py-2 rounded-lg border border-purple-100 bg-purple-50 text-[9px] font-medium text-purple-700">Generate from vehicle_title + model_year</div>
+              </div>
+              <!-- Field: Price -->
+              <div class="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-black text-gray-900 uppercase tracking-widest">Price</span>
+                  <span class="px-2 py-0.5 bg-green-50 border border-green-100 text-green-700 rounded-full text-[7px] font-black uppercase tracking-widest">Mapped</span>
+                </div>
+                <div class="flex gap-1 text-[9px]">
+                  <button class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black uppercase tracking-widest">Feed</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">Static</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">AI</button>
+                </div>
+                <select class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold text-gray-900 appearance-none"><option>price</option></select>
+              </div>
+              <!-- Field: CTA -->
+              <div class="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50/50">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-black text-gray-900 uppercase tracking-widest">CTA Text</span>
+                  <span class="px-2 py-0.5 bg-amber-50 border border-amber-100 text-amber-700 rounded-full text-[7px] font-black uppercase tracking-widest">Static</span>
+                </div>
+                <div class="flex gap-1 text-[9px]">
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">Feed</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black uppercase tracking-widest">Static</button>
+                  <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 font-black uppercase tracking-widest">AI</button>
+                </div>
+                <input class="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-[10px] font-bold text-gray-900" value="Shop Now →" />
+              </div>
+            </div>
+            <!-- RIGHT: Live preview (2 cols) -->
+            <div class="col-span-2 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Preview</label>
+                <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
+                  <span class="h-1.5 w-1.5 bg-emerald-500 rounded-full pulse"></span>
+                  <span class="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Live</span>
+                </div>
+              </div>
+              <div class="flex-1 bg-gray-100 rounded-2xl border-2 border-gray-100 flex items-center justify-center" style="min-height:420px;">
+                <!-- Simulated ad preview -->
+                <div class="w-64 h-64 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100">
+                  <!-- Vehicle image area -->
+                  <div class="flex-1 bg-gradient-to-br from-slate-200 to-slate-300 relative">
+                    <div class="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded-lg">
+                      <p class="text-[8px] font-black text-white uppercase tracking-wider">ACME North Dallas</p>
+                    </div>
+                  </div>
+                  <!-- Bottom info bar -->
+                  <div class="p-3 bg-white">
+                    <p class="text-[9px] font-black text-gray-900">2026 Toyota Camry XSE V6</p>
+                    <p class="text-[14px] font-black text-blue-600 mt-0.5">$31,490</p>
+                    <div class="mt-2 bg-blue-600 rounded-lg py-1.5 text-center">
+                      <p class="text-[8px] font-black text-white uppercase tracking-widest">Shop Now →</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Feed row navigator -->
+              <div class="mt-3 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5">
+                <button class="text-[9px] font-black text-blue-gray-400 uppercase tracking-widest">← Prev</button>
+                <span class="text-[9px] font-medium text-blue-gray-500">Row 1 of 1,247 — 2026 Toyota Camry XSE</span>
+                <button class="text-[9px] font-black text-blue-600 uppercase tracking-widest">Next →</button>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100 space-y-4">
+            <div class="flex items-center justify-end gap-6">
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600"><div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>All Fields Mapped</div>
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600"><div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>Preview Rendered</div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 5 — GENERATE (AI candidates loaded)
+══════════════════════════════════════════════════════════ -->
+<div id="s5" class="mb-20">
+  <p class="screen-label">Step 5 of 7 — Generate (3 Claude candidates returned)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/generate</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>Back to workflows</a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- Stepper: 1–4 complete, 5 current -->
+        <nav><ol class="flex w-full items-center">
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Intent</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Connect Data</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Map Fields</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div><span class="mt-2 text-xs font-medium text-blue-600">Generate</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Refine</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Publish</span></li>
+        </ol></nav>
+        <!-- Content card -->
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-2"><h2 class="text-lg font-semibold text-gray-900">Generate Layout Candidates</h2></div>
+          <!-- Claude header -->
+          <div class="flex items-center justify-center gap-3 mb-8">
+            <div class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-100 rounded-full">
+              <svg class="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+              <span class="text-[10px] font-black text-purple-700 uppercase tracking-widest">Claude generated 3 layout candidates</span>
+            </div>
+            <button class="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white rounded-xl text-[9px] font-black text-blue-gray-500 uppercase tracking-widest hover:bg-gray-50">
+              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+              Regenerate
+            </button>
+          </div>
+          <!-- 3 Candidate cards -->
+          <div class="grid grid-cols-3 gap-6 text-left">
+            <!-- Candidate 1: Selected -->
+            <div class="border-2 border-blue-600 bg-blue-50/30 rounded-2xl p-5 ring-4 ring-blue-50 shadow-xl shadow-blue-100/40 cursor-pointer relative">
+              <div class="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-blue-600 rounded-full">
+                <svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                <span class="text-[7px] font-black text-white uppercase tracking-widest">Selected</span>
+              </div>
+              <!-- Mini ad preview -->
+              <div class="aspect-square bg-white rounded-xl mb-4 overflow-hidden border border-blue-100 shadow-sm flex flex-col">
+                <div class="flex-1 bg-gradient-to-br from-slate-200 to-blue-100 relative">
+                  <div class="absolute bottom-1 left-1 right-1 px-1.5 py-1 bg-black/50 rounded">
+                    <div class="h-1.5 bg-white/60 rounded w-3/4 mb-0.5"></div>
+                  </div>
+                </div>
+                <div class="p-2.5 bg-white">
+                  <div class="h-2 bg-gray-800 rounded w-full mb-1"></div>
+                  <div class="h-3 bg-blue-600 rounded w-1/2 mb-2"></div>
+                  <div class="h-4 bg-blue-600 rounded-lg"></div>
+                </div>
+              </div>
+              <p class="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-1">Bold Price First</p>
+              <p class="text-[9px] font-medium text-blue-gray-500">Full-bleed vehicle image with oversized price callout. High visual contrast for in-feed performance.</p>
+              <div class="mt-3 flex flex-wrap gap-1">
+                <span class="px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded text-[7px] font-black text-blue-600">Vehicle Image</span>
+                <span class="px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded text-[7px] font-black text-blue-600">Price Dominant</span>
+                <span class="px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded text-[7px] font-black text-blue-600">CTA</span>
+              </div>
+            </div>
+            <!-- Candidate 2 -->
+            <div class="border-2 border-gray-100 bg-white rounded-2xl p-5 cursor-pointer hover:border-blue-200 hover:shadow-xl transition-all">
+              <div class="aspect-square bg-gray-50 rounded-xl mb-4 overflow-hidden border border-gray-100 flex flex-col">
+                <div class="h-2/3 bg-gradient-to-br from-gray-200 to-gray-300 relative">
+                  <div class="absolute top-2 right-2 px-1.5 py-0.5 bg-blue-600 rounded text-[6px] font-black text-white uppercase">$38,150</div>
+                </div>
+                <div class="flex-1 p-2 bg-white flex flex-col gap-1">
+                  <div class="h-2 bg-gray-700 rounded w-3/4"></div>
+                  <div class="h-1.5 bg-gray-400 rounded w-1/2"></div>
+                  <div class="mt-auto h-3 bg-gray-800 rounded-lg"></div>
+                </div>
+              </div>
+              <p class="text-[11px] font-black text-gray-700 uppercase tracking-widest mb-1">Lifestyle + Badge</p>
+              <p class="text-[9px] font-medium text-blue-gray-400">Vehicle photo dominant with floating price badge. Softer layout — suits aspirational messaging.</p>
+              <div class="mt-3 flex flex-wrap gap-1">
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">Vehicle Image</span>
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">Price Badge</span>
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">CTA</span>
+              </div>
+            </div>
+            <!-- Candidate 3 -->
+            <div class="border-2 border-gray-100 bg-white rounded-2xl p-5 cursor-pointer hover:border-blue-200 hover:shadow-xl transition-all">
+              <div class="aspect-square bg-gray-50 rounded-xl mb-4 overflow-hidden border border-gray-100 flex flex-col gap-2 p-3">
+                <div class="flex-1 bg-gray-200 rounded-lg"></div>
+                <div class="h-2.5 bg-gray-900 rounded w-2/3"></div>
+                <div class="h-2 bg-gray-400 rounded w-full"></div>
+                <div class="flex justify-between items-center">
+                  <div class="h-4 bg-gray-900 rounded w-1/3"></div>
+                  <div class="h-4 bg-blue-600 rounded-lg w-1/3"></div>
+                </div>
+              </div>
+              <p class="text-[11px] font-black text-gray-700 uppercase tracking-widest mb-1">Minimal Luxury</p>
+              <p class="text-[9px] font-medium text-blue-gray-400">Clean white-space layout. Price and CTA side-by-side. Ideal for premium inventory segments.</p>
+              <div class="mt-3 flex flex-wrap gap-1">
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">Vehicle Image</span>
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">Clean Layout</span>
+                <span class="px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-[7px] font-black text-gray-500">CTA Inline</span>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100 space-y-4">
+            <div class="flex items-center justify-end gap-6">
+              <div class="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600"><div class="h-4 w-4 rounded-full flex items-center justify-center bg-green-500 border border-green-500 shrink-0"><svg class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div>Candidate Selected</div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 6 — REFINE + SAVE MODAL
+══════════════════════════════════════════════════════════ -->
+<div id="s6" class="mb-20">
+  <p class="screen-label">Step 6 of 7 — Refine (brand overrides + stress test) + Save Modal overlay</p>
+  <!-- Modal overlay version (shows the save-as-template modal on top of refine) -->
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl relative">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/refine</div>
+    </div>
+    <!-- Underlying Refine screen (dimmed) -->
+    <div style="background:#EEF1F7;" class="p-8 opacity-30 pointer-events-none select-none">
+      <div class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Refine your template before saving</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-6"><h2 class="text-lg font-semibold text-gray-900">Refine &amp; Brand</h2></div>
+          <div class="grid grid-cols-3 gap-6">
+            <!-- Brand controls placeholder -->
+            <div class="col-span-1 space-y-4">
+              <div class="h-8 bg-gray-200 rounded-xl"></div>
+              <div class="h-20 bg-gray-100 rounded-xl"></div>
+              <div class="h-16 bg-gray-100 rounded-xl"></div>
+              <div class="h-12 bg-gray-100 rounded-xl"></div>
+            </div>
+            <!-- Preview placeholder -->
+            <div class="col-span-2 h-80 bg-gray-100 rounded-2xl"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Modal overlay -->
+    <div class="absolute inset-0 bg-gray-900/60 flex items-center justify-center p-8" style="z-index:50;">
+      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Save to Template Library</p>
+            <h3 class="text-xl font-bold text-gray-900 mt-1">Name this Template</h3>
+          </div>
+          <button class="h-8 w-8 flex items-center justify-center rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-400">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <!-- Template name input -->
+        <div class="mb-5">
+          <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Template Name</label>
+          <input class="w-full px-4 py-3 rounded-xl border-2 border-blue-600 ring-4 ring-blue-50 outline-none font-bold text-gray-900 text-sm" value="ACME Q2 Vehicle — Bold Price Hero" />
+        </div>
+        <!-- Description -->
+        <div class="mb-5">
+          <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Description (optional)</label>
+          <textarea rows="2" class="w-full px-4 py-3 rounded-xl border-2 border-gray-100 outline-none font-medium text-gray-900 text-sm resize-none bg-gray-50" placeholder="What's this template for?">Social 1:1 for Q2 inventory push. Vehicle + price + CTA. Auto-injects from Vehicle Inventory feed.</textarea>
+        </div>
+        <!-- Meta info -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Channel</p>
+            <p class="text-[11px] font-black text-gray-900">Social · 1:1</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Feed Linked</p>
+            <p class="text-[11px] font-black text-gray-900">Vehicle Inventory</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Access</p>
+            <p class="text-[11px] font-black text-gray-900">ACME Automotive</p>
+          </div>
+          <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+            <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Created by</p>
+            <p class="text-[11px] font-black text-gray-900">annie.nguyen@pmg</p>
+          </div>
+        </div>
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <button class="flex-1 py-3 rounded-xl border border-gray-200 text-[10px] font-black text-blue-gray-500 uppercase tracking-[0.2em] hover:bg-gray-50">Cancel</button>
+          <button class="flex-1 py-3 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700">Save Template →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Refine screen (no modal, standalone) shown below for reference -->
+  <p class="screen-label mt-8">Step 6 — Refine (no modal — showing brand controls + live preview)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/refine</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>Back to workflows</a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- Stepper: 1–5 complete, 6 current -->
+        <nav><ol class="flex w-full items-center">
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Intent</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Connect Data</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Map Fields</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Generate</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-gray-300"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div><span class="mt-2 text-xs font-medium text-blue-600">Refine</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-gray-300"></div><div class="h-full w-1/2 bg-transparent"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-gray-300 bg-white"></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Publish</span></li>
+        </ol></nav>
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8"><h2 class="text-lg font-semibold text-gray-900">Refine &amp; Brand</h2></div>
+          <div class="grid grid-cols-3 gap-6 text-left">
+            <!-- LEFT: Brand controls -->
+            <div class="col-span-1 space-y-5">
+              <!-- Brand Colors -->
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Brand Colors</label>
+                <div class="flex flex-wrap gap-2">
+                  <button class="h-8 w-8 rounded-full bg-blue-600 border-4 border-white shadow-md ring-2 ring-blue-400"></button>
+                  <button class="h-8 w-8 rounded-full bg-gray-900 border-2 border-gray-200 shadow-sm"></button>
+                  <button class="h-8 w-8 rounded-full bg-white border-2 border-gray-200 shadow-sm"></button>
+                  <button class="h-7 w-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs">+</button>
+                </div>
+              </div>
+              <!-- Font Override -->
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Font Override</label>
+                <select class="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 text-[11px] font-bold text-gray-900 appearance-none">
+                  <option>Inter (Brand Default)</option>
+                  <option>Montserrat</option>
+                </select>
+              </div>
+              <!-- Logo Override -->
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Logo Variant</label>
+                <div class="flex gap-2">
+                  <button class="flex-1 py-2.5 rounded-xl border-2 border-blue-600 bg-blue-50 text-[9px] font-black text-blue-700 uppercase tracking-widest">Full Color</button>
+                  <button class="flex-1 py-2.5 rounded-xl border-2 border-gray-100 bg-white text-[9px] font-black text-gray-500 uppercase tracking-widest">White</button>
+                  <button class="flex-1 py-2.5 rounded-xl border-2 border-gray-100 bg-white text-[9px] font-black text-gray-500 uppercase tracking-widest">None</button>
+                </div>
+              </div>
+              <!-- Stress test selector -->
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Stress Test</label>
+                <p class="text-[9px] font-medium text-blue-gray-400 mb-2">Preview with edge-case data rows</p>
+                <div class="space-y-1.5">
+                  <button class="w-full text-left px-3 py-2 rounded-lg border border-blue-100 bg-blue-50 text-[9px] font-bold text-blue-700">Long vehicle name (53 chars)</button>
+                  <button class="w-full text-left px-3 py-2 rounded-lg border border-gray-100 bg-white text-[9px] font-bold text-gray-600 hover:bg-gray-50">High price ($149,990)</button>
+                  <button class="w-full text-left px-3 py-2 rounded-lg border border-gray-100 bg-white text-[9px] font-bold text-gray-600 hover:bg-gray-50">Missing image (fallback)</button>
+                </div>
+              </div>
+              <!-- Save button -->
+              <button class="w-full py-3.5 rounded-xl bg-gray-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black flex items-center justify-center gap-2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"/></svg>
+                Save to Template Library
+              </button>
+            </div>
+            <!-- RIGHT: Live preview -->
+            <div class="col-span-2 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Live Preview — Stress Test: Long Name</label>
+                <div class="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
+                  <span class="h-1.5 w-1.5 bg-emerald-500 rounded-full pulse"></span>
+                  <span class="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Live</span>
+                </div>
+              </div>
+              <div class="flex-1 bg-gray-100 rounded-2xl border-2 border-gray-100 flex items-center justify-center" style="min-height:340px;">
+                <div class="w-64 h-64 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100">
+                  <div class="flex-1 bg-gradient-to-br from-slate-200 to-slate-300 relative">
+                    <div class="absolute bottom-2 left-2 px-2 py-1 bg-black/60 rounded-lg">
+                      <p class="text-[7px] font-black text-white uppercase tracking-wider">ACME Fort Worth</p>
+                    </div>
+                  </div>
+                  <div class="p-3 bg-white">
+                    <p class="text-[8px] font-black text-gray-900 leading-tight">2026 Ford F-150 SuperCrew Lariat 4WD PowerBoost</p>
+                    <p class="text-[13px] font-black text-blue-600 mt-0.5">$52,990</p>
+                    <div class="mt-1.5 bg-blue-600 rounded-lg py-1.5 text-center">
+                      <p class="text-[7px] font-black text-white uppercase tracking-widest">Shop Now →</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Row navigator -->
+              <div class="mt-3 flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5">
+                <button class="text-[9px] font-black text-blue-gray-400 uppercase tracking-widest">← Prev</button>
+                <span class="text-[9px] font-medium text-blue-gray-500">Stress test: row 847 of 1,247 — Long title</span>
+                <button class="text-[9px] font-black text-blue-600 uppercase tracking-widest">Next →</button>
+              </div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div class="mt-10 pt-8 border-t border-gray-100">
+            <div class="flex items-center justify-between">
+              <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+              <div class="flex items-center gap-4">
+                <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+                <button class="rounded-xl bg-blue-600 px-8 py-3 text-[10px] font-black text-white uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700">Continue Upstream →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STEP 7 — PUBLISH TO TEMPLATE LIBRARY
+══════════════════════════════════════════════════════════ -->
+<div id="s7" class="mb-20">
+  <p class="screen-label">Step 7 of 7 — Publish to Template Library (pre-publish + success state)</p>
+  <!-- Pre-publish state -->
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl mb-10">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/export</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="space-y-6">
+        <div>
+          <a href="#" class="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>Back to workflows</a>
+          <h1 class="mt-3 text-2xl font-semibold text-gray-900">Template Builder</h1>
+          <p class="mt-1 text-sm text-blue-gray-500">Build a reusable template and publish it to the Template Library</p>
+        </div>
+        <!-- Stepper: all complete except 7 which is current -->
+        <nav><ol class="flex w-full items-center">
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-transparent"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Context</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Intent</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Connect Data</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Map Fields</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Generate</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-blue-600"></div></div><div class="relative z-10 h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center"><svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></div><span class="mt-2 text-xs font-medium text-blue-gray-500">Refine</span></li>
+          <li class="relative flex w-full flex-1 flex-col items-center text-center"><div class="absolute inset-x-0 top-4 flex h-[2px] items-center"><div class="h-full w-1/2 bg-blue-600"></div><div class="h-full w-1/2 bg-transparent"></div></div><div class="relative z-10 h-8 w-8 rounded-full border-2 border-blue-600 bg-white flex items-center justify-center"><span class="h-2.5 w-2.5 rounded-full bg-blue-600"></span></div><span class="mt-2 text-xs font-medium text-blue-600">Publish</span></li>
+        </ol></nav>
+        <div class="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+          <div class="text-center mb-8"><h2 class="text-lg font-semibold text-gray-900">Publish to Template Library</h2></div>
+          <div class="grid grid-cols-2 gap-8 text-left">
+            <!-- LEFT: Template preview -->
+            <div>
+              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Template Preview</label>
+              <div class="bg-gray-50 rounded-2xl border-2 border-gray-100 flex items-center justify-center p-8" style="min-height:280px;">
+                <div class="w-52 h-52 bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-gray-100">
+                  <div class="flex-1 bg-gradient-to-br from-slate-200 to-blue-100 relative">
+                    <div class="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded-lg"><p class="text-[7px] font-black text-white uppercase">ACME North Dallas</p></div>
+                  </div>
+                  <div class="p-2.5 bg-white">
+                    <p class="text-[8px] font-black text-gray-900">2026 Toyota Camry XSE V6</p>
+                    <p class="text-[13px] font-black text-blue-600">$31,490</p>
+                    <div class="mt-1 bg-blue-600 rounded-lg py-1 text-center"><p class="text-[7px] font-black text-white uppercase tracking-widest">Shop Now →</p></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Channel</p>
+                  <p class="text-[10px] font-black text-gray-900">Social · 1:1</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Feed</p>
+                  <p class="text-[10px] font-black text-gray-900">Vehicle Inventory</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Layout</p>
+                  <p class="text-[10px] font-black text-gray-900">Bold Price First</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                  <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Requirements</p>
+                  <p class="text-[10px] font-black text-gray-900">5 fields mapped</p>
+                </div>
+              </div>
+            </div>
+            <!-- RIGHT: Publish config -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Template Name</label>
+                <input class="w-full px-4 py-3 rounded-xl border-2 border-blue-600 ring-4 ring-blue-50 outline-none font-bold text-gray-900 text-sm" value="ACME Q2 Vehicle — Bold Price Hero" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Access</label>
+                <select class="w-full px-3 py-2.5 rounded-xl border-2 border-gray-100 bg-gray-50 text-[11px] font-bold text-gray-900 appearance-none">
+                  <option>ACME Automotive (all users)</option>
+                  <option>PMG Internal only</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Category Tag</label>
+                <div class="flex flex-wrap gap-2">
+                  <button class="px-3 py-1.5 rounded-full text-[9px] font-black uppercase bg-blue-600 text-white">Automotive</button>
+                  <button class="px-3 py-1.5 rounded-full text-[9px] font-black uppercase bg-gray-100 text-gray-500">Seasonal</button>
+                  <button class="px-3 py-1.5 rounded-full text-[9px] font-black uppercase bg-gray-100 text-gray-500">Performance</button>
+                  <button class="px-3 py-1.5 rounded-full text-[9px] font-black uppercase bg-gray-100 text-gray-400">+ Tag</button>
+                </div>
+              </div>
+              <!-- Publish summary card -->
+              <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-2">
+                <p class="text-[10px] font-black text-blue-900 uppercase tracking-widest">What Gets Published</p>
+                <div class="space-y-1.5">
+                  <div class="flex items-center gap-2 text-[9px] font-medium text-blue-700"><svg class="h-3.5 w-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>Template config + field mapping rules</div>
+                  <div class="flex items-center gap-2 text-[9px] font-medium text-blue-700"><svg class="h-3.5 w-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>Brand overrides (color, font, logo)</div>
+                  <div class="flex items-center gap-2 text-[9px] font-medium text-blue-700"><svg class="h-3.5 w-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>Wireframe + AI layout candidate</div>
+                  <div class="flex items-center gap-2 text-[9px] font-medium text-blue-gray-500"><svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="text-blue-gray-400">No batch output (that's a separate Media run)</span></div>
+                </div>
+              </div>
+              <button class="w-full py-4 rounded-xl bg-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-200 hover:bg-blue-700 flex items-center justify-center gap-2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/></svg>
+                Publish Template to Library
+              </button>
+            </div>
+          </div>
+          <div class="mt-10 pt-8 border-t border-gray-100 flex items-center justify-between">
+            <button class="text-blue-gray-400 border border-gray-100 hover:bg-gray-50 rounded-xl px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em]">← Previous Step</button>
+            <button class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUCCESS STATE -->
+  <p class="screen-label">Step 7 — Success state (after publish)</p>
+  <div class="bg-white rounded-2xl overflow-hidden shadow-2xl">
+    <div class="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+      <div class="flex gap-1.5"><div class="h-3 w-3 rounded-full bg-red-400"></div><div class="h-3 w-3 rounded-full bg-amber-400"></div><div class="h-3 w-3 rounded-full bg-green-400"></div></div>
+      <div class="flex-1 bg-white rounded px-3 py-1 text-[10px] text-gray-400 font-mono">app.alli.io/acme-automotive/template-builder/export</div>
+    </div>
+    <div style="background:#EEF1F7;" class="p-8">
+      <div class="max-w-lg mx-auto py-12 text-center space-y-6">
+        <!-- Success icon -->
+        <div class="h-20 w-20 bg-green-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-green-100">
+          <svg class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+        </div>
+        <div>
+          <p class="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Template Published</p>
+          <h2 class="text-2xl font-black text-gray-900">ACME Q2 Vehicle — Bold Price Hero</h2>
+          <p class="text-sm text-blue-gray-500 mt-2">Now available in the Template Library for ACME Automotive media users</p>
+        </div>
+        <!-- Template ID card -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Template ID</span>
+            <span class="text-[10px] font-mono font-bold text-blue-600">tmpl_9xkQf2Lp</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Channel</span>
+            <span class="text-[10px] font-bold text-gray-900">Social · 1:1</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Feed</span>
+            <span class="text-[10px] font-bold text-gray-900">Vehicle Inventory</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Access</span>
+            <span class="text-[10px] font-bold text-gray-900">ACME Automotive</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Published</span>
+            <span class="text-[10px] font-bold text-gray-900">Jun 5, 2026 · 2:14 PM</span>
+          </div>
+        </div>
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <a href="#" class="flex-1 py-3 rounded-xl border-2 border-gray-100 text-[10px] font-black text-blue-gray-500 uppercase tracking-[0.2em] hover:bg-gray-50 text-center">View in Library →</a>
+          <a href="#" class="flex-1 py-3 rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-700 text-center">Build Another Template</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

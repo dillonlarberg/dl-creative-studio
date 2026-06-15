@@ -1,330 +1,121 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import manifest from './manifest';
-import {
-  contextStep,
-  intentStep,
-  sourceStep,
-  mappingStep,
-  generateStep,
-  refineStep,
-  exportStep,
-} from './steps';
-import type { TemplateBuilderStepData, RequirementField } from './types';
-import type { StepContext } from '../types';
-
-/**
- * Manifest shape, validate() fixtures, and — critically — `next()` override
- * tests for context + mapping. The `next()` cases are the contract pressure
- * test that justifies extracting template-builder before any other app.
- */
-
-const buildCtx = (
-  stepData: TemplateBuilderStepData,
-  mergeStepData: (patch: Partial<TemplateBuilderStepData>) => void = () => {}
-): StepContext<TemplateBuilderStepData> => ({
-  stepData,
-  mergeStepData,
-  navigate: () => {},
-  client: { slug: 'acme' },
-  creativeId: null,
-});
+import { setupStep, designStep, publishStep } from './steps';
+import { WIREFRAME_CATALOG, SOCIAL_WIREFRAMES } from '../../constants/useCases';
 
 describe('template-builder manifest', () => {
-  it('has the 7 expected step ids in order', () => {
+  it('has the 3 expected step ids in order', () => {
     expect(manifest.id).toBe('template-builder');
     expect(manifest.basePath).toBe('template-builder');
-    expect(manifest.title).toBe('Dynamic Template Builder');
-    expect(manifest.steps.map((s) => s.id)).toEqual([
-      'context',
-      'intent',
-      'source',
-      'mapping',
-      'generate',
-      'refine',
-      'export',
-    ]);
+    expect(manifest.title).toBe('Template Builder');
+    expect(manifest.steps.map((s) => s.id)).toEqual(['setup', 'design', 'publish']);
   });
 
-  it('initialStepData returns an empty object', () => {
-    expect(manifest.initialStepData()).toEqual({});
+  it('initialStepData returns an object with a templateName', () => {
+    const data = manifest.initialStepData();
+    expect(typeof data.templateName).toBe('string');
+    expect(data.templateName!.length).toBeGreaterThan(0);
   });
 });
 
-describe('contextStep.validate', () => {
-  it('rejects empty data with all 3 requirements unmet', () => {
-    const result = contextStep.validate({});
+describe('setupStep.validate', () => {
+  it('rejects empty data', () => {
+    const result = setupStep.validate({});
     expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.reason).toBe('Project title required');
-    expect(result.requirements).toEqual([
-      { label: 'Project Title', met: false },
-      { label: 'Channel', met: false },
-      { label: 'Size Selected', met: false },
-    ]);
   });
 
-  it('rejects when channel missing — Project Title met, others unmet', () => {
-    const result = contextStep.validate({ jobTitle: 'Q4 Promo' });
+  it('rejects when channel is missing', () => {
+    const result = setupStep.validate({ templateName: 'My Template' });
     expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.reason).toBe('Channel required');
-    expect(result.requirements).toEqual([
-      { label: 'Project Title', met: true },
-      { label: 'Channel', met: false },
-      { label: 'Size Selected', met: false },
-    ]);
   });
 
-  it('rejects when no sizes selected — only Size Selected unmet', () => {
-    const result = contextStep.validate({
-      jobTitle: 'Q4 Promo',
-      channel: 'Social',
-    });
+  it('rejects when ratios are missing', () => {
+    const result = setupStep.validate({ templateName: 'My Template', channel: 'Social' });
     expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.reason).toBe('At least one size required');
-    expect(result.requirements).toEqual([
-      { label: 'Project Title', met: true },
-      { label: 'Channel', met: true },
-      { label: 'Size Selected', met: false },
-      { label: 'Wireframe Selected', met: false },
-    ]);
   });
 
-  it('rejects Social channel when no wireframe selected — only Wireframe unmet', () => {
-    const result = contextStep.validate({
-      jobTitle: 'Q4 Promo',
+  it('rejects when data source is missing', () => {
+    const result = setupStep.validate({
+      templateName: 'My Template',
       channel: 'Social',
       ratios: ['1:1'],
     });
     expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.reason).toBe('Wireframe selection required');
-    expect(result.requirements).toEqual([
-      { label: 'Project Title', met: true },
-      { label: 'Channel', met: true },
-      { label: 'Size Selected', met: true },
-      { label: 'Wireframe Selected', met: false },
-    ]);
   });
 
-  it('accepts a fully-populated Social context with wireframe', () => {
+  it('accepts a fully-populated setup', () => {
     expect(
-      contextStep.validate({
-        jobTitle: 'Q4 Promo',
+      setupStep.validate({
+        templateName: 'My Template',
         channel: 'Social',
         ratios: ['1:1'],
-        selectedWireframe: 'original_2',
+        selectedFeedId: 'feed-123',
       })
     ).toEqual({ ok: true });
   });
 
-  it('accepts a non-Social context without a wireframe', () => {
-    expect(
-      contextStep.validate({
-        jobTitle: 'Q4 Promo',
-        channel: 'Programmatic',
-        ratios: ['1:1'],
-      })
-    ).toEqual({ ok: true });
-  });
-
-  it('rejects whitespace-only title — Project Title unmet', () => {
-    const result = contextStep.validate({
-      jobTitle: '   ',
+  it('rejects whitespace-only template name', () => {
+    const result = setupStep.validate({
+      templateName: '   ',
       channel: 'Social',
       ratios: ['1:1'],
-      selectedWireframe: 'original_2',
+      selectedFeedId: 'feed-123',
     });
     expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.reason).toBe('Project title required');
-    expect(result.requirements).toEqual([
-      { label: 'Project Title', met: false },
-      { label: 'Channel', met: true },
-      { label: 'Size Selected', met: true },
-      { label: 'Wireframe Selected', met: true },
-    ]);
   });
 });
 
-describe('contextStep.next — wireframe skip-ahead (mirrors monolith line 1219)', () => {
-  it('returns undefined (advance to intent) when no wireframe selected', () => {
-    const result = contextStep.next!(buildCtx({}));
-    expect(result).toBeUndefined();
-  });
-
-  it('returns "source" when a wireframe is selected', () => {
-    const result = contextStep.next!(
-      buildCtx({ selectedWireframe: 'original_2' })
-    );
-    expect(result).toBe('source');
-  });
-
-  it('auto-populates requirements from the wireframe minRequirements', () => {
-    const merge = vi.fn();
-    contextStep.next!(
-      buildCtx({ selectedWireframe: 'original_2' }, merge)
-    );
-    expect(merge).toHaveBeenCalledTimes(1);
-    const patch = merge.mock.calls[0][0]!;
-    expect(patch.areRequirementsApproved).toBe(true);
-    const reqs = patch.requirements as RequirementField[];
-    expect(reqs.length).toBeGreaterThan(0);
-    // 'Logo' becomes a Brand category
-    const logo = reqs.find((r) => r.label === 'Logo');
-    expect(logo).toBeDefined();
-    expect(logo!.category).toBe('Brand');
-    expect(logo!.source).toBe('Creative House');
-  });
-
-  it('does NOT call mergeStepData when wireframe id does not match a known wireframe', () => {
-    const merge = vi.fn();
-    const result = contextStep.next!(
-      buildCtx({ selectedWireframe: 'not-real' }, merge)
-    );
-    expect(result).toBe('source'); // still skips intent
-    expect(merge).not.toHaveBeenCalled();
-  });
-});
-
-describe('intentStep.validate', () => {
-  it('rejects empty prompt', () => {
-    expect(intentStep.validate({})).toEqual({
+describe('designStep.validate', () => {
+  it('rejects when feedMappings is empty', () => {
+    expect(designStep.validate({})).toMatchObject({
       ok: false,
-      reason: 'Creative prompt required',
+      reason: 'Map at least one field to continue',
     });
   });
 
-  it('rejects when requirements are not yet synthesized', () => {
-    expect(intentStep.validate({ prompt: 'A bold hero layout' })).toEqual({
-      ok: false,
-      reason: 'Synthesize requirements before continuing',
-    });
+  it('rejects when feedMappings has no keys', () => {
+    expect(designStep.validate({ feedMappings: {} })).toMatchObject({ ok: false });
   });
 
-  it('rejects when requirements not approved', () => {
+  it('accepts when at least one mapping exists', () => {
     expect(
-      intentStep.validate({
-        prompt: 'A bold hero layout',
-        requirements: [
-          { id: 'h', label: 'Headline', category: 'Dynamic', source: 'Feed', type: 'text' },
-        ],
-      })
-    ).toEqual({ ok: false, reason: 'Requirements must be approved' });
-  });
-
-  it('accepts approved + populated', () => {
-    expect(
-      intentStep.validate({
-        prompt: 'A bold hero layout',
-        requirements: [
-          { id: 'h', label: 'Headline', category: 'Dynamic', source: 'Feed', type: 'text' },
-        ],
-        areRequirementsApproved: true,
-      })
+      designStep.validate({ feedMappings: { headline: 'product_title' } })
     ).toEqual({ ok: true });
   });
 });
 
-describe('sourceStep.validate', () => {
-  it('rejects empty', () => {
-    expect(sourceStep.validate({})).toMatchObject({ ok: false });
-  });
-
-  it('accepts a chosen feed', () => {
-    expect(
-      sourceStep.validate({ selectedFeed: { name: 'creative_insights_data_export' } })
-    ).toEqual({ ok: true });
+describe('publishStep.validate', () => {
+  it('always passes (no hard gate)', () => {
+    expect(publishStep.validate({})).toEqual({ ok: true });
   });
 });
 
-describe('mappingStep.validate', () => {
-  it('passes when no Dynamic requirements exist', () => {
-    expect(mappingStep.validate({})).toEqual({ ok: true });
-    expect(
-      mappingStep.validate({
-        requirements: [
-          { id: 'logo', label: 'Logo', category: 'Brand', source: 'Creative House', type: 'image' },
-        ],
-      })
-    ).toEqual({ ok: true });
+describe('WIREFRAME_CATALOG', () => {
+  const socialIds = new Set(SOCIAL_WIREFRAMES.map((w) => w.id));
+
+  it('every WIREFRAME_CATALOG id exists in SOCIAL_WIREFRAMES', () => {
+    for (const entry of WIREFRAME_CATALOG) {
+      expect(socialIds.has(entry.id), `${entry.id} not found in SOCIAL_WIREFRAMES`).toBe(true);
+    }
   });
 
-  it('rejects when a Dynamic requirement is unmapped', () => {
-    expect(
-      mappingStep.validate({
-        requirements: [
-          { id: 'h', label: 'Headline', category: 'Dynamic', source: 'Feed', type: 'text' },
-        ],
-        feedMappings: {},
-      })
-    ).toEqual({ ok: false, reason: 'Map a feed field to "Headline"' });
+  it('WIREFRAME_CATALOG and SOCIAL_WIREFRAMES have the same count', () => {
+    expect(WIREFRAME_CATALOG).toHaveLength(SOCIAL_WIREFRAMES.length);
   });
 
-  it('passes when all Dynamic requirements are mapped', () => {
-    expect(
-      mappingStep.validate({
-        requirements: [
-          { id: 'h', label: 'Headline', category: 'Dynamic', source: 'Feed', type: 'text' },
-          { id: 'i', label: 'Image', category: 'Dynamic', source: 'Feed', type: 'image' },
-        ],
-        feedMappings: { h: 'product_title', i: 'image_url' },
-      })
-    ).toEqual({ ok: true });
-  });
-});
-
-describe('mappingStep.next — wireframe skip-ahead (mirrors monolith lines 1245+1248)', () => {
-  it('returns "refine" when a wireframe is selected (skips generate)', () => {
-    expect(
-      mappingStep.next!(buildCtx({ selectedWireframe: 'original_2' }))
-    ).toBe('refine');
+  it('has entries for all 45 wireframe HTML files', () => {
+    expect(WIREFRAME_CATALOG.length).toBeGreaterThanOrEqual(45);
+    for (const entry of WIREFRAME_CATALOG) {
+      expect(entry.slots.length, `${entry.id} has no slots`).toBeGreaterThanOrEqual(0);
+    }
   });
 
-  it('returns undefined (advance to generate) when no wireframe is selected', () => {
-    expect(mappingStep.next!(buildCtx({}))).toBeUndefined();
-  });
-
-  it('returns undefined when selectedWireframe is empty string', () => {
-    expect(mappingStep.next!(buildCtx({ selectedWireframe: '' }))).toBeUndefined();
-  });
-
-  it('returns "refine" regardless of whether feedMappings are present', () => {
-    expect(
-      mappingStep.next!(
-        buildCtx({
-          selectedWireframe: 'original_3',
-          feedMappings: { h: 'product_title' },
-        })
-      )
-    ).toBe('refine');
-  });
-});
-
-describe('generateStep.validate', () => {
-  it('rejects empty', () => {
-    expect(generateStep.validate({})).toMatchObject({ ok: false });
-  });
-
-  it('rejects when candidates exist but none selected', () => {
-    expect(
-      generateStep.validate({ candidates: [{}, {}], selectedCandidateIndex: null })
-    ).toMatchObject({ ok: false, reason: 'Select a candidate to continue' });
-  });
-
-  it('accepts when a candidate is selected', () => {
-    expect(
-      generateStep.validate({ candidates: [{}, {}], selectedCandidateIndex: 0 })
-    ).toEqual({ ok: true });
-  });
-});
-
-describe('refineStep.validate / exportStep.validate', () => {
-  it('refine has no hard gate', () => {
-    expect(refineStep.validate({})).toEqual({ ok: true });
-  });
-  it('export has no hard gate', () => {
-    expect(exportStep.validate({})).toEqual({ ok: true });
+  it('file and adSize agree with SOCIAL_WIREFRAMES for every shared id', () => {
+    const socialById = new Map(SOCIAL_WIREFRAMES.map((w) => [w.id, w]));
+    for (const entry of WIREFRAME_CATALOG) {
+      const social = socialById.get(entry.id)!;
+      expect(entry.file, `${entry.id}.file mismatch`).toBe(social.file);
+      expect(entry.adSize, `${entry.id}.adSize mismatch`).toBe(social.adSize);
+    }
   });
 });

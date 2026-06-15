@@ -14,6 +14,7 @@ import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
 import { WizardShell } from './platform/wizard/WizardShell';
 import videoStitchManifest from './apps/video-stitch/manifest';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
+import TemplateLibraryPage from './pages/TemplateLibraryPage';
 import VideoCutdownAppRoot from './apps/video-cutdown/AppRoot';
 
 /**
@@ -119,6 +120,10 @@ export default function App() {
                 <TemplateBuilderAppRoot />
               </ClientProvider>
             }
+          />
+          <Route
+            path="/adlabs/:clientSlug/templates"
+            element={<TemplateLibraryPage />}
           />
           <Route
             path="/adlabs/:clientSlug/video-stitch/*"
