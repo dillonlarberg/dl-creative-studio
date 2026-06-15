@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { CircleStackIcon, CheckCircleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, Channel } from '../types';
@@ -280,8 +280,14 @@ function SetupStepBody({
   const isSubmitting = Boolean(stepData._submitting);
   const selectedRatios = stepData.ratios ?? [];
 
-  // Wire the module-level callback every render so `submit` can reach context.
-  _submitCallback = async (clientSlug: string, data: TemplateBuilderStepData) => {
+  // Keep the latest callback in a ref so the closure always captures fresh
+  // hook values (assetHouse, tbCtx, setFeedDone, setRequirementsDone) without
+  // violating React's rule against side-effects during render.
+  const latestSubmitCallback = useRef<
+    (clientSlug: string, data: TemplateBuilderStepData) => Promise<void>
+  >(null!);
+
+  latestSubmitCallback.current = async (clientSlug: string, data: TemplateBuilderStepData) => {
     setFeedDone(false);
     setRequirementsDone(false);
 
@@ -314,7 +320,13 @@ function SetupStepBody({
     tbCtx.setRequirements(requirements);
   };
 
+  // Wire the module-level _submitCallback via useEffect so it is set after
+  // commit (not during render). The forwarder reads latestSubmitCallback.current
+  // at call time, so it always uses the freshest closure even if the effect
+  // hasn't re-run yet. Cleanup nulls the module-level var on unmount, which
+  // also fixes the Strict Mode double-invoke window.
   useEffect(() => {
+    _submitCallback = (...args) => latestSubmitCallback.current(...args);
     return () => { _submitCallback = null; };
   }, []);
 

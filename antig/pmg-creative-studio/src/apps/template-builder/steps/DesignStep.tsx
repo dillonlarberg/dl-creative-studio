@@ -446,6 +446,26 @@ function DesignStepBody({
     setZoneBounds({});
   }, [stepData.wireframeFile]);
 
+  // Empty-state guard: requirements + feedColumns live in React context, not Firestore.
+  // On browser refresh at Step 2, they are always empty. Guide user back to Setup.
+  // IMPORTANT: this early return must come after ALL useState/useRef/useEffect calls above.
+  if (requirements.length === 0 && feedColumns.length === 0 && !isLoadingCandidates) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 p-8">
+        <ExclamationTriangleIcon className="h-10 w-10 text-amber-300 mx-auto" />
+        <div className="space-y-2">
+          <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest">
+            Setup data didn't carry over
+          </p>
+          <p className="text-[11px] font-medium text-gray-400 max-w-xs mx-auto leading-relaxed">
+            Your feed and brief weren't saved between sessions.
+            Click <strong className="text-gray-600">Back</strong> to return to Setup and continue from there.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Derived values
   const selectedCandidateIndex = stepData.selectedCandidateIndex ?? 0;
   const activeCandidate = candidates[selectedCandidateIndex ?? 0];
