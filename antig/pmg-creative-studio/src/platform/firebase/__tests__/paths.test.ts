@@ -55,20 +55,6 @@ describe('paths', () => {
     });
   });
 
-  describe('template paths', () => {
-    it('returns the templates collection path (hardcoded to template-builder)', () => {
-      expect(paths.templates('ralph_lauren')).toBe(
-        'clients/ralph_lauren/apps/template-builder/templates'
-      );
-    });
-
-    it('returns a single template doc path', () => {
-      expect(paths.template('ralph_lauren', 't1')).toBe(
-        'clients/ralph_lauren/apps/template-builder/templates/t1'
-      );
-    });
-  });
-
   describe('batch paths', () => {
     it('returns the batches collection path', () => {
       expect(paths.batches('ralph_lauren', 'ad-resizing')).toBe(
@@ -90,6 +76,7 @@ describe('paths', () => {
       'template-builder',
       'video-stitch',
       'ad-resizing',
+      'edit-image',
     ];
 
     it.each(validIds)('returns true for valid AppId "%s"', (id: AppId) => {

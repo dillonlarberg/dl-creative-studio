@@ -22,17 +22,27 @@ import { applyClientTransforms } from '../_internal/transformExecutor';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Parse ratio string "1:1" or "300x250" into { width, height }. */
-function parseRatio(ratio: string): { width: number; height: number } {
-  if (ratio.includes(':')) {
-    const [w, h] = ratio.split(':').map(Number);
-    return { width: w ?? 1, height: h ?? 1 };
-  }
+const RATIO_TO_PX: Record<string, { width: number; height: number }> = {
+  '1:1':  { width: 1080, height: 1080 },
+  '9:16': { width: 1080, height: 1920 },
+  '16:9': { width: 1920, height: 1080 },
+  '4:5':  { width: 1080, height: 1350 },
+  '5:4':  { width: 1350, height: 1080 },
+  '4:3':  { width: 1024, height: 768  },
+  '3:4':  { width: 768,  height: 1024 },
+  '2:3':  { width: 800,  height: 1200 },
+  '3:2':  { width: 1200, height: 800  },
+};
+
+/** Parse ratio string "1:1" / "9:16" into real pixel dimensions, or pass "300x250" through as-is. */
+function parseRatio(ratio: string): { width: number; height: number; label: string } {
   if (ratio.includes('x')) {
     const [w, h] = ratio.split('x').map(Number);
-    return { width: w ?? 300, height: h ?? 250 };
+    return { width: w ?? 300, height: h ?? 250, label: ratio };
   }
-  return { width: 1, height: 1 };
+  const px = RATIO_TO_PX[ratio];
+  if (px) return { ...px, label: ratio };
+  return { width: 1080, height: 1080, label: ratio };
 }
 
 /** Convert feedMappings + uploadValues + staticValues into the FieldMapping discriminated union. */

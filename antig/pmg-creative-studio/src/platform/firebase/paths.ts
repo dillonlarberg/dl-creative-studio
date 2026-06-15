@@ -9,10 +9,13 @@
  * Schema:
  *   clients/{slug}                                  ← brand profile fields live on this doc
  *     /assets/{assetId}                             ← brand assets
+ *     /datasources/{modelName}                      ← feed metadata (written by scanDatasources CF)
+ *     /templateLibrary/{templateId}                 ← published templates, shared across all apps
+ *       /history/{entryId}                          ← immutable version snapshots
  *     /apps/{appId}                                 ← per-app subtree
- *       /creatives/{creativeId}                     ← drafts, completed runs
- *       /templates/{templateId}                     ← template-builder app
- *       /batches/{batchId}                          ← feed-processing app
+ *       /creatives/{creativeId}                     ← wizard WIP sessions (auto-saved step data)
+ *       /batches/{batchId}                          ← batch generation jobs
+ *       /outputs/{outputId}                         ← generated ad outputs
  *
  * Storage mirrors the same hierarchy:
  *   clients/{slug}/apps/{appId}/<arbitrary suffix>
@@ -22,13 +25,15 @@ export type AppId =
   | 'video-cutdown'
   | 'template-builder'
   | 'video-stitch'
-  | 'ad-resizing';
+  | 'ad-resizing'
+  | 'edit-image';
 
 const VALID_APP_IDS: readonly AppId[] = [
   'video-cutdown',
   'template-builder',
   'video-stitch',
   'ad-resizing',
+  'edit-image',
 ];
 
 export function isAppId(value: unknown): value is AppId {
@@ -52,9 +57,6 @@ export const paths = {
   creatives: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/creatives`,
   creative: (slug: ClientSlug, appId: AppId, id: CreativeId) =>
     `${root(slug)}/apps/${appId}/creatives/${id}`,
-
-  templates: (slug: ClientSlug) => `${root(slug)}/apps/template-builder/templates`,
-  template: (slug: ClientSlug, id: string) => `${root(slug)}/apps/template-builder/templates/${id}`,
 
   batches: (slug: ClientSlug, appId: AppId) => `${root(slug)}/apps/${appId}/batches`,
   batch: (slug: ClientSlug, appId: AppId, id: string) => `${root(slug)}/apps/${appId}/batches/${id}`,

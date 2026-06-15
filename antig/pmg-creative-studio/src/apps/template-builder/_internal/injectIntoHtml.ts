@@ -197,6 +197,9 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (style.fontSize != null) rules += `font-size: ${style.fontSize}px !important; `;
       if (style.color) rules += `color: ${style.color} !important; `;
       if (style.backgroundColor) rules += `background-color: ${style.backgroundColor} !important; `;
+      if (style.fontWeight) rules += `font-weight: ${style.fontWeight} !important; `;
+      if (style.fontStyle) rules += `font-style: ${style.fontStyle} !important; `;
+      if (style.textDecoration) rules += `text-decoration: ${style.textDecoration} !important; `;
       if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
     }
     if (zoneRules) {

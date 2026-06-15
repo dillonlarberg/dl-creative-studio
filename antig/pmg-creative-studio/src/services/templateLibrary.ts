@@ -67,8 +67,8 @@ function _writeHistoryInTransaction(
 // Feed validation helpers (exported for testing)
 // ---------------------------------------------------------------------------
 
-export async function _fetchLiveFeedColumns(datasourceId: string): Promise<string[]> {
-  const snap = await getDoc(doc(db, `datasources/${datasourceId}`));
+export async function _fetchLiveFeedColumns(clientSlug: ClientSlug, datasourceId: string): Promise<string[]> {
+  const snap = await getDoc(doc(db, paths.datasource(clientSlug, datasourceId)));
   if (!snap.exists()) throw new Error(`Datasource not found: ${datasourceId}`);
   return (snap.data()!.columns as string[]).sort();
 }
@@ -102,6 +102,7 @@ function validateMappings(
 }
 
 async function checkFeedDrift(
+  clientSlug: ClientSlug,
   fieldMappings: Record<string, FieldMapping>,
   datasourceId: string
 ): Promise<string[]> {
@@ -109,7 +110,7 @@ async function checkFeedDrift(
     .filter((m): m is Extract<FieldMapping, { source: 'feed' }> => m.source === 'feed')
     .map((m) => m.column);
 
-  const liveColumns = await _fns._fetchLiveFeedColumns(datasourceId);
+  const liveColumns = await _fns._fetchLiveFeedColumns(clientSlug, datasourceId);
   return mappedFeedColumns.filter((c) => !liveColumns.includes(c));
 }
 
@@ -230,7 +231,7 @@ export const templateLibraryService = {
     // Firestore rules don't cover that path yet), skip the check rather than
     // blocking publish — the column mapping was already validated client-side.
     try {
-      const removed = await checkFeedDrift(preData.fieldMappings, preData.datasourceId);
+      const removed = await checkFeedDrift(clientSlug, preData.fieldMappings, preData.datasourceId);
       if (removed.length > 0) {
         throw new Error(
           `Cannot publish: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
@@ -277,7 +278,7 @@ export const templateLibraryService = {
     if (preCurrent.status === 'draft') throw new TemplateDraftError(templateId);
     const merged = { ...preCurrent, ...data };
     validateMappings(merged.scaffoldSnapshot.expectedFields, merged.fieldMappings);
-    const removed = await checkFeedDrift(merged.fieldMappings, merged.datasourceId);
+    const removed = await checkFeedDrift(clientSlug, merged.fieldMappings, merged.datasourceId);
     if (removed.length > 0) {
       throw new Error(
         `Cannot update: ${removed.length} mapped feed column(s) no longer exist: ${removed.join(', ')}`
