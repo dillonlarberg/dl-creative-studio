@@ -17,21 +17,20 @@ import { makeCutdownDeps } from "./deps";
 // GEMINI_API_KEY already exists (functions/src/ai.ts uses it). SHASTACK key is
 // new — set before deploy in a later phase; not needed to build.
 const GEMINI_KEY = defineSecret("GEMINI_API_KEY");
-const SHOTSTACK_KEY = defineSecret("SHOTSTACK_API_KEY");
 
 export const cutdownListTracks = onCall(
   {
     // enforceAppCheck:false — App Check not yet registered for this web app;
     // match runOutpaintBatch. Re-enable once registered.
     enforceAppCheck: false,
-    secrets: [GEMINI_KEY, SHOTSTACK_KEY],
+    secrets: [GEMINI_KEY],
     region: "us-central1",
     memory: "512MiB",
     timeoutSeconds: 60,
   },
   async (request: CallableRequest<unknown>) => {
     assertAlliStudioUser(request);
-    const deps = makeCutdownDeps(GEMINI_KEY.value(), SHOTSTACK_KEY.value());
+    const deps = makeCutdownDeps(GEMINI_KEY.value());
     return { tracks: await deps.catalog.list() };
   },
 );

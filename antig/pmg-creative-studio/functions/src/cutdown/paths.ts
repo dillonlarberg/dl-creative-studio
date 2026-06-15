@@ -17,6 +17,11 @@ export const cutdownPaths = {
     `${appRoot(slug)}/batches/${batchId}/versions/${angle}`,
   thumb: (slug: string, batchId: string, angle: string, i: number) =>
     `${appRoot(slug)}/batches/${batchId}/thumbs/${angle}-${i}.jpg`,
-  renderClip: (slug: string, batchId: string, angle: string, i: number) =>
-    `${appRoot(slug)}/renders/${batchId}/${angle}-clip-${i}.mp4`,
+  /**
+   * The final rendered reel. Versioned by `renderTs` (ms epoch) so a re-render of
+   * the same angle writes a fresh object — no overwrite race, no stale browser
+   * cache on the previous download URL. The OutputDoc points to the latest.
+   */
+  finalReel: (slug: string, batchId: string, angle: string, renderTs: number) =>
+    `${appRoot(slug)}/renders/${batchId}/${angle}-${renderTs}.mp4`,
 };

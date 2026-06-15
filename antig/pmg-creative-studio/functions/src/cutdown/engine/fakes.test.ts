@@ -8,12 +8,12 @@ import {
   FakeEvenSpacedSelector,
   FakeFixedBpm,
   FakeMusicCatalog,
-  FakeEchoRenderer,
+  FakeReelRenderer,
   FakeClipExtractor,
   FakeCutdownBrain,
 } from "./fakes";
-import { SegmentSchema, SampleMusicTrackSchema, EditSpecSchema, CutdownPlanSchema } from "./types";
-import type { EditSpec, CutPlan } from "./types";
+import { SegmentSchema, SampleMusicTrackSchema, CutdownPlanSchema } from "./types";
+import type { CutPlan } from "./types";
 
 describe("FakeEvenSpacedSelector (VideoMomentSelector contract)", () => {
   it("returns well-formed, in-bounds, schema-valid segments", async () => {
@@ -69,18 +69,15 @@ describe("FakeMusicCatalog (MusicCatalog contract)", () => {
   });
 });
 
-describe("FakeEchoRenderer (VideoRenderer contract)", () => {
-  it("accepts an EditSpec and returns an mp4Url", async () => {
-    const spec: EditSpec = EditSpecSchema.parse({
-      clips: [{ url: "fake://blob/clip-0.mp4", len: 2 }],
-      musicUrl: "fake://music/pulse-120.mp3",
+describe("FakeReelRenderer (ReelRenderer contract)", () => {
+  it("accepts a ReelComposition and returns a local mp4Path", async () => {
+    const { mp4Path } = await new FakeReelRenderer().render({
+      clipPaths: ["/tmp/clip-0.mp4"],
+      musicPath: "/tmp/music.mp3",
       totalSec: 15,
-      width: 1080,
-      height: 1920,
     });
-    const { mp4Url } = await new FakeEchoRenderer().render(spec);
-    expect(mp4Url).toMatch(/^fake:\/\/render\//);
-    expect(mp4Url).toContain("1-cuts");
+    expect(mp4Path).toMatch(/^\/fake\/reel-/);
+    expect(mp4Path).toContain("1-cuts");
   });
 });
 

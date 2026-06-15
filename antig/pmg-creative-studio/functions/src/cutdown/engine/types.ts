@@ -79,18 +79,6 @@ export const SampleMusicTrackSchema = z.object({
 });
 export type SampleMusicTrack = z.infer<typeof SampleMusicTrackSchema>;
 
-/**
- * One pre-extracted clip the renderer plays in sequence: a fetchable URL plus its
- * output length. Each clip is already trimmed to a single moment (Shotstack only
- * ever fetches a few seconds of video — the full long source would exceed the
- * renderer's source limits).
- */
-export const ClipRefSchema = z.object({
-  url: z.string().min(1),
-  len: z.number().positive(),
-});
-export type ClipRef = z.infer<typeof ClipRefSchema>;
-
 /** A described beat from the shared analyze pass — a Segment that REQUIRES summary + role. */
 export const BeatSchema = z
   .object({
@@ -121,7 +109,13 @@ export const PlannedCutSchema = z
     why: z.string().optional(),
     score: z.number().optional(),
   })
-  .refine((c) => c.srcOut > c.srcIn, { message: "srcOut must be greater than srcIn" });
+  .refine((c) => c.srcOut > c.srcIn, { message: "srcOut must be greater than srcIn" })
+  // The source window must equal the output slot length (1:1 speed, no stretch).
+  // Guards the render's `-t totalSec` against a tampered/stale plan that would
+  // otherwise truncate the video or freeze its tail. 2ms tolerance for ms rounding.
+  .refine((c) => Math.abs(c.srcOut - c.srcIn - c.len) < 0.002, {
+    message: "srcOut - srcIn must equal len",
+  });
 export type PlannedCut = z.infer<typeof PlannedCutSchema>;
 
 /** One AI-generated cut version: an angle, its pitch, and the ordered cuts. */
@@ -132,12 +126,15 @@ export const CutdownPlanSchema = z.object({
 });
 export type CutdownPlan = z.infer<typeof CutdownPlanSchema>;
 
-/** The render request handed to `VideoRenderer`. All asset refs must be URLs a cloud renderer can fetch. */
-export const EditSpecSchema = z.object({
-  clips: z.array(ClipRefSchema).min(1),
-  musicUrl: z.string().min(1),
-  totalSec: z.number().positive(),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-});
-export type EditSpec = z.infer<typeof EditSpecSchema>;
+/**
+ * The local-render request handed to `ReelRenderer`: ordered local clip paths
+ * (each already normalized to OUTPUT dims by `extractClips`) plus a local music
+ * file. Music starts at t=0; `totalSec` is derived from the plan's cuts, not the
+ * raw client `targetSec`. Dimensions are NOT carried — a stream-copy renderer
+ * never rescales, so they would be dead params (the extractor owns dimensions).
+ */
+export interface ReelComposition {
+  clipPaths: readonly string[];
+  musicPath: string;
+  totalSec: number;
+}
