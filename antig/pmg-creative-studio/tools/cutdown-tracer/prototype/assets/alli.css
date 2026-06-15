@@ -1,0 +1,191 @@
+/* Ask Alli — purple AI generation/regeneration experience.
+ *
+ * Ported VERBATIM from the real app so the prototype's "prompt" and
+ * "generating" steps match Ask Alli exactly:
+ *   - src/apps/ad-resizing/components/SingleImageModal.tsx  (pill + prompt + orbit)
+ *   - src/apps/ad-resizing/components/GeneratedTile.tsx      (shimmer-tile + spinner)
+ *   - src/index.css  (@keyframes alli-breathe / alli-orbit-a|b|c / tile-shimmer)
+ *
+ * Signature gradient = indigo-500 → violet-600 (#6366f1 → #7c3aed), 135deg.
+ * Center/heading sparkle = indigo-600 (#4f46e5). Orbit tints = violet-500 /
+ * indigo-400 / violet-300. Load AFTER theme.js. */
+
+:root {
+  --alli-indigo-600: #4f46e5;
+  --alli-indigo-500: #6366f1;
+  --alli-indigo-400: #818cf8;
+  --alli-violet-600: #7c3aed;
+  --alli-violet-500: #8b5cf6;
+  --alli-violet-300: #c4b5fd;
+  --alli-grad: linear-gradient(135deg, #6366f1, #7c3aed);
+  --alli-pill-bg: #eef0f6;
+}
+
+/* ---- Keyframes (verbatim from src/index.css) ---- */
+@keyframes alli-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50%      { transform: scale(1.18) rotate(18deg); opacity: 0.72; }
+}
+@keyframes alli-orbit-a {
+  0%   { transform: translate(0px, 0px)    scale(1)   rotate(0deg);   opacity: 0.18; }
+  20%  { transform: translate(22px, -15px) scale(1.2) rotate(72deg);  opacity: 1; }
+  40%  { transform: translate(26px, 5px)   scale(0.6) rotate(144deg); opacity: 0.45; }
+  60%  { transform: translate(13px, 21px)  scale(0.9) rotate(216deg); opacity: 0.8; }
+  80%  { transform: translate(-10px, 11px) scale(0.55) rotate(288deg); opacity: 0.3; }
+  100% { transform: translate(0px, 0px)    scale(1)   rotate(360deg); opacity: 0.18; }
+}
+@keyframes alli-orbit-b {
+  0%   { transform: translate(0px, 0px)     scale(0.7) rotate(0deg);   opacity: 0.5; }
+  33%  { transform: translate(-20px, -13px) scale(1.3) rotate(120deg); opacity: 0.95; }
+  66%  { transform: translate(-14px, 17px)  scale(0.5) rotate(240deg); opacity: 0.28; }
+  100% { transform: translate(0px, 0px)     scale(0.7) rotate(360deg); opacity: 0.5; }
+}
+@keyframes alli-orbit-c {
+  0%   { transform: translate(0px, 0px)    scale(1)    rotate(0deg);   opacity: 0.6; }
+  25%  { transform: translate(8px, -22px)  scale(0.55) rotate(90deg);  opacity: 0.22; }
+  50%  { transform: translate(-18px, -9px) scale(1.15) rotate(180deg); opacity: 0.88; }
+  75%  { transform: translate(-5px, 19px)  scale(0.7)  rotate(270deg); opacity: 0.38; }
+  100% { transform: translate(0px, 0px)    scale(1)    rotate(360deg); opacity: 0.6; }
+}
+@keyframes tile-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes alli-spin { to { transform: rotate(360deg); } }
+
+/* ---- Orbiting sparkle cluster (the "generating" hero) ----
+ * Container is exactly 48x48; center sparkle 28px; orbiters 12/10/8px.
+ * The translate vectors are tuned to this box — scale the whole cluster
+ * with transform, not by shrinking the container. */
+.alli-orb {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.alli-orb .alli-center { animation: alli-breathe 2s ease-in-out infinite; }
+.alli-orb .alli-center svg { width: 28px; height: 28px; color: var(--alli-indigo-600); }
+.alli-orb .alli-o { position: absolute; }
+.alli-orb .alli-o.a { animation: alli-orbit-a 3s   ease-in-out infinite; }
+.alli-orb .alli-o.b { animation: alli-orbit-b 2.3s ease-in-out infinite 0.5s; }
+.alli-orb .alli-o.c { animation: alli-orbit-c 2.8s ease-in-out infinite 1s; }
+.alli-orb .alli-o.a svg { width: 12px; height: 12px; color: var(--alli-violet-500); }
+.alli-orb .alli-o.b svg { width: 10px; height: 10px; color: var(--alli-indigo-400); }
+.alli-orb .alli-o.c svg { width: 8px;  height: 8px;  color: var(--alli-violet-300); }
+
+/* A larger hero variant — 1.5x the cluster without distorting the keyframes. */
+.alli-orb.alli-orb-lg { transform: scale(1.5); }
+
+/* ---- Trigger pill (circle that expands to a pill on hover) ---- */
+.alli-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 9999px;
+  padding: 0 8px;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(to bottom right, #6366f1, #7c3aed);
+  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+  transition: padding 0.2s ease-out;
+}
+.alli-pill:hover { padding-right: 16px; }
+.alli-pill svg { width: 16px; height: 16px; flex-shrink: 0; }
+.alli-pill .alli-pill-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease-out;
+}
+.alli-pill:hover .alli-pill-label { margin-left: 6px; max-width: 9rem; opacity: 1; }
+
+/* ---- Prompt input (pill) — gradient submit, no focus ring ---- */
+.alli-input-pill {
+  display: flex;
+  align-items: flex-end;
+  background: var(--alli-pill-bg);
+  border-radius: 20px;
+  padding: 10px 10px 10px 16px;
+  gap: 8px;
+}
+.alli-input-pill textarea,
+.alli-input-pill input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  -webkit-appearance: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #374151;
+  padding: 0;
+  font-family: inherit;
+}
+.alli-input-pill textarea::placeholder,
+.alli-input-pill input::placeholder { color: #9ca3af; }
+.alli-input-pill textarea:focus,
+.alli-input-pill input:focus { outline: none; box-shadow: none; }
+.alli-submit {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--alli-grad);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.alli-submit:hover { filter: brightness(1.08); }
+.alli-submit:active { transform: scale(0.94); }
+.alli-submit:disabled { background: #c4c6d4; cursor: default; filter: none; }
+.alli-submit svg { width: 16px; height: 16px; }
+
+/* ---- Generating shimmer + indigo spinner ---- */
+.shimmer-tile {
+  background: linear-gradient(90deg, #ebebeb 0px, #f5f5f5 80px, #ebebeb 160px);
+  background-size: 400px 100%;
+  animation: tile-shimmer 1.4s ease-in-out infinite;
+}
+.alli-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 2px solid #c7d2fe;            /* indigo-200 base */
+  border-top-color: var(--alli-indigo-500);
+  animation: alli-spin 1s linear infinite;
+}
+
+/* ---- Purple progress fill (replaces flat blue bar while generating) ---- */
+.alli-progress-fill {
+  background: var(--alli-grad);
+  background-size: 200% 100%;
+  animation: alli-progress-sheen 2.2s ease-in-out infinite;
+}
+@keyframes alli-progress-sheen {
+  0%, 100% { background-position: 0% 0; }
+  50%      { background-position: 100% 0; }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .alli-orb .alli-center,
+  .alli-orb .alli-o.a,
+  .alli-orb .alli-o.b,
+  .alli-orb .alli-o.c,
+  .shimmer-tile,
+  .alli-spinner,
+  .alli-progress-fill { animation: none; }
+}

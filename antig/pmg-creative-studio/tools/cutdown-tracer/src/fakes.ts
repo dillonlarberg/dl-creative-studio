@@ -12,6 +12,7 @@ import type {
   BlobStore,
   ClipExtractor,
   CutdownBrain,
+  StoryboardMaker,
 } from "./seams.js";
 import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types.js";
 import { ANGLES, orderSegments } from "./angles.js";
@@ -127,6 +128,13 @@ export class FakeBlobStore implements BlobStore {
   }
   async sign(storagePath: string): Promise<string> {
     return `fake://blob/${storagePath}?sig=fake`;
+  }
+}
+
+/** Returns canned `fake://` thumbnail paths without invoking ffmpeg. No network. */
+export class FakeStoryboard implements StoryboardMaker {
+  async frames(_p: string, cuts: ReadonlyArray<{ srcIn: number; len: number }>, _d: number): Promise<string[]> {
+    return cuts.map((_c, i) => `fake://thumb-${i}.jpg`);
   }
 }
 

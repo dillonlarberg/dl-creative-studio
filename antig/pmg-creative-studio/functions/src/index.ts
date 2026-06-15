@@ -15,6 +15,7 @@ export * from "./video";
 export * from "./resize";
 export * from "./datasources";
 export * from "./template";
+export * from "./cutdown";
 
 // helloWorld doubles as the template AI proxy for dev until the 3 standalone
 // Cloud Functions (synthesizeRequirementsAI, generateLayoutsAI, suggestMappingsAI

@@ -15,6 +15,7 @@ import {
   FakeBlobStore,
   FakeClipExtractor,
   FakeCutdownBrain,
+  FakeStoryboard,
 } from "./fakes.js";
 import { makeGeminiSelector } from "./gemini.js";
 import { makeLibrosaTempoDetector } from "./librosa.js";
@@ -36,6 +37,7 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
       blobStore: new FakeBlobStore(),
       clipExtractor: new FakeClipExtractor(),
       brain: new FakeCutdownBrain(),
+      storyboard: new FakeStoryboard(),
     };
   }
 
@@ -52,5 +54,6 @@ export function makeDeps(env: NodeJS.ProcessEnv = process.env): PipelineDeps {
     blobStore: notYet("BlobStore", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
     clipExtractor: notYet("ClipExtractor", "step 5 (use makeRealDeps in realClients.ts — see SETUP-step5.md)"),
     brain: makeCutdownBrain(env.GEMINI_API_KEY ?? ""),
+    storyboard: notYet("StoryboardMaker", "functions wiring"),
   };
 }

@@ -13,9 +13,9 @@ import { ClientProvider } from './platform/client/ClientProvider';
 import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
 import { WizardShell } from './platform/wizard/WizardShell';
 import videoStitchManifest from './apps/video-stitch/manifest';
-import videoCutdownManifest from './apps/video-cutdown/manifest';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 import TemplateLibraryPage from './pages/TemplateLibraryPage';
+import VideoCutdownAppRoot from './apps/video-cutdown/AppRoot';
 
 /**
  * Root redirect: send the user to the AdLabs dashboard for their saved client.
@@ -137,7 +137,7 @@ export default function App() {
             path="/adlabs/:clientSlug/video-cutdown/*"
             element={
               <ClientProvider>
-                <WizardShell manifest={videoCutdownManifest} />
+                <VideoCutdownAppRoot />
               </ClientProvider>
             }
           />

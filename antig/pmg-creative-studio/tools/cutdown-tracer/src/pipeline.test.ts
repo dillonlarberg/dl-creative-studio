@@ -13,6 +13,7 @@ import {
   FakeBlobStore,
   FakeClipExtractor,
   FakeCutdownBrain,
+  FakeStoryboard,
 } from "./fakes.js";
 import { EditSpecSchema, OUTPUT } from "./types.js";
 import { totalLen } from "./planCuts.js";
@@ -26,6 +27,7 @@ const fakeDeps = (): PipelineDeps => ({
   blobStore: new FakeBlobStore(),
   clipExtractor: new FakeClipExtractor(),
   brain: new FakeCutdownBrain(),
+  storyboard: new FakeStoryboard(),
 });
 
 describe("runPipeline (all Fakes, no network)", () => {

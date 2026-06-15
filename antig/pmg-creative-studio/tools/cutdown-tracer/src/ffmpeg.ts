@@ -18,7 +18,7 @@ import type { CutPlan } from "./types.js";
 const round3 = (n: number): number => Math.round(n * 1000) / 1000;
 
 /** Run ffmpeg, capturing full stderr (where ffmpeg writes diagnostics). Never rejects. */
-function runFfmpegCapture(bin: string, args: string[]): Promise<{ code: number | null; stderr: string }> {
+export function runFfmpegCapture(bin: string, args: string[]): Promise<{ code: number | null; stderr: string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(bin, args);
     let err = "";
@@ -29,7 +29,7 @@ function runFfmpegCapture(bin: string, args: string[]): Promise<{ code: number |
 }
 
 /** Run ffmpeg and reject (with the tail of stderr) on a non-zero exit. */
-async function runFfmpeg(bin: string, args: string[]): Promise<void> {
+export async function runFfmpeg(bin: string, args: string[]): Promise<void> {
   const { code, stderr } = await runFfmpegCapture(bin, args);
   if (code !== 0) throw new Error(`ffmpeg exited ${code}: ${stderr.slice(-400)}`);
 }

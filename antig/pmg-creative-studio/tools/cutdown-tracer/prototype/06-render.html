@@ -9,12 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="assets/theme.js"></script>
+  <link rel="stylesheet" href="assets/alli.css" />
 </head>
 <body class="font-sans text-gray-800" style="background-color:#EEF1F7">
   <div id="chrome"></div>
 
   <main class="pt-[60px]">
-    <div class="mx-auto max-w-[820px] px-8 pt-8 pb-16">
+    <div class="mx-auto max-w-[820px] px-6 pt-8 pb-10 xl:px-10">
+      <div class="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-gray-900/5">
       <div id="pagehead"></div>
 
       <!-- Success banner -->
@@ -57,7 +59,7 @@
         </div>
 
         <!-- RIGHT — details card -->
-        <div class="flex-1 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <div class="flex-1 rounded-xl border border-gray-200 p-5">
           <p class="mb-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Output</p>
           <dl id="specs" class="space-y-2 text-[12px]"></dl>
 
@@ -84,6 +86,7 @@
           <a href="index.html" class="text-[13px] font-medium text-gray-500 hover:text-gray-700">Start a new cutdown</a>
         </div>
         <span class="text-[12px] text-gray-400">Saved to your cutdowns</span>
+      </div>
       </div>
     </div>
   </main>

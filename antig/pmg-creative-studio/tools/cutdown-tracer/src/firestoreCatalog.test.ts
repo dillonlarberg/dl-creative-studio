@@ -6,6 +6,26 @@ import { describe, it, expect } from "vitest";
 import { FirestoreMusicCatalog, type FirestoreLike, type MusicDoc } from "./firestoreCatalog.js";
 import { SampleMusicTrackSchema } from "./types.js";
 
+function fakeDbFromArray(docs: Array<{ id: string; data: unknown }>): FirestoreLike {
+  return { collection: () => ({
+    get: async () => ({ docs: docs.map((d) => ({ id: d.id, exists: true, data: () => d.data })) }),
+    doc: (id: string) => ({ get: async () => { const m = docs.find((d) => d.id === id); return { id, exists: !!m, data: () => m?.data }; } }),
+  }) };
+}
+
+describe("FirestoreMusicCatalog tagging", () => {
+  it("carries tags through to the runtime track", async () => {
+    const db = fakeDbFromArray([{ id: "trk_pulse", data: { title: "Pulse", storagePath: "sampleMusic/p.mp3", format: "mp3", durationSec: 142, bpm: 124, provider: "pixabay", licenseRef: "cc0", mood: "energetic", genre: "electronic", energy: 5, vocals: "instrumental", tags: ["tech","product"] } }]);
+    const [t] = await new FirestoreMusicCatalog(db, async (p) => `signed://${p}`).list();
+    expect(t.mood).toBe("energetic"); expect(t.energy).toBe(5); expect(t.tags).toEqual(["tech","product"]); expect(t.url).toBe("signed://sampleMusic/p.mp3");
+  });
+  it("accepts a legacy doc with no tags", async () => {
+    const db = fakeDbFromArray([{ id: "legacy", data: { title: "Old", storagePath: "sampleMusic/o.mp3", format: "mp3", durationSec: 100, bpm: 100, provider: "manual", licenseRef: "internal-demo" } }]);
+    const [t] = await new FirestoreMusicCatalog(db, async (p) => `signed://${p}`).list();
+    expect(t.trackId).toBe("legacy"); expect(t.mood).toBeUndefined();
+  });
+});
+
 const DOCS: Record<string, MusicDoc> = {
   "pulse-120": {
     title: "Pulse",

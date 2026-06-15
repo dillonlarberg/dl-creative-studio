@@ -34,6 +34,14 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.85 21a3 3 0 0 1-5.7 0M5.27 18.6h13.46c1.36 0 2.18-1.5 1.45-2.64-.62-.96-1.18-2.06-1.18-3.2v-3.2a6 6 0 0 0-12 0v3.2c0 1.14-.56 2.24-1.18 3.2-.73 1.14.09 2.64 1.45 2.64Z"/></svg>',
   };
 
+  // Reusable Heroicons "sparkles" (solid) symbol — referenced as
+  // <svg><use href="#alli-sparkle"/></svg> by the Ask Alli pill + orbit cluster.
+  const SPARKLE_DEFS =
+    '<svg width="0" height="0" style="position:absolute" aria-hidden="true">' +
+    '<symbol id="alli-sparkle" viewBox="0 0 24 24" fill="currentColor">' +
+    '<path fill-rule="evenodd" d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 8.279 7.89l.813-2.846A.75.75 0 0 1 9 4.5Z" clip-rule="evenodd"/>' +
+    '</symbol></svg>';
+
   function headerHTML() {
     return `
     <header class="fixed inset-x-0 top-0 z-30 flex h-[60px] items-center overflow-hidden border-b border-gray-200 bg-white">
@@ -113,7 +121,7 @@
     ICON,
     mount(opts) {
       const chrome = document.getElementById("chrome");
-      if (chrome) chrome.innerHTML = headerHTML();
+      if (chrome) chrome.innerHTML = SPARKLE_DEFS + headerHTML();
       const head = document.getElementById("pagehead");
       if (head) head.innerHTML = pageHeadHTML(opts || {});
     },
