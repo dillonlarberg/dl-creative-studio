@@ -14,8 +14,54 @@ import { promises as fs } from "node:fs";
 import { spawn } from "node:child_process";
 import type { ClipExtractor } from "./seams";
 import type { CutPlan } from "./types";
+import { OUTPUT } from "./types";
 
 const round3 = (n: number): number => Math.round(n * 1000) / 1000;
+
+/**
+ * Pure: ffmpeg args to extract ONE clip and normalize it to the OUTPUT contract.
+ *
+ * The `-vf` chain is what lets the reel renderer concat with `-c copy`: every
+ * clip comes out at exactly OUTPUT.width×height, 30fps, square pixels, yuv420p,
+ * so all clips share byte-identical codec params. ffmpeg autorotates (applies the
+ * display matrix) before filters by default, so iPhone-rotated sources are baked
+ * upright and the output carries no rotation metadata. `-an` drops source audio
+ * (the music bed is laid on in the mux pass). The encode is deterministic
+ * (fixed preset + crf) so repeated extracts produce matching params.
+ */
+export function buildExtractClipArgs(opts: {
+  srcPath: string;
+  srcIn: number;
+  len: number;
+  outPath: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+}): string[] {
+  const w = opts.width ?? OUTPUT.width;
+  const h = opts.height ?? OUTPUT.height;
+  const fps = opts.fps ?? 30;
+  const vf = [
+    `scale=${w}:${h}:force_original_aspect_ratio=increase`,
+    `crop=${w}:${h}`,
+    "setsar=1",
+    `fps=${fps}`,
+    "format=yuv420p",
+  ].join(",");
+  return [
+    "-y",
+    "-ss", String(round3(opts.srcIn)),
+    "-i", opts.srcPath,
+    "-t", String(round3(opts.len)),
+    "-an",
+    "-vf", vf,
+    "-c:v", "libx264",
+    "-preset", "veryfast",
+    "-crf", "23",
+    "-movflags", "+faststart",
+    opts.outPath,
+  ];
+}
 
 /** Run ffmpeg, capturing full stderr (where ffmpeg writes diagnostics). Never rejects. */
 export function runFfmpegCapture(bin: string, args: string[]): Promise<{ code: number | null; stderr: string }> {
@@ -62,18 +108,10 @@ export class FfmpegClipExtractor implements ClipExtractor {
       // Keep the window inside the source so we never seek past EOF.
       const srcIn = round3(Math.min(cut.srcIn, Math.max(0, durationSec - cut.len)));
       const out = path.join(dir, `clip-${String(i).padStart(3, "0")}.mp4`);
-      await runFfmpeg(this.ffmpegBin, [
-        "-y",
-        "-ss", String(srcIn),
-        "-i", localVideoPath,
-        "-t", String(round3(cut.len)),
-        "-an", // drop source audio — music is laid on separately by the renderer
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-pix_fmt", "yuv420p",
-        "-movflags", "+faststart",
-        out,
-      ]);
+      await runFfmpeg(
+        this.ffmpegBin,
+        buildExtractClipArgs({ srcPath: localVideoPath, srcIn, len: cut.len, outPath: out }),
+      );
       paths.push(out);
     }
     return paths;

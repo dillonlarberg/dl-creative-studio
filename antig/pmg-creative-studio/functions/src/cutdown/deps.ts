@@ -2,7 +2,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import { getStorage, getDownloadURL } from "firebase-admin/storage";
 import ffmpegStatic from "ffmpeg-static";
 import { makeCutdownBrain } from "./engine/cutdownBrain";
-import { makeShotstackRenderer } from "./engine/shotstack";
+import { makeFfmpegReelRenderer } from "./engine/ffmpegReel";
 import { makeFfmpegClipExtractor } from "./engine/ffmpeg";
 import { makeFfmpegStoryboard } from "./engine/storyboard";
 import { FirestoreMusicCatalog, type FirestoreLike } from "./engine/firestoreCatalog";
@@ -10,7 +10,7 @@ import { FirestoreMusicCatalog, type FirestoreLike } from "./engine/firestoreCat
 // ffmpeg-static ships the binary path; the engine reads FFMPEG_BIN.
 if (ffmpegStatic) process.env.FFMPEG_BIN = ffmpegStatic;
 
-export function makeCutdownDeps(geminiKey: string, shotstackKey: string) {
+export function makeCutdownDeps(geminiKey: string) {
   const db = getFirestore();
   const bucket = getStorage().bucket();
   const sign = (objectPath: string) => getDownloadURL(bucket.file(objectPath));
@@ -18,7 +18,7 @@ export function makeCutdownDeps(geminiKey: string, shotstackKey: string) {
   return {
     catalog,
     brain: makeCutdownBrain(geminiKey),
-    renderer: makeShotstackRenderer(shotstackKey),
+    renderer: makeFfmpegReelRenderer(),
     clipExtractor: makeFfmpegClipExtractor(),
     storyboard: makeFfmpegStoryboard(),
     sign,

@@ -8,13 +8,13 @@ import type {
   VideoRef,
   TempoDetector,
   MusicCatalog,
-  VideoRenderer,
+  ReelRenderer,
   BlobStore,
   ClipExtractor,
   CutdownBrain,
   StoryboardMaker,
 } from "./seams";
-import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types";
+import type { Segment, SampleMusicTrack, ReelComposition, CutPlan, CutdownPlan } from "./types";
 import { ANGLES, orderSegments } from "./angles";
 import { planCuts, clampSegments } from "./planCuts";
 import { DEFAULT_BPM } from "./cutdownBrain";
@@ -97,12 +97,12 @@ export class FakeMusicCatalog implements MusicCatalog {
 }
 
 /**
- * Echoes the spec back as a canned URL — no real Shotstack call. The URL encodes
- * the clip count so the e2e test can assert the plan flowed through unchanged.
+ * Echoes a canned local mp4 path — no real ffmpeg call. The path encodes the clip
+ * count so orchestration tests can assert the plan flowed through unchanged.
  */
-export class FakeEchoRenderer implements VideoRenderer {
-  async render(spec: EditSpec): Promise<{ mp4Url: string }> {
-    return { mp4Url: `fake://render/${spec.clips.length}-cuts.mp4` };
+export class FakeReelRenderer implements ReelRenderer {
+  async render(comp: ReelComposition): Promise<{ mp4Path: string }> {
+    return { mp4Path: `/fake/reel-${comp.clipPaths.length}-cuts.mp4` };
   }
 }
 

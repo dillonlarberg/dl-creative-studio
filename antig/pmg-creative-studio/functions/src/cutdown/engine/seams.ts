@@ -6,7 +6,7 @@
  *
  * The pipeline depends only on these interfaces, never on a concrete provider.
  */
-import type { Segment, SampleMusicTrack, EditSpec, CutPlan, CutdownPlan } from "./types";
+import type { Segment, SampleMusicTrack, CutPlan, CutdownPlan, ReelComposition } from "./types";
 
 /** A reference to the source video. v0 passes a local path; the real Gemini impl uploads it via the Files API. */
 export interface VideoRef {
@@ -39,11 +39,13 @@ export interface MusicCatalog {
 }
 
 /**
- * Renders an `EditSpec` to an MP4. Real: Shotstack (async submit → poll).
- * Fake: echoes a canned URL so the offline suite stays no-network.
+ * Composes ordered, pre-normalized local clips + a local music bed into one reel
+ * MP4 on disk. Real: local ffmpeg (concat-copy → music mux), no cloud round-trip.
+ * The orchestrator owns uploading the result to Storage. Fake: returns a canned
+ * local path so the offline suite stays no-ffmpeg/no-network.
  */
-export interface VideoRenderer {
-  render(spec: EditSpec): Promise<{ mp4Url: string }>;
+export interface ReelRenderer {
+  render(comp: ReelComposition): Promise<{ mp4Path: string }>;
 }
 
 /**
@@ -97,7 +99,7 @@ export interface PipelineDeps {
   selector: VideoMomentSelector;
   tempo: TempoDetector;
   catalog: MusicCatalog;
-  renderer: VideoRenderer;
+  renderer: ReelRenderer;
   blobStore: BlobStore;
   clipExtractor: ClipExtractor;
   brain: CutdownBrain;

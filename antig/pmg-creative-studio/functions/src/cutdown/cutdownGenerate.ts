@@ -29,7 +29,6 @@ import { cutdownPaths, APP_ID } from "./paths";
 import { OUTPUT } from "./engine/types";
 
 const GEMINI_KEY = defineSecret("GEMINI_API_KEY");
-const SHOTSTACK_KEY = defineSecret("SHOTSTACK_API_KEY");
 
 const CLIENT_SLUG_RE = /^[a-z0-9_-]+$/;
 
@@ -78,7 +77,7 @@ export const cutdownGenerate = onCall(
     // enforceAppCheck:false — App Check not yet registered for this web app;
     // match runOutpaintBatch. Re-enable once registered.
     enforceAppCheck: false,
-    secrets: [GEMINI_KEY, SHOTSTACK_KEY],
+    secrets: [GEMINI_KEY],
     region: "us-central1",
     memory: "4GiB",
     timeoutSeconds: 540,
@@ -91,7 +90,7 @@ export const cutdownGenerate = onCall(
       validateInput(request.data);
 
     const db = getFirestore();
-    const deps = makeCutdownDeps(GEMINI_KEY.value(), SHOTSTACK_KEY.value());
+    const deps = makeCutdownDeps(GEMINI_KEY.value());
 
     // tmpdir() is in-memory tmpfs that persists across warm invocations — clean
     // up the downloaded source in `finally` so warm instances don't OOM.
