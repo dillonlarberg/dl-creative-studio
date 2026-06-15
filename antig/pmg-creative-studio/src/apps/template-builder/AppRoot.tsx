@@ -60,6 +60,7 @@ function mapTemplateToStepData(t: TemplateLibraryRecord): Partial<TemplateBuilde
     ...(wireframe ? { wireframeFile: wireframe.file } : {}),
     ...(t.brandOverrides?.primaryColor ? { backgroundColor: t.brandOverrides.primaryColor } : {}),
     ...(t.brandOverrides?.accentColor ? { accentColor: t.brandOverrides.accentColor } : {}),
+    ...(t.logoVariant ? { logoVariant: t.logoVariant } : {}),
   };
 }
 

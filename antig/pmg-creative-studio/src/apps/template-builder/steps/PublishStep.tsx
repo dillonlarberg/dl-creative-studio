@@ -238,8 +238,8 @@ function PublishStepBody({
     brandOverrides: {
       ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
       ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),
-      ...(assetHouse?.logoPrimary ? { logoUrl: assetHouse.logoPrimary } : {}),
     },
+    logoVariant: stepData.logoVariant ?? 'primary',
     ...(stepData.brief ? { brief: stepData.brief } : {}),
     aiRequirements: {
       intent: stepData.brief ?? '',

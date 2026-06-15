@@ -166,6 +166,7 @@ export const templateLibraryService = {
       id: newDocRef.id,
       status: 'draft',
       version: 1,
+      logoVariant: data.logoVariant ?? 'primary',
       canvasSpec: data.canvasSpec ?? null,
       tags: data.tags ?? [],
       category: data.category ?? null,

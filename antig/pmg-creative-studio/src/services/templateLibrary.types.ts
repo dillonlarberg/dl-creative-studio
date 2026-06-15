@@ -51,11 +51,12 @@ export interface TemplateLibraryRecord {
   brandOverrides: {
     primaryColor?: string;
     accentColor?: string;
-    logoUrl?: string;
     showPrice?: boolean;
     showCTA?: boolean;
     ctaText?: string;
   };
+
+  logoVariant?: 'primary' | 'inverse';
 
   brief?: string;
   aiRequirements?: {
@@ -109,6 +110,7 @@ export type NewTemplateData = Pick<
   staticValues?: Record<string, string>;
   fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;
   aiSuggestedMappings?: Record<string, true>;
+  logoVariant?: 'primary' | 'inverse';
   // Future canvas editor support
   canvasSpec?: Record<string, unknown> | null;
   // Taxonomy
