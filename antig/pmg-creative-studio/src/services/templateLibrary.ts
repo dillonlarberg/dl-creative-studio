@@ -11,6 +11,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  writeBatch,
   type Transaction,
   type DocumentReference,
   type DocumentSnapshot,
@@ -165,6 +166,9 @@ export const templateLibraryService = {
       id: newDocRef.id,
       status: 'draft',
       version: 1,
+      canvasSpec: data.canvasSpec ?? null,
+      tags: data.tags ?? [],
+      category: data.category ?? null,
       createdBy: alliId,
       createdByUid: uid,
       createdAt: serverTimestamp(),
@@ -318,6 +322,15 @@ export const templateLibraryService = {
   },
 
   async deleteTemplate(clientSlug: ClientSlug, templateId: string): Promise<void> {
+    const historyRef = collection(db, paths.templateLibraryHistory(clientSlug, templateId));
+    const historySnap = await getDocs(historyRef);
+
+    if (historySnap.size > 0) {
+      const batch = writeBatch(db);
+      historySnap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+
     const ref = doc(db, paths.templateLibraryDoc(clientSlug, templateId));
     await deleteDoc(ref);
   },

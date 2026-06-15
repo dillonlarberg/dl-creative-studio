@@ -65,6 +65,12 @@ export interface TemplateLibraryRecord {
     targetAudience?: string;
   };
 
+  // Future canvas editor support
+  canvasSpec?: Record<string, unknown> | null;
+  // Taxonomy
+  tags?: string[];
+  category?: string | null;
+
   createdBy: string;
   createdByUid: string;
   createdAt: Timestamp;
@@ -103,6 +109,11 @@ export type NewTemplateData = Pick<
   staticValues?: Record<string, string>;
   fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;
   aiSuggestedMappings?: Record<string, true>;
+  // Future canvas editor support
+  canvasSpec?: Record<string, unknown> | null;
+  // Taxonomy
+  tags?: string[];
+  category?: string | null;
 };
 
 export class TemplateNotFoundError extends Error {
