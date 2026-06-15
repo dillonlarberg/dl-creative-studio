@@ -127,7 +127,7 @@ export function WizardShell<S extends StepData = StepData>({
   const { currentClient } = useCurrentClient();
   const clientSlug = currentClient?.slug ?? 'test-client';
 
-  const { stepData, mergeStepData, creativeId, reset } = usePersistedStepData<S>({
+  const { stepData, mergeStepData, creativeId, discard } = usePersistedStepData<S>({
     manifest,
     clientSlug,
     resumeId,
@@ -498,13 +498,24 @@ export function WizardShell<S extends StepData = StepData>({
               <button
                 type="button"
                 onClick={() => {
-                  reset();
-                  navigateToStep(manifest.steps[0].id, false);
+                  navigateRouter(`/adlabs/${clientSlug}`);
                 }}
-                data-testid="wizard-reset"
-                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300 hover:text-gray-500"
+                data-testid="wizard-save-exit"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 border border-gray-200 rounded-xl px-4 py-2 hover:bg-gray-50"
               >
-                Reset
+                Save &amp; Exit
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  await discard();
+                  navigateRouter(`/adlabs/${clientSlug}`);
+                }}
+                data-testid="wizard-discard"
+                className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-red-500"
+              >
+                Discard
               </button>
 
               {!isLastStep && (

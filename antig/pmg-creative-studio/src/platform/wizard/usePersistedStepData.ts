@@ -36,6 +36,7 @@ interface UsePersistedStepDataResult<S extends StepData> {
   creativeId: string | null;
   isLoading: boolean;
   reset: () => void;
+  discard: () => Promise<void>;
 }
 
 export function usePersistedStepData<S extends StepData>({
@@ -196,6 +197,31 @@ export function usePersistedStepData<S extends StepData>({
     setStepData(initial);
   }, [clientSlug, manifest]);
 
+  const discard = useCallback(async () => {
+    // Cancel any pending debounced write
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    // Delete Firestore record if it exists
+    const id = creativeId;
+    if (id) {
+      try {
+        await creativeService.deleteCreative(clientSlug, manifest.id, id);
+      } catch (err) {
+        console.error('usePersistedStepData discard failed:', err);
+      }
+    }
+    // Clear localStorage and reset in-memory state
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(storageKey(clientSlug, manifest.id));
+    }
+    setCreativeId(null);
+    const initial = manifest.initialStepData();
+    latestStepDataRef.current = initial;
+    setStepData(initial);
+  }, [clientSlug, creativeId, manifest]);
+
   // Flush pending writes on unmount.
   useEffect(() => {
     return () => {
@@ -208,5 +234,5 @@ export function usePersistedStepData<S extends StepData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { stepData, mergeStepData, creativeId, isLoading, reset };
+  return { stepData, mergeStepData, creativeId, isLoading, reset, discard };
 }

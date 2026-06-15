@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { collection, addDoc, updateDoc, doc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { paths } from '../platform/firebase/paths';
 import type { AppId, ClientSlug, CreativeId } from '../platform/firebase/paths';
 
@@ -10,9 +10,9 @@ export interface CreativeRecord {
     status: 'draft' | 'processing' | 'completed' | 'failed';
     stepData: Record<string, any>;
     currentStep: number;
-    resultUrls?: string[];
     createdAt: any;
     updatedAt: any;
+    expiresAt?: any;
 }
 
 export const creativeService = {
@@ -25,6 +25,7 @@ export const creativeService = {
             currentStep: 0,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(Date.now() + 72 * 60 * 60 * 1000),
         });
         return docRef.id;
     },
@@ -43,6 +44,7 @@ export const creativeService = {
         await updateDoc(docRef, {
             ...updates,
             updatedAt: serverTimestamp(),
+            expiresAt: Timestamp.fromMillis(Date.now() + 72 * 60 * 60 * 1000),
         });
     },
 
@@ -56,22 +58,8 @@ export const creativeService = {
         });
     },
 
-    async simulateGeneration(clientSlug: ClientSlug, appId: AppId, creativeId: CreativeId): Promise<void> {
-        await this.updateCreative(clientSlug, appId, creativeId, { status: 'processing' });
-        const record = await this.getCreative(clientSlug, appId, creativeId);
-        const wireframeFile = record?.stepData?.context?.wireframeFile;
-
-        return new Promise((resolve) => {
-            setTimeout(async () => {
-                const results = wireframeFile
-                    ? [`/template_examples/social/${wireframeFile}`]
-                    : ['https://picsum.photos/1080/1080'];
-                await this.updateCreative(clientSlug, appId, creativeId, {
-                    status: 'completed',
-                    resultUrls: results,
-                });
-                resolve();
-            }, 3000);
-        });
+    async deleteCreative(clientSlug: ClientSlug, appId: AppId, creativeId: CreativeId): Promise<void> {
+        const docRef = doc(db, paths.creative(clientSlug, appId, creativeId));
+        await deleteDoc(docRef);
     },
 };
