@@ -334,6 +334,8 @@ function DesignStepBody({
   );
   const [newFieldSourceMode, setNewFieldSourceMode] = useState<'feed' | 'static' | 'ai'>('feed');
   const [newFieldStaticValue, setNewFieldStaticValue] = useState('');
+  const [addFieldSelectingSlot, setAddFieldSelectingSlot] = useState(false);
+  const [addFieldStyleOpen, setAddFieldStyleOpen] = useState(false);
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
@@ -1275,20 +1277,59 @@ function DesignStepBody({
 
                 {/* Slot assignment (optional) */}
                 {discoveredSlots.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Zone</span>
-                    <select
-                      value={addFieldPendingSlot ?? ''}
-                      onChange={(e) => setAddFieldPendingSlot(e.target.value || null)}
-                      className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
-                    >
-                      <option value="">— Skip for now —</option>
-                      {discoveredSlots.map((slot) => (
-                        <option key={slot.slotId} value={slot.slotId}>
-                          {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Zone</span>
+                      <select
+                        value={addFieldPendingSlot ?? ''}
+                        onChange={(e) => { setAddFieldPendingSlot(e.target.value || null); setAddFieldSelectingSlot(false); }}
+                        className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                      >
+                        <option value="">— Skip for now —</option>
+                        {discoveredSlots.map((slot) => (
+                          <option key={slot.slotId} value={slot.slotId}>
+                            {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
+                          </option>
+                        ))}
+                      </select>
+                      {/* Cursor — click a zone in the preview to assign */}
+                      <button
+                        type="button"
+                        title={addFieldSelectingSlot ? 'Cancel — click preview to assign zone' : 'Click a zone in the preview to assign'}
+                        onClick={() => setAddFieldSelectingSlot((v) => !v)}
+                        className={cn(
+                          'shrink-0 transition-colors',
+                          addFieldSelectingSlot ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500'
+                        )}
+                      >
+                        <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                      </button>
+                      {/* Paintbrush — style the pending zone */}
+                      <button
+                        type="button"
+                        title="Edit zone styles"
+                        disabled={!addFieldPendingSlot}
+                        onClick={() => setAddFieldStyleOpen((v) => !v)}
+                        className={cn(
+                          'shrink-0 transition-colors disabled:opacity-30',
+                          addFieldStyleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
+                        )}
+                      >
+                        <PaintBrushIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {addFieldSelectingSlot && (
+                      <p className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">
+                        Click a zone in the preview →
+                      </p>
+                    )}
+                    {addFieldStyleOpen && addFieldPendingSlot && (
+                      <ZoneStyleToolbar
+                        slotId={addFieldPendingSlot}
+                        current={stepData.zoneStyles?.[addFieldPendingSlot]}
+                        onChange={handleZoneStyleChange}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -1334,6 +1375,8 @@ function DesignStepBody({
                       setNewFieldColumn('');
                       setNewFieldSourceMode('feed');
                       setNewFieldStaticValue('');
+                      setAddFieldSelectingSlot(false);
+                      setAddFieldStyleOpen(false);
                     }}
                     className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:bg-gray-100 disabled:text-gray-300 transition-all"
                   >
@@ -1350,6 +1393,8 @@ function DesignStepBody({
                       setNewFieldColumn('');
                       setNewFieldSourceMode('feed');
                       setNewFieldStaticValue('');
+                      setAddFieldSelectingSlot(false);
+                      setAddFieldStyleOpen(false);
                     }}
                     className="py-2 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600"
                   >
@@ -1547,10 +1592,12 @@ function DesignStepBody({
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
                   zoneStyles={stepData.zoneStyles}
-                  slotSelectionMode={activeSlotField !== null}
+                  slotSelectionMode={activeSlotField !== null || addFieldSelectingSlot}
                   highlightSlot={
                     activeSlotField !== null
                       ? getEffectiveSlotId(activeSlotField)
+                      : addFieldSelectingSlot && addFieldPendingSlot
+                      ? addFieldPendingSlot
                       : hoveredField !== null
                       ? getEffectiveSlotId(hoveredField)
                       : null
@@ -1559,6 +1606,9 @@ function DesignStepBody({
                     if (activeSlotField) {
                       mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
                       setActiveSlotField(null);
+                    } else if (addFieldSelectingSlot) {
+                      setAddFieldPendingSlot(slotId);
+                      setAddFieldSelectingSlot(false);
                     } else {
                       setAddFieldPendingSlot(slotId);
                       setAddFieldOpen(true);
