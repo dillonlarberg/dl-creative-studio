@@ -39,6 +39,7 @@ export interface ClientAssetHouse {
     clientSlug: string;
     // Core Brand Standards (Statics for blocking logic)
     primaryColor: string;
+    accentColor?: string;
     fontPrimary: string;
     logoPrimary?: string; // URL
     logoInverse?: string; // URL

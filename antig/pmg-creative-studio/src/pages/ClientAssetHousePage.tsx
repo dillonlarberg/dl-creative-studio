@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
 import type { ClientAssetHouse, AssetHouseItem } from '../services/clientAssetHouse';
 import { fontParser } from '../utils/fontParser';
@@ -21,15 +21,30 @@ export default function ClientAssetHousePage() {
     const [success, setSuccess] = useState(false);
     const navigate = useNavigate();
 
-    const client = JSON.parse(localStorage.getItem('selectedClient') || '{}');
+    // Slug comes from the URL param (/adlabs/:clientSlug/brand-standards).
+    // Non-null assertion is safe: this page only mounts when the route matches.
+    // Display name is best-effort from localStorage — not used for any data ops.
+    const { clientSlug } = useParams<{ clientSlug: string }>();
+    const slug = clientSlug!;
+    const clientName = (() => {
+        try {
+            const raw = localStorage.getItem('selectedClient');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed?.slug === clientSlug) return parsed.name as string;
+            }
+        } catch { /* ignore */ }
+        return clientSlug ?? '';
+    })();
 
     useEffect(() => {
-        if (client.slug) {
+        if (clientSlug) {
             fetchAssetHouse();
         } else {
             setLoading(false);
         }
-    }, [client.slug]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clientSlug]);
 
     useEffect(() => {
         if (assetHouse) {
@@ -40,9 +55,9 @@ export default function ClientAssetHousePage() {
     const fetchAssetHouse = async () => {
         setLoading(true);
         try {
-            const data = await clientAssetHouseService.getAssetHouse(client.slug);
+            const data = await clientAssetHouseService.getAssetHouse(slug);
             const house = data || {
-                clientSlug: client.slug,
+                clientSlug: clientSlug,
                 primaryColor: '#000000',
                 fontPrimary: 'Inter',
                 variables: [],
@@ -53,7 +68,7 @@ export default function ClientAssetHousePage() {
             // Ensure variables array exists for older records
             if (!house.variables) house.variables = [];
 
-            console.log(`[fetchAssetHouse] Successfully loaded house for ${client.slug}. Assets: ${house.assets.length}, Variables: ${house.variables.length}`);
+            console.log(`[fetchAssetHouse] Successfully loaded house for ${clientSlug}. Assets: ${house.assets.length}, Variables: ${house.variables.length}`);
             setAssetHouse(house);
 
             // Diagnostic: List all font assets found
@@ -61,7 +76,7 @@ export default function ClientAssetHousePage() {
             console.log('[fetchAssetHouse] Font assets found:', fontAssets.map(f => f.name));
 
         } catch (err: any) {
-            setError('Failed to load client asset house.');
+            setError('Failed to load Brand Kit.');
             console.error(err);
         } finally {
             setLoading(false);
@@ -93,7 +108,7 @@ export default function ClientAssetHousePage() {
                     // Sanitize name for Firebase Storage
                     const safeName = font.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-                    const url = await clientAssetHouseService.uploadAsset(client.slug, blob, 'font', `${safeName}.ttf`);
+                    const url = await clientAssetHouseService.uploadAsset(slug, blob, 'font', `${safeName}.ttf`);
                     clientAssetHouseService.loadCustomFont(font.name, url);
 
                     return {
@@ -119,7 +134,7 @@ export default function ClientAssetHousePage() {
                     };
 
                     // Auto-save the results immediately since it's a bulk operation
-                    clientAssetHouseService.saveAssetHouse(client.slug, updatedHouse).catch(saveErr => {
+                    clientAssetHouseService.saveAssetHouse(slug, updatedHouse).catch(saveErr => {
                         console.error('Auto-save failed after TTC upload:', saveErr);
                     });
 
@@ -127,7 +142,7 @@ export default function ClientAssetHousePage() {
                 });
             } else {
                 console.log(`Uploading single ${type}...`);
-                const url = await clientAssetHouseService.uploadAsset(client.slug, file, type);
+                const url = await clientAssetHouseService.uploadAsset(slug, file, type);
 
                 setAssetHouse(prev => {
                     if (!prev) return prev;
@@ -165,7 +180,7 @@ export default function ClientAssetHousePage() {
         setError(null);
         setSuccess(false);
         try {
-            await clientAssetHouseService.saveAssetHouse(client.slug, assetHouse);
+            await clientAssetHouseService.saveAssetHouse(slug, assetHouse);
             setSuccess(true);
             setTimeout(() => setSuccess(false), 3000);
         } catch (err: any) {
@@ -244,12 +259,12 @@ export default function ClientAssetHousePage() {
         );
     }
 
-    if (!client.slug) {
+    if (!clientSlug) {
         return (
             <div className="flex flex-col items-center justify-center py-24 text-center">
                 <ExclamationCircleIcon className="h-12 w-12 text-blue-gray-300" />
                 <h3 className="mt-4 text-base font-semibold text-gray-900">No Client Selected</h3>
-                <p className="mt-2 text-sm text-blue-gray-500">Please select a client to view and manage their Asset House.</p>
+                <p className="mt-2 text-sm text-blue-gray-500">Please select a client to view and manage their Brand Kit.</p>
                 <button
                     onClick={() => navigate('/select-client')}
                     className="mt-6 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
@@ -263,9 +278,9 @@ export default function ClientAssetHousePage() {
     return (
         <div className="max-w-4xl space-y-8">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">Client Asset House</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Brand Kit</h1>
                 <p className="mt-1 text-sm text-blue-gray-500">
-                    Manage visual assets and brand rules for <span className="font-semibold text-blue-600">{client.name}</span>.
+                    Manage visual assets and brand rules for <span className="font-semibold text-blue-600">{clientName}</span>.
                     These assets are shared across all users for this client.
                 </p>
             </div>
@@ -484,7 +499,7 @@ export default function ClientAssetHousePage() {
 
                         {(!assetHouse?.variables || assetHouse.variables.length === 0) && (
                             <div className="py-8 text-center text-xs text-blue-gray-400">
-                                No custom variables added. Use the menu above to add more brand standards.
+                                No custom variables added. Use the menu above to add brand variables.
                             </div>
                         )}
                     </div>
@@ -529,7 +544,7 @@ export default function ClientAssetHousePage() {
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-card">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-4">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold text-gray-900">Asset House Repository</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">Brand Assets</h2>
                         <button
                             onClick={fetchAssetHouse}
                             className="p-1 text-blue-gray-400 hover:text-blue-600 transition-colors"

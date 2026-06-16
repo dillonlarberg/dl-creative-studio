@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon } from '@heroicons/react/24/outline';
+import { useParams } from 'react-router-dom';
+import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData, RequirementField, ZoneStyle } from '../types';
@@ -19,6 +20,7 @@ import { discoverSlots } from '../_internal/discoverSlots';
 import type { TemplateSlot } from '../_internal/discoverSlots';
 import { AskAlliPanel } from '../_internal/AskAlliPanel';
 import { applyClientTransforms } from '../_internal/transformExecutor';
+import { BrandKitDrawer } from '../../../components/brand/BrandKitDrawer';
 
 /**
  * Design step — "Design & Map" (Step 2 of 3: Setup → Design → Publish).
@@ -305,12 +307,19 @@ function DesignStepBody({
 }: StepRenderProps<TemplateBuilderStepData>) {
   const tbCtx = useTemplateBuilder();
   const { assetHouse } = useAssetHouse();
+  const { clientSlug } = useParams<{ clientSlug: string }>();
 
   const { candidates, requirements, feedColumns, setCandidates } = tbCtx;
+
+  const brandKitReady = !!(
+    assetHouse?.primaryColor && assetHouse?.fontPrimary &&
+    assetHouse?.logoPrimary && assetHouse?.logoInverse
+  );
 
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [brandOpen, setBrandOpen] = useState(false);
+  const [brandKitOpen, setBrandKitOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
@@ -568,6 +577,7 @@ function DesignStepBody({
   };
 
   return (
+    <>
     <div className="flex gap-0 min-h-[600px] -mx-6">
       {/* ── Left panel (40%) ─────────────────────────────────────────── */}
       <div className="w-2/5 border-r border-gray-100 px-6 py-6 space-y-8 overflow-y-auto max-h-[calc(100vh-200px)]">
@@ -1537,6 +1547,20 @@ function DesignStepBody({
               )}
               <button
                 type="button"
+                onClick={() => setBrandKitOpen((v) => !v)}
+                className="relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 transition-colors"
+              >
+                <SwatchIcon className="h-3.5 w-3.5 shrink-0" />
+                Brand Kit
+                <span
+                  className={cn(
+                    'absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full',
+                    brandKitReady ? 'bg-green-500' : 'bg-amber-400'
+                  )}
+                />
+              </button>
+              <button
+                type="button"
                 onClick={() => { setAskAlliTargetField(null); setAskAlliOpen((v) => !v); }}
                 className="inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 pl-2 pr-3 py-1 text-white shadow-lg shadow-indigo-500/30 text-[10px] font-semibold hover:from-indigo-600 hover:to-violet-700 transition-all"
               >
@@ -1824,6 +1848,14 @@ function DesignStepBody({
         )}
       </div>
     </div>
+
+    <BrandKitDrawer
+      open={brandKitOpen}
+      onClose={() => setBrandKitOpen(false)}
+      clientSlug={clientSlug ?? ''}
+      assetHouse={assetHouse}
+    />
+    </>
   );
 }
 

@@ -2,45 +2,39 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { usePageTitle } from '../hooks/usePageTitle';
 import {
-  DocumentDuplicateIcon,
   ExclamationTriangleIcon,
   MagnifyingGlassIcon,
   SparklesIcon,
+  SwatchIcon,
 } from '@heroicons/react/24/outline';
 import {
   AiPrompt,
   WaveAnimation,
   Button,
+  Dropdown,
+  MenuHeader,
+  MenuItem,
   Notification,
   PaddedFullWidthContainer,
 } from '@agencypmg/alli-design-system';
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { getRegistry } from '../apps/_registry';
+import { BrandKitDrawer } from '../components/brand/BrandKitDrawer';
+import { TemplateLibrarySection } from '../components/templates/TemplateLibrarySection';
 import type { AppManifest } from '../apps/types';
-
-/**
- * AdLabs Dashboard.
- *
- * Mounted at /adlabs/:clientSlug/. The page header ("AdLabs") sits in its own
- * full-bleed white strip; everything below lives inside a single white content
- * card (PaddedFullWidthContainer) floating on the Alli blue-gray surface:
- * an Ask Alli prompt + wave, a Search Apps filter, and the app grid styled to
- * match the platform's template-library cards.
- */
 
 export default function DashboardPage() {
   usePageTitle();
   const { clientSlug } = useParams<{ clientSlug?: string }>();
   const navigate = useNavigate();
-  const { client, isReady, loading, error } = useClientBootstrap({
+  const { client, assetHouse, isReady, loading, error } = useClientBootstrap({
     urlSlug: clientSlug ?? null,
   });
 
   const [query, setQuery] = useState('');
-  // Bumped each time the brand-standards toast is triggered so the
-  // Notification remounts and re-runs its auto-dismiss timer.
   const [toastKey, setToastKey] = useState(0);
   const [toastVisible, setToastVisible] = useState(false);
+  const [brandKitOpen, setBrandKitOpen] = useState(false);
 
   if (!loading && !client) {
     navigate('/select-client', { replace: true });
@@ -70,12 +64,85 @@ export default function DashboardPage() {
 
   return (
     <>
+      {/* Page header strip */}
       <div
         className="-mx-6 -mt-8 mb-4 border-b border-gray-200 bg-white xl:-mx-10"
         data-testid="adlabs-page-header"
       >
-        <div className="px-6 py-4 xl:px-10">
+        <div className="px-6 py-4 xl:px-10 flex items-center justify-between">
           <h1 className="text-2xl font-medium text-gray-900">AdLabs</h1>
+
+          {/* Brand Kit chip — only shown once bootstrap resolves */}
+          {!loading && client && (
+            isReady && assetHouse ? (
+              <Dropdown
+                trigger="Brand Kit"
+                triggerAsProps={{
+                  variant: 'secondary',
+                  icon: <SwatchIcon className="h-3.5 w-3.5" />,
+                  iconRight: false,
+                }}
+                menuClassName="alli-w-72"
+              >
+                <MenuHeader>
+                  <div className="space-y-2 pb-1">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ background: assetHouse.primaryColor }}
+                      />
+                      <span className="text-sm font-semibold text-gray-800">{client.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div
+                        className="w-4 h-4 rounded ring-1 ring-black/10 shrink-0"
+                        style={{ background: assetHouse.primaryColor }}
+                      />
+                      <span className="font-mono">{assetHouse.primaryColor}</span>
+                      {assetHouse.fontPrimary && (
+                        <>
+                          <span className="text-gray-300">·</span>
+                          <span style={{ fontFamily: assetHouse.fontPrimary }}>
+                            {assetHouse.fontPrimary}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {(assetHouse.logoPrimary || assetHouse.logoInverse) && (
+                      <div className="flex gap-2 pt-1">
+                        {assetHouse.logoPrimary && (
+                          <div className="w-10 h-6 rounded border border-gray-100 bg-white flex items-center justify-center overflow-hidden">
+                            <img src={assetHouse.logoPrimary} alt="Primary logo" className="max-w-full max-h-full object-contain" />
+                          </div>
+                        )}
+                        {assetHouse.logoInverse && (
+                          <div className="w-10 h-6 rounded border border-gray-800 bg-gray-900 flex items-center justify-center overflow-hidden">
+                            <img src={assetHouse.logoInverse} alt="Inverse logo" className="max-w-full max-h-full object-contain" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </MenuHeader>
+                <MenuItem
+                  as="a"
+                  href={`/adlabs/${clientSlug}/brand-standards`}
+                >
+                  Edit Brand Kit →
+                </MenuItem>
+              </Dropdown>
+            ) : (
+              <Button
+                variant="secondary"
+                as="a"
+                href={`/adlabs/${clientSlug}/brand-standards`}
+                icon={<ExclamationTriangleIcon className="h-3.5 w-3.5 text-amber-500" />}
+                iconRight={false}
+              >
+                Set Up Brand Kit
+              </Button>
+            )
+          )}
         </div>
       </div>
 
@@ -102,25 +169,11 @@ export default function DashboardPage() {
               subTitle="Generate, resize, and remix creative all with a simple prompt"
               placeholder="Ask Alli something..."
               icon={<SparklesIcon />}
-              // Presentational for now — wiring to the NL backend is a follow-up.
               onSubmit={() => {}}
             />
           </div>
 
           <WaveAnimation width="100%" />
-
-          {/* Template Library quick link */}
-          {client && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <Link
-                to={`/adlabs/${clientSlug}/templates`}
-                className="inline-flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-[0.15em] hover:text-blue-600 transition-colors"
-              >
-                <DocumentDuplicateIcon className="h-4 w-4" />
-                View Template Library
-              </Link>
-            </div>
-          )}
 
           {/* Search Apps + grid */}
           <div className="mt-6">
@@ -148,22 +201,37 @@ export default function DashboardPage() {
               ))}
             </ul>
           </div>
+
+          {/* Ad Templates section — replaces the old "View Template Library" text link */}
+          {client && clientSlug && (
+            <TemplateLibrarySection clientSlug={clientSlug} assetHouse={assetHouse} />
+          )}
         </div>
       </PaddedFullWidthContainer>
+
+      {/* Brand Kit drawer — available from DesignStep via setBrandKitOpen (Step 7) */}
+      {client && clientSlug && (
+        <BrandKitDrawer
+          open={brandKitOpen}
+          onClose={() => setBrandKitOpen(false)}
+          clientSlug={clientSlug}
+          assetHouse={assetHouse ?? undefined}
+        />
+      )}
 
       {toastVisible && (
         <div className="fixed bottom-6 right-6 z-[60]">
           <Notification
             key={toastKey}
             variant="warning"
-            title="Brand standards required"
-            message="Set up this client's brand standards to unlock this app."
+            title="Brand Kit required"
+            message="Set up this client's Brand Kit to unlock this app."
             link={
               <Link
-                to="/client-asset-house"
+                to={`/adlabs/${clientSlug}/brand-standards`}
                 className="text-sm font-medium text-blue-600 hover:text-blue-700"
               >
-                Set up in Client Asset House
+                Set Up Brand Kit
               </Link>
             }
             duration={6000}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { clientAssetHouseService } from '../services/clientAssetHouse';
+import type { ClientAssetHouse } from '../services/clientAssetHouse';
 import { alliService } from '../services/alli';
 import type { Client } from '../types';
 
@@ -25,6 +26,7 @@ import type { Client } from '../types';
 
 export interface ClientBootstrapState {
   client: Client | null;
+  assetHouse: ClientAssetHouse | null;
   isReady: boolean;
   loading: boolean;
   error: Error | null;
@@ -37,6 +39,7 @@ interface UseClientBootstrapOptions {
 
 const INITIAL_STATE: ClientBootstrapState = {
   client: null,
+  assetHouse: null,
   isReady: false,
   loading: true,
   error: null,
@@ -75,7 +78,7 @@ export function useClientBootstrap(
     })();
 
     if (!resolved) {
-      setState({ client: null, isReady: false, loading: false, error: null });
+      setState({ client: null, assetHouse: null, isReady: false, loading: false, error: null });
       return;
     }
 
@@ -96,6 +99,7 @@ export function useClientBootstrap(
         if (cancelled) return;
         setState({
           client: resolved,
+          assetHouse: house,
           isReady: clientAssetHouseService.checkBrandStandards(house),
           loading: false,
           error: null,
@@ -106,6 +110,7 @@ export function useClientBootstrap(
         const error = err instanceof Error ? err : new Error(String(err));
         setState({
           client: resolved,
+          assetHouse: null,
           isReady: false,
           loading: false,
           error,

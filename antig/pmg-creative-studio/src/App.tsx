@@ -80,6 +80,21 @@ const E2E_FAKE_USER = {
   displayName: 'E2E Test',
 } as unknown as User;
 
+function LegacyBrandKitRedirect() {
+  try {
+    const raw = localStorage.getItem('selectedClient');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.slug === 'string') {
+        return <Navigate to={`/adlabs/${parsed.slug}/brand-standards`} replace />;
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return <Navigate to="/select-client" replace />;
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(isE2EBypass ? E2E_FAKE_USER : null);
   const [loading, setLoading] = useState(!isE2EBypass);
@@ -158,8 +173,11 @@ export default function App() {
               </ClientProvider>
             }
           />
+          {/* Brand standards — new slug-scoped route */}
+          <Route path="/adlabs/:clientSlug/brand-standards" element={<ClientAssetHousePage />} />
           <Route path="/select-client" element={<ClientSelectPage />} />
-          <Route path="/client-asset-house" element={<ClientAssetHousePage />} />
+          {/* Legacy redirect — keep alive for 60-90 days for bookmarks */}
+          <Route path="/client-asset-house" element={<LegacyBrandKitRedirect />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" />} />
