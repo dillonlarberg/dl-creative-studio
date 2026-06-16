@@ -81,25 +81,25 @@ export function AppInfoPopover({ title, overview }: AppInfoPopoverProps) {
             role="region"
             aria-label={`${title} overview`}
             style={floatingStyles}
-            className="z-50 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-xl"
+            className="z-50 w-96 rounded-xl border border-gray-200 bg-white p-3.5 shadow-xl"
             {...getFloatingProps()}
           >
             <p className="text-sm font-semibold text-gray-900">{title}</p>
             <p className="mt-0.5 text-xs leading-snug text-gray-600">{overview.blurb}</p>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-3">
               <img
                 src={overview.before}
                 alt={`${title} source example`}
-                className="h-10 w-9 shrink-0 rounded object-cover"
+                className="h-28 w-24 shrink-0 rounded-md object-cover"
               />
-              <span aria-hidden className="text-gray-400">→</span>
-              <div className={`grid flex-1 gap-1 ${AFTER_COLS[Math.min(overview.after.length, 3)] ?? 'grid-cols-3'}`}>
+              <span aria-hidden className="text-lg text-gray-400">→</span>
+              <div className={`grid flex-1 gap-1.5 ${AFTER_COLS[Math.min(overview.after.length, 3)] ?? 'grid-cols-3'}`}>
                 {overview.after.map((src, i) => (
                   <img
                     key={i}
                     src={src}
                     alt={`${title} output example ${i + 1}`}
-                    className="h-9 w-full rounded object-cover"
+                    className="h-28 w-full rounded-md object-cover"
                   />
                 ))}
               </div>
