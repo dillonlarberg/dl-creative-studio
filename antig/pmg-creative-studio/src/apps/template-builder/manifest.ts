@@ -11,11 +11,9 @@ const manifest: AppManifest<TemplateBuilderStepData> = {
   description: 'Build and publish dynamic ad templates for use across all channels.',
   overview: {
     blurb: 'Turn a data feed into on-brand creative at scale.',
-    before: '/app-overviews/template-builder/before.webp',
+    before: '/app-overviews/template-builder/before.png',
     after: [
-      '/app-overviews/template-builder/after-1.webp',
-      '/app-overviews/template-builder/after-2.webp',
-      '/app-overviews/template-builder/after-3.webp',
+      '/app-overviews/template-builder/after.png',
     ],
   },
   status: 'live',

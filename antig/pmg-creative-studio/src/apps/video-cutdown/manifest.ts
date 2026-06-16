@@ -7,10 +7,9 @@ const manifest: AppManifest = {
   description: 'Turn one long video into a sharp, beat-synced 9:16 cut — 3 AI versions, pick one.',
   overview: {
     blurb: 'Cut a long video into a punchy social reel.',
-    before: '/app-overviews/video-cutdown/before.webp',
+    before: '/app-overviews/video-cutdown/before.png',
     after: [
-      '/app-overviews/video-cutdown/after-1.webp',
-      '/app-overviews/video-cutdown/after-2.webp',
+      '/app-overviews/video-cutdown/after-1.png',
     ],
   },
   status: 'live',

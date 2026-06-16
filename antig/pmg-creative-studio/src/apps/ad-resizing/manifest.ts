@@ -7,11 +7,10 @@ const manifest: AppManifest = {
   description: 'Select a creative, choose target channels, and generate resized outputs for any placement.',
   overview: {
     blurb: 'One creative, resized for every placement.',
-    before: '/app-overviews/ad-resizing/before.webp',
+    before: '/app-overviews/ad-resizing/before.jpeg',
     after: [
-      '/app-overviews/ad-resizing/after-1.webp',
-      '/app-overviews/ad-resizing/after-2.webp',
-      '/app-overviews/ad-resizing/after-3.webp',
+      '/app-overviews/ad-resizing/after-1.png',
+      '/app-overviews/ad-resizing/after-2.png',
     ],
   },
   status: 'live',
