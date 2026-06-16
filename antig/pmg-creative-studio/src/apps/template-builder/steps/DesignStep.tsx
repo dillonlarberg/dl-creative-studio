@@ -767,9 +767,9 @@ function DesignStepBody({
                         </button>
                       </div>
                     )}
-                    {/* Source mode: Feed | Static | AI */}
+                    {/* Source mode: Static | Feed | AI — static listed first to signal it overrides feed */}
                     <div className="flex gap-1 mb-1">
-                      {(['feed', 'static', 'ai'] as const).map((mode) => (
+                      {(['static', 'feed', 'ai'] as const).map((mode) => (
                         <button
                           key={mode}
                           type="button"
@@ -1163,9 +1163,9 @@ function DesignStepBody({
                   />
                 )}
 
-                {/* Source mode tabs */}
+                {/* Source mode tabs — static first to signal it overrides feed */}
                 <div className="flex gap-1">
-                  {(['feed', 'static', 'ai'] as const).map((mode) => (
+                  {(['static', 'feed', 'ai'] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"

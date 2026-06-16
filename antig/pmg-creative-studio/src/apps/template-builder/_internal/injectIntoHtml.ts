@@ -122,6 +122,43 @@ const ALL_KNOWN_TARGETS: string[] = Array.from(
   new Set(Object.values(FIELD_ID_MAP).flatMap((m) => m.targets))
 );
 
+// Serialisable targets map for embedding in the interactive script
+const FIELD_TARGETS_JSON = JSON.stringify(
+  Object.fromEntries(Object.entries(FIELD_ID_MAP).map(([k, v]) => [k, v.targets]))
+);
+
+/** Build CSS override rules string without touching the DOM (safe for postMessage). */
+export function buildCssRulesString(cssOverrides?: Record<string, string>): string {
+  if (!cssOverrides) return '';
+  let rules = '';
+  for (const [key, val] of Object.entries(cssOverrides)) {
+    if (!val) continue;
+    const entries = CSS_INJECTION_MAP[key];
+    if (!entries) continue;
+    for (const { selector, property } of entries) {
+      rules += `${selector} { ${property}: ${val} !important; }\n`;
+    }
+  }
+  return rules;
+}
+
+/** Build zone-style rules string without touching the DOM (safe for postMessage). */
+export function buildZoneRulesString(zoneStyles?: Record<string, ZoneStyle>): string {
+  if (!zoneStyles) return '';
+  let rules = '';
+  for (const [slotId, style] of Object.entries(zoneStyles)) {
+    let r = '';
+    if (style.fontSize != null) r += `font-size: ${style.fontSize}px !important; `;
+    if (style.color) r += `color: ${style.color} !important; `;
+    if (style.backgroundColor) r += `background-color: ${style.backgroundColor} !important; `;
+    if (style.fontWeight) r += `font-weight: ${style.fontWeight} !important; `;
+    if (style.fontStyle) r += `font-style: ${style.fontStyle} !important; `;
+    if (style.textDecoration) r += `text-decoration: ${style.textDecoration} !important; `;
+    if (r) rules += `#${slotId} { ${r}}\n`;
+  }
+  return rules;
+}
+
 export function injectIntoHtml(html: string, options: InjectOptions): string {
   const { injections, cssOverrides, slotOverrides, zoneStyles } = options;
   const parser = new DOMParser();
@@ -220,6 +257,7 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
  * - Listens for `{ type: 'highlight-slot', slotId }` to outline a single slot
  * - Listens for `{ type: 'slot-selection-mode', active }` to pulse all known slots
  * - Listens for `{ type: 'clear-highlights' }` to remove all outlines
+ * - Listens for `{ type: 'apply-updates', injections, slotOverrides, cssRules, zoneRules }` for live sync
  */
 export function buildInteractiveScript(): string {
   const slotsJson = JSON.stringify(ALL_KNOWN_TARGETS);
@@ -229,6 +267,7 @@ export function buildInteractiveScript(): string {
 (function() {
   var KNOWN = ${slotsJson};
   var SKIP = ${skipIds};
+  var FIELD_TARGETS = ${FIELD_TARGETS_JSON};
 
   // Find the nearest ancestor (or self) that has an ID worth selecting
   function findSlotEl(target) {
@@ -307,6 +346,44 @@ export function buildInteractiveScript(): string {
         el.style.cursor = '';
         delete el.dataset.pinned;
       });
+    }
+    if (e.data.type === 'apply-updates') {
+      var inj = e.data.injections || {};
+      var slotOvr = e.data.slotOverrides || {};
+      for (var fieldId in inj) {
+        var item = inj[fieldId];
+        if (!item || !item.value) continue;
+        var lf = fieldId.toLowerCase();
+        var targets = [];
+        if (slotOvr[lf]) {
+          targets = [slotOvr[lf]];
+        } else if (FIELD_TARGETS[lf]) {
+          targets = FIELD_TARGETS[lf];
+        } else {
+          for (var k in FIELD_TARGETS) {
+            if (lf.indexOf(k) !== -1 || k.indexOf(lf) !== -1) { targets = FIELD_TARGETS[k]; break; }
+          }
+        }
+        for (var ti = 0; ti < targets.length; ti++) {
+          var el = document.getElementById(targets[ti]) || document.querySelector('[id*="' + targets[ti] + '"]');
+          if (!el) continue;
+          if (item.type === 'image') { el.src = item.value; el.removeAttribute('srcset'); }
+          else { el.textContent = item.value; }
+          break;
+        }
+      }
+      var cssRules = e.data.cssRules || '';
+      var cssEl = document.getElementById('__dynamic-overrides__');
+      if (cssRules) {
+        if (!cssEl) { cssEl = document.createElement('style'); cssEl.id = '__dynamic-overrides__'; document.head.appendChild(cssEl); }
+        cssEl.textContent = cssRules;
+      } else if (cssEl) { cssEl.remove(); }
+      var zoneRules = e.data.zoneRules || '';
+      var zoneEl = document.getElementById('__zone-style-overrides__');
+      if (zoneRules) {
+        if (!zoneEl) { zoneEl = document.createElement('style'); zoneEl.id = '__zone-style-overrides__'; document.head.appendChild(zoneEl); }
+        zoneEl.textContent = zoneRules;
+      } else if (zoneEl) { zoneEl.remove(); }
     }
   });
 

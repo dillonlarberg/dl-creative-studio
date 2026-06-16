@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { injectIntoHtml, buildInteractiveScript } from './injectIntoHtml';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { injectIntoHtml, buildInteractiveScript, buildCssRulesString, buildZoneRulesString } from './injectIntoHtml';
 import type { ZoneStyle } from '../types';
 
 export const FilledTemplatePreview = ({
@@ -31,13 +31,16 @@ export const FilledTemplatePreview = ({
   const [srcdoc, setSrcdoc] = useState<string>('');
   const [loaded, setLoaded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  // True once the iframe has loaded with the current rawHtml — enables postMessage live updates.
+  const iframeLiveRef = useRef(false);
   const clipSize = Math.round(adSize * scale);
   const isInteractive = Boolean(onSlotClick || slotSelectionMode);
 
-  // Fetch raw HTML only when the template file changes (not on every injection update).
+  // Fetch raw HTML only when the template file changes.
   useEffect(() => {
     setLoaded(false);
     setRawHtml('');
+    iframeLiveRef.current = false;
     fetch(`/template_examples/social/${templateFile}`)
       .then((r) => r.text())
       .then((html) => setRawHtml(html))
@@ -46,17 +49,35 @@ export const FilledTemplatePreview = ({
       );
   }, [templateFile]);
 
-  // Re-apply injections into cached HTML whenever mappings/overrides change.
-  // No fetch needed — rawHtml is already in memory, so updates are instant.
+  // Full srcdoc rebuild only when rawHtml or interactive mode changes.
+  // Injection/style changes are handled by the postMessage effect below.
   useEffect(() => {
     if (!rawHtml) return;
+    iframeLiveRef.current = false;
     let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles });
     if (isInteractive) {
       filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
     }
     setSrcdoc(filled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawHtml, JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), JSON.stringify(zoneStyles), isInteractive]);
+  }, [rawHtml, isInteractive]);
+
+  // Live update via postMessage when injections/overrides change after the iframe is ready.
+  // Skips the full srcdoc reload cycle — updates apply directly to the existing iframe DOM.
+  useEffect(() => {
+    if (!iframeLiveRef.current || !iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      {
+        type: 'apply-updates',
+        injections,
+        slotOverrides: slotOverrides ?? {},
+        cssRules: buildCssRulesString(cssOverrides),
+        zoneRules: buildZoneRulesString(zoneStyles),
+      },
+      '*'
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), JSON.stringify(zoneStyles)]);
 
   // Send highlight-slot message when highlightSlot prop changes
   useEffect(() => {
@@ -75,6 +96,11 @@ export const FilledTemplatePreview = ({
       '*'
     );
   }, [slotSelectionMode, loaded]);
+
+  const handleIframeLoad = useCallback(() => {
+    setLoaded(true);
+    iframeLiveRef.current = true;
+  }, []);
 
   // Listen for slot-click postMessages from the iframe
   useEffect(() => {
@@ -130,7 +156,7 @@ export const FilledTemplatePreview = ({
           <iframe
             ref={iframeRef}
             srcDoc={srcdoc}
-            onLoad={() => setLoaded(true)}
+            onLoad={handleIframeLoad}
             style={{
               width: `${adSize}px`,
               height: `${adSize}px`,
