@@ -59,7 +59,7 @@ export function AppInfoPopover({ title, overview }: AppInfoPopoverProps) {
         ref={refs.setReference}
         variant="secondary"
         type="button"
-        aria-expanded={open}
+        aria-expanded={open ? 'true' : 'false'}
         aria-describedby={open ? popoverId : undefined}
         {...getReferenceProps()}
       >
