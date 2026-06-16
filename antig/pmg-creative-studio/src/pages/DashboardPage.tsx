@@ -17,6 +17,7 @@ import {
 import { useClientBootstrap } from '../hooks/useClientBootstrap';
 import { getRegistry } from '../apps/_registry';
 import type { AppManifest } from '../apps/types';
+import { AppInfoPopover } from './AppInfoPopover';
 
 /**
  * AdLabs Dashboard.
@@ -180,7 +181,7 @@ interface AppCardProps {
   onOpen: () => void;
 }
 
-function AppCard({ manifest, onOpen }: AppCardProps) {
+export function AppCard({ manifest, onOpen }: AppCardProps) {
   const isPreview = (manifest.status ?? 'live') === 'preview';
 
   return (
@@ -203,13 +204,7 @@ function AppCard({ manifest, onOpen }: AppCardProps) {
         </p>
       )}
       <div className="mt-4 flex items-center justify-between">
-        <Button
-          variant="secondary"
-          type="button"
-          onClick={() => console.log('Button was pressed')}
-        >
-          More Info
-        </Button>
+        <AppInfoPopover title={manifest.title} overview={manifest.overview} />
         <Button variant="primary" type="button" onClick={onOpen}>
           {isPreview ? 'Preview' : 'Open'}
         </Button>
