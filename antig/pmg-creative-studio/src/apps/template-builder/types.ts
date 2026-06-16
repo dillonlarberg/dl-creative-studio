@@ -1,5 +1,28 @@
+import type { ReactNode } from 'react';
+import type { ValidationResult, ValidationRequirement, StepContext } from '../types';
 import type { SelectedFeed } from '../../platform/datasources/types';
+
+// Re-export platform types so step files can import from a single local path
+// after the migration. No duplication — these are re-exports, not copies.
+export type { ValidationResult, ValidationRequirement, StepContext };
 export type { SelectedFeed };
+
+// Local alias for WizardStep — structurally identical to src/apps/types.ts#WizardStep.
+// Severs the template-builder's import of the platform wizard type without
+// requiring any changes to step definition objects (name, description, etc.).
+export interface TemplateBuilderStep<
+  S extends Record<string, unknown> = TemplateBuilderStepData
+> {
+  id: string;
+  name: string;
+  description?: string;
+  render: (props: StepContext<S>) => ReactNode;
+  validate: (data: S) => ValidationResult;
+  onEnter?: (ctx: StepContext<S>) => void | Promise<void>;
+  onLeave?: (ctx: StepContext<S>) => void | Promise<void>;
+  next?: (ctx: StepContext<S>) => string | undefined;
+  submit?: (ctx: StepContext<S>) => Promise<{ nextStepId?: string }>;
+}
 
 export type Channel = 'Social' | 'Programmatic' | 'Print' | 'Digital Signage';
 export type LogoVariant = 'primary' | 'inverse';
