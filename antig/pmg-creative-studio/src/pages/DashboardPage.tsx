@@ -204,7 +204,7 @@ export default function DashboardPage() {
 
           {/* Ad Templates section — replaces the old "View Template Library" text link */}
           {client && clientSlug && (
-            <TemplateLibrarySection clientSlug={clientSlug} assetHouse={assetHouse} />
+            <TemplateLibrarySection clientSlug={clientSlug} />
           )}
         </div>
       </PaddedFullWidthContainer>
