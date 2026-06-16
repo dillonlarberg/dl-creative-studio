@@ -75,6 +75,7 @@ export function AppInfoPopover({ title, overview }: AppInfoPopoverProps) {
       {open && (
         <FloatingPortal>
           <div
+            // eslint-disable-next-line react-hooks/refs -- floating-ui callback ref-setter (a function), not a render-time ref.current access
             ref={refs.setFloating}
             id={popoverId}
             role="region"
