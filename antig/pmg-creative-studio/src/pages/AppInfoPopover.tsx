@@ -17,6 +17,12 @@ import {
 import { Button } from '@agencypmg/alli-design-system';
 import type { AppOverview } from '../apps/types';
 
+const AFTER_COLS: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+};
+
 interface AppInfoPopoverProps {
   title: string;
   overview?: AppOverview;
@@ -86,10 +92,10 @@ export function AppInfoPopover({ title, overview }: AppInfoPopoverProps) {
                 className="h-10 w-9 shrink-0 rounded object-cover"
               />
               <span aria-hidden className="text-gray-400">→</span>
-              <div className="grid flex-1 grid-cols-3 gap-1">
+              <div className={`grid flex-1 gap-1 ${AFTER_COLS[Math.min(overview.after.length, 3)] ?? 'grid-cols-3'}`}>
                 {overview.after.map((src, i) => (
                   <img
-                    key={src}
+                    key={i}
                     src={src}
                     alt={`${title} output example ${i + 1}`}
                     className="h-9 w-full rounded object-cover"

@@ -205,7 +205,7 @@ export function AppCard({ manifest, onOpen }: AppCardProps) {
       )}
       <div className="mt-4 flex items-center justify-between">
         <AppInfoPopover title={manifest.title} overview={manifest.overview} />
-        <Button variant="primary" type="button" onClick={onOpen}>
+        <Button variant="primary" type="button" onClick={onOpen} className="ml-auto">
           {isPreview ? 'Preview' : 'Open'}
         </Button>
       </div>
