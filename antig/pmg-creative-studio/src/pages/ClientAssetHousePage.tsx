@@ -10,7 +10,8 @@ import {
     CheckCircleIcon,
     ExclamationCircleIcon,
     ArrowPathIcon,
-    ArrowUpTrayIcon
+    ArrowUpTrayIcon,
+    ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 
 export default function ClientAssetHousePage() {
@@ -278,6 +279,36 @@ export default function ClientAssetHousePage() {
     return (
         <div className="max-w-4xl space-y-8">
             <div>
+                <button
+                    onClick={() => {
+                        if (document.referrer) {
+                            try {
+                                const ref = new URL(document.referrer);
+                                if (ref.origin === window.location.origin) {
+                                    if (ref.pathname.includes('template-builder')) {
+                                        // Opened in a new tab from the template builder.
+                                        // Try to close the tab so the user returns to their
+                                        // original session with state intact. If the browser
+                                        // blocks window.close() (e.g. opened via <a target="_blank">),
+                                        // fall back to the dashboard after 50ms rather than
+                                        // navigating to the template builder (which would remount
+                                        // fresh and lose all in-session requirements/candidates).
+                                        window.close();
+                                        setTimeout(() => navigate(`/adlabs/${slug}/`), 50);
+                                        return;
+                                    }
+                                    navigate(ref.pathname + ref.search + ref.hash);
+                                    return;
+                                }
+                            } catch {}
+                        }
+                        navigate(-1);
+                    }}
+                    className="mb-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                >
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    Back
+                </button>
                 <h1 className="text-2xl font-bold text-gray-900">Brand Kit</h1>
                 <p className="mt-1 text-sm text-blue-gray-500">
                     Manage visual assets and brand rules for <span className="font-semibold text-blue-600">{clientName}</span>.

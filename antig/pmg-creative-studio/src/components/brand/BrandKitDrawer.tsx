@@ -26,7 +26,7 @@ export function BrandKitDrawer({
       as="a"
       href={`/adlabs/${clientSlug}/brand-standards`}
       target="_blank"
-      rel="noopener noreferrer"
+      rel="noopener"
       onClick={onClose}
     >
       Edit in Brand Kit ↗
