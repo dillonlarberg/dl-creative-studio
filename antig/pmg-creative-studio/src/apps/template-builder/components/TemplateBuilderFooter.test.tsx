@@ -1,6 +1,7 @@
+import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import TemplateBuilderFooter from './TemplateBuilderFooter';
 
 afterEach(cleanup);
@@ -141,5 +142,56 @@ describe('TemplateBuilderFooter', () => {
     fireEvent.click(screen.getByTestId('wizard-discard'));
     expect(onDiscard).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  // --- new coverage ---
+
+  it('Previous Step button is disabled when isLoading is true (even on step > 0)', () => {
+    renderFooter({ currentStepIndex: 1, isLoading: true });
+    const btn = screen.getByRole('button', { name: /← Previous Step/ });
+    expect(btn.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('Save & Exit navigates to /adlabs/acme when clicked', async () => {
+    let capturedPath = '';
+    function LocationCapture() {
+      const loc = useLocation();
+      React.useEffect(() => { capturedPath = loc.pathname; }, [loc]);
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/start']}>
+        <LocationCapture />
+        <TemplateBuilderFooter {...defaultProps} clientSlug="acme" />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByTestId('wizard-save-exit'));
+    await waitFor(() => expect(capturedPath).toBe('/adlabs/acme'));
+  });
+
+  it("Continue button shows 'Next: Continue →' when nextStepName is undefined", () => {
+    renderFooter({ isLastStep: false, nextStepName: undefined });
+    expect(screen.getByRole('button', { name: /Next: Continue →/ })).toBeDefined();
+  });
+
+  it('last step footer renders Previous Step and Save & Exit but no Next button', () => {
+    renderFooter({ isLastStep: true, currentStepIndex: 2 });
+    expect(screen.getByRole('button', { name: /← Previous Step/ })).toBeDefined();
+    expect(screen.getByTestId('wizard-save-exit')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Next:/ })).toBeNull();
+  });
+
+  it('renders wizard-requirements container with no items when requirements is []', () => {
+    renderFooter({ requirements: [] });
+    // Empty array is truthy — the outer div is still rendered, but no child items
+    expect(screen.getByTestId('wizard-requirements')).toBeDefined();
+    expect(screen.queryAllByTestId(/^wizard-requirement-/).length).toBe(0);
+  });
+
+  it('Continue button is NOT disabled when isLoading is true and isNextDisabled is false', () => {
+    // The source disables the Continue button only via isNextDisabled — isLoading only swaps label text
+    renderFooter({ isLoading: true, isNextDisabled: false, isLastStep: false });
+    const btn = screen.getByRole('button', { name: /Loading.../ });
+    expect(btn.hasAttribute('disabled')).toBe(false);
   });
 });
