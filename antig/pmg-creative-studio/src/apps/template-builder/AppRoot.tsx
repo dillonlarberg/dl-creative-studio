@@ -35,6 +35,7 @@ export default function TemplateBuilderAppRoot() {
   const [fromData, setFromData] = useState<Partial<TemplateBuilderStepData> | null>(null);
   const [loading, setLoading] = useState(!!fromTemplateId);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!fromTemplateId) {
@@ -42,6 +43,8 @@ export default function TemplateBuilderAppRoot() {
       return;
     }
     if (!slug) return;
+    setLoading(true);
+    setLoadError(null);
     templateLibraryService
       .getTemplate(slug as ClientSlug, fromTemplateId)
       .then((template) => {
@@ -56,7 +59,7 @@ export default function TemplateBuilderAppRoot() {
       })
       .catch((err: Error) => setLoadError(err.message))
       .finally(() => setLoading(false));
-  }, [fromTemplateId, slug, isCopy]);
+  }, [fromTemplateId, slug, isCopy, retryCount]);
 
   // Override initialStepData when prefill is set so usePersistedStepData hydrates
   // with the template values.
@@ -85,7 +88,7 @@ export default function TemplateBuilderAppRoot() {
 
   // localStorage key: wiz_${slug}_template-builder — identical to WizardShell
   // because same hook + same manifest.id = 'template-builder'.
-  const { stepData, mergeStepData, creativeId, discard } = usePersistedStepData<TemplateBuilderStepData>({
+  const { stepData, mergeStepData, creativeId, isLoading: isResumeLoading, discard } = usePersistedStepData<TemplateBuilderStepData>({
     manifest: resolvedManifest,
     clientSlug: slug,
     resumeId,
@@ -161,19 +164,36 @@ export default function TemplateBuilderAppRoot() {
     navigateRouter(`/adlabs/${slug}`);
   }
 
-  // Blocking loading/error states — exact replica of existing AppRoot.tsx lines 124-138
+  // Blocking loading/error states
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+        <p className="text-sm text-blue-gray-500">Loading template…</p>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
         <p className="text-sm text-red-600">Failed to load template: {loadError}</p>
+        <button
+          type="button"
+          onClick={() => setRetryCount((c) => c + 1)}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (isResumeLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+        <p className="text-sm text-blue-gray-500">Resuming your draft…</p>
       </div>
     );
   }

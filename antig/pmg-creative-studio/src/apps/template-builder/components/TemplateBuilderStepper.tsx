@@ -62,11 +62,13 @@ export default function TemplateBuilderStepper({
               <button
                 type="button"
                 onClick={() => !isLoading && onStepClick(index)}
+                title={status === 'upcoming' ? 'Complete the current step to continue' : undefined}
+                aria-disabled={status === 'upcoming' ? 'true' : undefined}
                 className={cn(
                   'relative z-10 flex h-8 w-8 items-center justify-center rounded-full',
                   status === 'complete' && 'bg-blue-600 hover:bg-blue-700',
                   status === 'current' && 'border-2 border-blue-600 bg-white',
-                  status === 'upcoming' && 'border-2 border-gray-300 bg-white'
+                  status === 'upcoming' && 'cursor-not-allowed border-2 border-gray-300 bg-white'
                 )}
                 aria-current={status === 'current' ? 'step' : undefined}
               >
