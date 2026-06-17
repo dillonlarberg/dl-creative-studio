@@ -61,7 +61,7 @@ export default function TemplateBuilderStepper({
               {/* Step circle */}
               <button
                 type="button"
-                onClick={() => onStepClick(index)}
+                onClick={() => !isLoading && onStepClick(index)}
                 className={cn(
                   'relative z-10 flex h-8 w-8 items-center justify-center rounded-full',
                   status === 'complete' && 'bg-blue-600 hover:bg-blue-700',

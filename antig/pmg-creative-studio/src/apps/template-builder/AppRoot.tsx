@@ -148,9 +148,9 @@ export default function TemplateBuilderAppRoot() {
   // Exact replica of WizardShell lines 319-322.
   const requirements =
     !validation.ok &&
-    Array.isArray((validation as { requirements?: unknown }).requirements) &&
-    (validation as { requirements: { label: string; met: boolean }[] }).requirements.length > 0
-      ? (validation as { requirements: { label: string; met: boolean }[] }).requirements
+    Array.isArray(validation.requirements) &&
+    validation.requirements.length > 0
+      ? validation.requirements
       : null;
 
   // Stable render props — exact replica of WizardShell line 317.
