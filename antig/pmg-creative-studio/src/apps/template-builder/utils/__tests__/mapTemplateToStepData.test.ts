@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapTemplateToStepData } from './mapTemplateToStepData';
-import type { TemplateLibraryRecord } from '../../../services/templateLibrary.types';
+import { mapTemplateToStepData } from '../mapTemplateToStepData';
+import type { TemplateLibraryRecord } from '../../../../services/templateLibrary.types';
 
-vi.mock('../../../constants/useCases', () => ({
+vi.mock('../../../../constants/useCases', () => ({
   SOCIAL_WIREFRAMES: [{ id: 'wireframe-1', file: 'wireframe-1.html' }],
 }));
 
