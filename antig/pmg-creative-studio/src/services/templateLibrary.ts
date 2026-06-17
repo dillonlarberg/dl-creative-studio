@@ -9,7 +9,6 @@ import {
   serverTimestamp,
   runTransaction,
   setDoc,
-  updateDoc,
   deleteDoc,
   writeBatch,
   type Transaction,
@@ -21,7 +20,6 @@ import { paths, type ClientSlug } from '../platform/firebase/paths';
 import { authService } from './auth';
 import type {
   TemplateLibraryRecord,
-  TemplateHistoryEntry,
   NewTemplateData,
   FieldMapping,
 } from './templateLibrary.types';
