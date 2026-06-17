@@ -11,8 +11,7 @@ import LoginPage from './pages/LoginPage';
 import ClientAssetHousePage from './pages/ClientAssetHousePage';
 import { ClientProvider } from './platform/client/ClientProvider';
 import TemplateBuilderAppRoot from './apps/template-builder/AppRoot';
-import { WizardShell } from './platform/wizard/WizardShell';
-import videoStitchManifest from './apps/video-stitch/manifest';
+import VideoStitchAppRoot from './apps/video-stitch/AppRoot';
 import AdResizingAppRoot from './apps/ad-resizing/AppRoot';
 import TemplateLibraryPage from './pages/TemplateLibraryPage';
 import VideoCutdownAppRoot from './apps/video-cutdown/AppRoot';
@@ -144,7 +143,7 @@ export default function App() {
             path="/adlabs/:clientSlug/video-stitch/*"
             element={
               <ClientProvider>
-                <WizardShell manifest={videoStitchManifest} />
+                <VideoStitchAppRoot />
               </ClientProvider>
             }
           />

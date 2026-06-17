@@ -59,10 +59,19 @@ export function clearFeedCache(clientSlug?: string) {
 export async function fetchFeedSample(opts: {
   clientSlug: string;
   feed: SelectedFeed | string;
+  /**
+   * Which media to include. Default (undefined / 'image') strips video rows from
+   * `creative_insights_data_export` — ad-resizing is images-only. 'video' | 'all'
+   * keep them (video-stitch needs video; build-step-0 smoke confirmed all Nike/RL
+   * video lives in this model). The cache key is namespaced by media so an
+   * image-only result never poisons a video request.
+   */
+  media?: 'image' | 'video' | 'all';
 }): Promise<FeedSampleResult> {
   const feed = opts.feed;
   const modelName = typeof feed === 'string' ? feed : feed.name;
-  const cacheKey = `${opts.clientSlug}:${modelName}`;
+  const includeVideo = opts.media === 'video' || opts.media === 'all';
+  const cacheKey = `${opts.clientSlug}:${modelName}:${opts.media ?? 'image'}`;
   if (_feedSampleCache.has(cacheKey)) return _feedSampleCache.get(cacheKey)!;
   const feedObj = typeof feed === 'string' ? null : feed;
 
@@ -215,7 +224,7 @@ export async function fetchFeedSample(opts: {
     }
 
     let processedData = data;
-    if (modelName === 'creative_insights_data_export') {
+    if (modelName === 'creative_insights_data_export' && !includeVideo) {
       processedData = data.filter((row) => {
         const ct =
           row.creative_type ||
