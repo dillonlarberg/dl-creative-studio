@@ -231,10 +231,10 @@ function PublishStepBody({
       stepData.fieldSourceMode
     ),
     fieldTransforms: stepData.fieldTransforms ?? {},
-    zoneStyles: stepData.zoneStyles,
-    staticValues: stepData.staticValues,
-    fieldSourceMode: stepData.fieldSourceMode,
-    aiSuggestedMappings: stepData.aiSuggestedMappings,
+    ...(stepData.zoneStyles ? { zoneStyles: stepData.zoneStyles } : {}),
+    ...(stepData.staticValues ? { staticValues: stepData.staticValues } : {}),
+    ...(stepData.fieldSourceMode ? { fieldSourceMode: stepData.fieldSourceMode } : {}),
+    ...(stepData.aiSuggestedMappings ? { aiSuggestedMappings: stepData.aiSuggestedMappings } : {}),
     brandOverrides: {
       ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
       ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),

@@ -1,84 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
-import WizardShell from '../../platform/wizard/WizardShell';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { usePageTitle } from '../../hooks/usePageTitle';
+import { useCurrentClient } from '../../platform/client/useCurrentClient';
+import { usePersistedStepData } from '../../platform/wizard/usePersistedStepData';
 import { SharedDataProvider } from '../../platform/wizard/SharedDataContext';
 import { AssetHouseProvider } from '../../platform/assetHouse/AssetHouseContext';
 import { TemplateBuilderProvider } from './TemplateBuilderContext';
-import { useCurrentClient } from '../../platform/client/useCurrentClient';
-import manifest from './manifest';
-import type { TemplateBuilderStepData, Channel } from './types';
-import type { TemplateLibraryRecord } from '../../services/templateLibrary.types';
 import { templateLibraryService } from '../../services/templateLibrary';
-import { SOCIAL_WIREFRAMES } from '../../constants/useCases';
 import type { ClientSlug } from '../../platform/firebase/paths';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function mapTemplateToStepData(t: TemplateLibraryRecord): Partial<TemplateBuilderStepData> {
-  const channelMap: Record<string, Channel> = {
-    social: 'Social',
-    programmatic: 'Programmatic',
-    print: 'Print',
-    signage: 'Digital Signage',
-  };
-
-  const ratios = t.adSizes.map((s) => s.label ?? `${s.width}:${s.height}`);
-
-  const feedMappings: Record<string, string> = {};
-  const uploadValues: Record<string, string> = {};
-  const slotMappings: Record<string, string> = {};
-
-  for (const [fieldId, mapping] of Object.entries(t.fieldMappings)) {
-    if (mapping.source === 'feed') {
-      feedMappings[fieldId] = mapping.column;
-      if (mapping.slotId) slotMappings[fieldId] = mapping.slotId;
-    } else if (mapping.source === 'upload') {
-      uploadValues[fieldId] = mapping.assetPath;
-    }
-  }
-
-  const wireframe = SOCIAL_WIREFRAMES.find((w) => w.id === t.scaffoldId);
-
-  return {
-    templateName: t.name,
-    channel: channelMap[t.channel] ?? 'Social',
-    ratios,
-    selectedFeedId: t.datasourceId,
-    selectedFeedName: t.datasourceName,
-    brief: t.aiRequirements?.intent ?? t.brief ?? '',
-    feedMappings,
-    ...(Object.keys(uploadValues).length > 0 ? { uploadValues } : {}),
-    ...(Object.keys(slotMappings).length > 0 ? { slotMappings } : {}),
-    fieldTransforms: t.fieldTransforms ?? {},
-    zoneStyles: t.zoneStyles,
-    staticValues: t.staticValues,
-    fieldSourceMode: t.fieldSourceMode,
-    aiSuggestedMappings: t.aiSuggestedMappings,
-    selectedWireframeId: t.scaffoldId,
-    ...(wireframe ? { wireframeFile: wireframe.file } : {}),
-    ...(t.brandOverrides?.primaryColor ? { backgroundColor: t.brandOverrides.primaryColor } : {}),
-    ...(t.brandOverrides?.accentColor ? { accentColor: t.brandOverrides.accentColor } : {}),
-    ...(t.logoVariant ? { logoVariant: t.logoVariant } : {}),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Root
-// ---------------------------------------------------------------------------
+import manifest from './manifest';
+import type { TemplateBuilderStepData, TemplateBuilderStep } from './types';
+import { mapTemplateToStepData } from './utils/mapTemplateToStepData';
+import TemplateBuilderStepper from './components/TemplateBuilderStepper';
+import TemplateBuilderFooter from './components/TemplateBuilderFooter';
+import { useStepNavigation } from './hooks/useStepNavigation';
 
 export default function TemplateBuilderAppRoot() {
-  const [searchParams] = useSearchParams();
-  const fromTemplateId = searchParams.get('from');
-  const isCopy = searchParams.get('copy') === '1';
-  // Read slug from the URL param directly — synchronous and always available.
-  // useCurrentClient resolves asynchronously (currentClient starts as null),
-  // which would leave slug='' on first render and cause the guard to spin forever.
+  // urlSlug is synchronous — always non-null in production routes /:clientSlug/...
+  // useCurrentClient resolves asynchronously; fall back only for tests.
   const { clientSlug: urlSlug } = useParams<{ clientSlug: string }>();
+  const [searchParams] = useSearchParams();
+  const navigateRouter = useNavigate();
   const { currentClient } = useCurrentClient();
   const slug = urlSlug ?? currentClient?.slug ?? '';
 
+  const fromTemplateId = searchParams.get('from');
+  const isCopy = searchParams.get('copy') === '1';
+  const resumeId = searchParams.get('creative');
+
+  usePageTitle(manifest.title);
+
+  // Template prefill state — exact replica of existing AppRoot.tsx lines 82-122
   const [fromData, setFromData] = useState<Partial<TemplateBuilderStepData> | null>(null);
   const [loading, setLoading] = useState(!!fromTemplateId);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -88,9 +41,6 @@ export default function TemplateBuilderAppRoot() {
       setLoading(false);
       return;
     }
-    // Wait for the client slug to resolve before fetching.
-    // Without this guard, the early return would call setLoading(false)
-    // before the fetch runs, causing WizardShell to mount with empty stepData.
     if (!slug) return;
     templateLibraryService
       .getTemplate(slug as ClientSlug, fromTemplateId)
@@ -99,7 +49,6 @@ export default function TemplateBuilderAppRoot() {
         if (isCopy) {
           data.templateName = `Copy of ${template.name}`;
         }
-        // Clear any stale session so it doesn't override the template pre-fill
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem(`wiz_${slug}_template-builder`);
         }
@@ -109,6 +58,8 @@ export default function TemplateBuilderAppRoot() {
       .finally(() => setLoading(false));
   }, [fromTemplateId, slug, isCopy]);
 
+  // Override initialStepData when prefill is set so usePersistedStepData hydrates
+  // with the template values.
   const resolvedManifest = useMemo(() => {
     if (!fromData) return manifest;
     const prefilledData = fromData;
@@ -121,6 +72,96 @@ export default function TemplateBuilderAppRoot() {
     };
   }, [fromData]);
 
+  // Clear stale localStorage synchronously before usePersistedStepData mounts
+  // when ?from= is set. This prevents the hydration effect from reading the
+  // stale session before the async fetch clears it in .then().
+  const prefillSessionCleared = useRef(false);
+  if (fromTemplateId && slug && !prefillSessionCleared.current) {
+    prefillSessionCleared.current = true;
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(`wiz_${slug}_template-builder`);
+    }
+  }
+
+  // localStorage key: wiz_${slug}_template-builder — identical to WizardShell
+  // because same hook + same manifest.id = 'template-builder'.
+  const { stepData, mergeStepData, creativeId, discard } = usePersistedStepData<TemplateBuilderStepData>({
+    manifest: resolvedManifest,
+    clientSlug: slug,
+    resumeId,
+  });
+
+  // Mount effect — replicates WizardShell lines 151-162.
+  // manifest.ts does not define onMount today; this is forward-compat.
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (mountedRef.current) return;
+    mountedRef.current = true;
+    if (resolvedManifest.onMount) {
+      void resolvedManifest.onMount({ client: { slug: slug as ClientSlug }, creativeId });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // navigateToStepRef lets buildContext.navigate call navigateToStep from useStepNavigation
+  // without creating a circular hook dependency.
+  const navigateToStepRef = useRef<(stepId: string, replace: boolean) => void>(
+    () => { /* populated after useStepNavigation runs below */ }
+  );
+
+  const buildContext = useCallback(
+    () => ({
+      stepData,
+      mergeStepData,
+      navigate: ({ stepId, replace = true }: { stepId?: string; replace?: boolean }) => {
+        if (stepId) navigateToStepRef.current(stepId, replace);
+      },
+      client: { slug: slug as ClientSlug },
+      creativeId,
+    }),
+    [stepData, mergeStepData, slug, creativeId]
+  );
+
+  const {
+    currentStepIndex,
+    currentStep,
+    isLoading,
+    validationError,
+    validation,
+    isNextDisabled,
+    isLastStep,
+    goNext,
+    goBack,
+    jumpTo,
+    navigateToStep,
+  } = useStepNavigation({
+    steps: resolvedManifest.steps as TemplateBuilderStep<TemplateBuilderStepData>[],
+    buildContext,
+    stepData,
+  });
+
+  // Keep the ref in sync so buildContext.navigate is always current.
+  useEffect(() => {
+    navigateToStepRef.current = navigateToStep;
+  }, [navigateToStep]);
+
+  // Exact replica of WizardShell lines 319-322.
+  const requirements =
+    !validation.ok &&
+    Array.isArray(validation.requirements) &&
+    validation.requirements.length > 0
+      ? validation.requirements
+      : null;
+
+  // Stable render props — exact replica of WizardShell line 317.
+  const renderProps = useMemo(() => buildContext(), [buildContext]);
+
+  async function handleDiscard() {
+    await discard();
+    navigateRouter(`/adlabs/${slug}`);
+  }
+
+  // Blocking loading/error states — exact replica of existing AppRoot.tsx lines 124-138
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -137,11 +178,86 @@ export default function TemplateBuilderAppRoot() {
     );
   }
 
+  // Happy path — exact structural replica of WizardShell lines 327-546
   return (
     <SharedDataProvider clientSlug={slug}>
       <AssetHouseProvider clientSlug={slug}>
         <TemplateBuilderProvider>
-          <WizardShell<TemplateBuilderStepData> manifest={resolvedManifest} />
+          <div className="space-y-8" data-testid="wizard-shell">
+
+            {/* Back link + title + description — WizardShell lines 329-342 */}
+            <div>
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1 text-sm font-medium text-blue-gray-500 hover:text-blue-600"
+              >
+                <ArrowLeftIcon className="h-4 w-4" />
+                Back to workflows
+              </Link>
+              <h1 className="mt-3 text-2xl font-semibold text-gray-900">
+                {resolvedManifest.title}
+              </h1>
+              {resolvedManifest.description && (
+                <p className="mt-1 text-sm text-blue-gray-600">
+                  {resolvedManifest.description}
+                </p>
+              )}
+            </div>
+
+            {/* Progress stepper */}
+            <TemplateBuilderStepper
+              steps={resolvedManifest.steps as TemplateBuilderStep<TemplateBuilderStepData>[]}
+              currentStepIndex={currentStepIndex}
+              isLoading={isLoading}
+              onStepClick={jumpTo}
+            />
+
+            {/* Content card — WizardShell lines 429-543 */}
+            <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-card">
+              <div className="text-center">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {currentStep?.name}
+                </h2>
+                {currentStep?.description && (
+                  <p className="mt-1 text-sm text-blue-gray-500">
+                    {currentStep.description}
+                  </p>
+                )}
+                <div
+                  className="mt-8"
+                  data-testid={`step-body-${currentStep?.id}`}
+                >
+                  {currentStep?.render(renderProps)}
+                </div>
+              </div>
+
+              {/* Validation error — inside card, above footer — WizardShell lines 440-449 */}
+              {validationError && !requirements ? (
+                <p
+                  role="alert"
+                  data-testid="wizard-validation-error"
+                  className="mt-6 text-center text-sm text-red-600"
+                >
+                  {validationError}
+                </p>
+              ) : null}
+
+              {/* Footer is inside the card — WizardShell line 452 is inside the card that starts at line 429 */}
+              <TemplateBuilderFooter
+                currentStepIndex={currentStepIndex}
+                isLoading={isLoading}
+                isLastStep={isLastStep}
+                isNextDisabled={isNextDisabled}
+                requirements={requirements}
+                clientSlug={slug}
+                nextStepName={resolvedManifest.steps[currentStepIndex + 1]?.name}
+                onNext={goNext}
+                onBack={goBack}
+                onDiscard={handleDiscard}
+              />
+            </div>
+
+          </div>
         </TemplateBuilderProvider>
       </AssetHouseProvider>
     </SharedDataProvider>
