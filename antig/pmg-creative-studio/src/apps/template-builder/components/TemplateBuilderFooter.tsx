@@ -1,4 +1,5 @@
 import { CheckIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { Button, ConfirmPopover } from '@agencypmg/alli-design-system';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../../utils/cn';
 import type { ValidationRequirement } from '../../types';
@@ -88,22 +89,22 @@ export default function TemplateBuilderFooter({
             Save &amp; Exit
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                !window.confirm(
-                  'Discard this template? All unsaved work will be lost and cannot be recovered.'
-                )
-              )
-                return;
-              onDiscard();
-            }}
-            data-testid="wizard-discard"
-            className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-red-500"
+          <ConfirmPopover
+            content="Discard this template? All unsaved work will be lost and cannot be recovered."
+            action={
+              <Button variant="caution" onClick={() => void onDiscard()}>
+                Discard
+              </Button>
+            }
           >
-            Discard
-          </button>
+            <button
+              type="button"
+              data-testid="wizard-discard"
+              className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-red-500"
+            >
+              Discard
+            </button>
+          </ConfirmPopover>
 
           {/* Not rendered on last step — exact replica of WizardShell line 522 */}
           {!isLastStep && (
