@@ -156,4 +156,34 @@ describe('TemplateBuilderStepper', () => {
     expect(screen.getByTestId('wizard-breadcrumb')).toBeDefined();
     expect(screen.getByTestId('breadcrumb-only')).toBeDefined();
   });
+
+  it('upcoming step button has cursor-not-allowed class', () => {
+    render(<TemplateBuilderStepper steps={steps} currentStepIndex={0} isLoading={false} onStepClick={vi.fn()} />);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[2].className).toContain('cursor-not-allowed');
+    expect(buttons[0].className).not.toContain('cursor-not-allowed');
+  });
+
+  it('upcoming step button has title tooltip, current and complete do not', () => {
+    render(<TemplateBuilderStepper steps={steps} currentStepIndex={1} isLoading={false} onStepClick={vi.fn()} />);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[0].getAttribute('title')).toBeNull(); // complete
+    expect(buttons[1].getAttribute('title')).toBeNull(); // current
+    expect(buttons[2].getAttribute('title')).toBe('Complete the current step to continue');
+  });
+
+  it('upcoming step button has aria-disabled="true"', () => {
+    render(<TemplateBuilderStepper steps={steps} currentStepIndex={0} isLoading={false} onStepClick={vi.fn()} />);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons[2].getAttribute('aria-disabled')).toBe('true');
+    expect(buttons[0].getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('does not call onStepClick when clicking an upcoming step', () => {
+    const onStepClick = vi.fn();
+    render(<TemplateBuilderStepper steps={steps} currentStepIndex={0} isLoading={false} onStepClick={onStepClick} />);
+    const buttons = screen.getAllByRole('button');
+    fireEvent.click(buttons[2]); // publish step is upcoming
+    expect(onStepClick).not.toHaveBeenCalled();
+  });
 });

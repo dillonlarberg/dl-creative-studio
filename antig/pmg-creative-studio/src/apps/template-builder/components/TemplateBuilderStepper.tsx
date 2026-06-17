@@ -61,7 +61,7 @@ export default function TemplateBuilderStepper({
               {/* Step circle */}
               <button
                 type="button"
-                onClick={() => !isLoading && onStepClick(index)}
+                onClick={() => !isLoading && status !== 'upcoming' && onStepClick(index)}
                 title={status === 'upcoming' ? 'Complete the current step to continue' : undefined}
                 aria-disabled={status === 'upcoming' ? 'true' : undefined}
                 className={cn(

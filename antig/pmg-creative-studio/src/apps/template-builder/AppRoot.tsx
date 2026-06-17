@@ -40,14 +40,17 @@ export default function TemplateBuilderAppRoot() {
   useEffect(() => {
     if (!fromTemplateId) {
       setLoading(false);
+      setLoadError(null);
       return;
     }
     if (!slug) return;
+    let cancelled = false;
     setLoading(true);
     setLoadError(null);
     templateLibraryService
       .getTemplate(slug as ClientSlug, fromTemplateId)
       .then((template) => {
+        if (cancelled) return;
         const data = mapTemplateToStepData(template);
         if (isCopy) {
           data.templateName = `Copy of ${template.name}`;
@@ -57,8 +60,9 @@ export default function TemplateBuilderAppRoot() {
         }
         setFromData(data);
       })
-      .catch((err: Error) => setLoadError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err: Error) => { if (!cancelled) setLoadError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [fromTemplateId, slug, isCopy, retryCount]);
 
   // Override initialStepData when prefill is set so usePersistedStepData hydrates
@@ -93,6 +97,17 @@ export default function TemplateBuilderAppRoot() {
     clientSlug: slug,
     resumeId,
   });
+
+  // Push prefill values into stepData after the ?from= fetch resolves.
+  // resolvedManifest.initialStepData() is called before fromData is set (async
+  // ordering), so the initialStepData override is dead on this path. Calling
+  // mergeStepData here is the correct way to seed the wizard with prefill values.
+  useEffect(() => {
+    if (!fromData) return;
+    mergeStepData(fromData as Partial<TemplateBuilderStepData>);
+    // mergeStepData is stable (useCallback); fromData is the only real dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromData]);
 
   // Mount effect — replicates WizardShell lines 151-162.
   // manifest.ts does not define onMount today; this is forward-compat.
@@ -189,7 +204,10 @@ export default function TemplateBuilderAppRoot() {
     );
   }
 
-  if (isResumeLoading) {
+  // Only gate on isResumeLoading when actually resuming — the hook always starts
+  // isLoading=true even for fresh sessions, so without the resumeId guard every
+  // new wizard would briefly flash "Resuming your draft…".
+  if (isResumeLoading && resumeId) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
