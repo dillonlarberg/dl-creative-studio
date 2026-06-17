@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import React from 'react';
 import { useStepNavigation } from './useStepNavigation';
@@ -307,6 +307,268 @@ describe('useStepNavigation', () => {
       );
       act(() => { getResult().jumpTo(2); }); // forward jump — should be blocked
       expect(pathHistory.filter(p => p !== '/app/setup')).toHaveLength(0);
+    });
+  });
+
+  describe('goNext — step.next() routing', () => {
+    afterEach(cleanup);
+
+    it('navigates to the step returned by step.next() when it returns a known step ID', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), { next: () => 'publish' }),
+        makeStep('design', 'Design'),
+        makeStep('publish', 'Publish'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/publish');
+      });
+      expect(pathHistory).not.toContain('/app/design');
+    });
+
+    it('falls back to advance-by-index when step.next() returns an unknown step ID', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), { next: () => 'nonexistent' }),
+        makeStep('design', 'Design'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/design');
+      });
+    });
+  });
+
+  describe('goNext — submit() + nextStepId', () => {
+    afterEach(cleanup);
+
+    it('navigates to nextStepId returned by submit() when it is a known step ID', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), {
+          submit: () => Promise.resolve({ nextStepId: 'publish' }),
+        }),
+        makeStep('design', 'Design'),
+        makeStep('publish', 'Publish'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/publish');
+      });
+      expect(pathHistory).not.toContain('/app/design');
+    });
+
+    it('falls back to advance-by-index when submit() returns an unknown nextStepId', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), {
+          submit: () => Promise.resolve({ nextStepId: 'nonexistent' }),
+        }),
+        makeStep('design', 'Design'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/design');
+      });
+    });
+
+    it('does not navigate when submit() returns nextStepId equal to the current step', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), {
+          submit: () => Promise.resolve({ nextStepId: 'setup' }),
+        }),
+        makeStep('design', 'Design'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      expect(pathHistory.filter(p => p !== '/app/setup')).toHaveLength(0);
+    });
+
+    it('sets validationError from err.message when submit() rejects', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), {
+          submit: () => Promise.reject(new Error('save failed')),
+        }),
+        makeStep('design', 'Design'),
+      ];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData }
+      );
+      await act(async () => { await getResult().goNext(); });
+      expect(getResult().validationError).toBe('save failed');
+    });
+
+    it('navigates to next step by index when submit() resolves with empty object {}', async () => {
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), {
+          submit: () => Promise.resolve({}),
+        }),
+        makeStep('design', 'Design'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      await act(async () => { await getResult().goNext(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/design');
+      });
+    });
+  });
+
+  describe('goBack — side effects', () => {
+    afterEach(cleanup);
+
+    it('clears validationError when called', async () => {
+      const steps = [
+        makeStep('setup', 'Setup'),
+        makeStep('design', 'Design', () => ({ ok: false as const, reason: 'required' })),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/design',
+        'design',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      // First attempt goNext from design — validation fails, sets validationError
+      await act(async () => { await getResult().goNext(); });
+      expect(getResult().validationError).toBe('required');
+      // Now go back — should clear the error
+      act(() => { getResult().goBack(); });
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/setup');
+      });
+      expect(getResult().validationError).toBeNull();
+    });
+  });
+
+  describe('isNextDisabled — loading state', () => {
+    afterEach(cleanup);
+
+    it('is true when isLoading is true regardless of validation.ok', async () => {
+      let resolveSubmit!: () => void;
+      const submitPromise = new Promise<{ nextStepId?: string }>((res) => {
+        resolveSubmit = () => res({});
+      });
+      const submit = vi.fn(() => submitPromise);
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const }), { submit }),
+        makeStep('design', 'Design'),
+      ];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData }
+      );
+      // Validation passes so isNextDisabled should start false
+      expect(getResult().isNextDisabled).toBe(false);
+      // Kick off goNext without awaiting — keeps isLoading=true
+      act(() => { void getResult().goNext(); });
+      await waitFor(() => expect(getResult().isLoading).toBe(true));
+      // Even though validation.ok is true, isNextDisabled must be true while loading
+      expect(getResult().isNextDisabled).toBe(true);
+      // Clean up: resolve the pending submit
+      await act(async () => { resolveSubmit(); });
+    });
+  });
+
+  describe('jumpTo — loading guard', () => {
+    afterEach(cleanup);
+
+    it('does not navigate when isLoading is true', async () => {
+      let resolveSubmit!: () => void;
+      const submitPromise = new Promise<{ nextStepId?: string }>((res) => {
+        resolveSubmit = () => res({});
+      });
+      const submit = vi.fn(() => submitPromise);
+      // design is at index 1 and has a pending submit; jumpTo(0) should be blocked
+      const steps = [
+        makeStep('setup', 'Setup'),
+        makeStep('design', 'Design', () => ({ ok: true as const }), { submit }),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/design',
+        'design',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      // Start goNext without awaiting — submit stays pending, isLoading becomes true
+      act(() => { void getResult().goNext(); });
+      await waitFor(() => expect(getResult().isLoading).toBe(true));
+      // jumpTo(0) should be blocked while loading
+      act(() => { getResult().jumpTo(0); });
+      expect(pathHistory.filter(p => p !== '/app/design')).toHaveLength(0);
+      // Clean up pending promise
+      await act(async () => { resolveSubmit(); });
+    });
+  });
+
+  describe('goNext — prior error cleared', () => {
+    afterEach(cleanup);
+
+    it('clears a prior validationError before running validation again', async () => {
+      // validation passes from the start; we pre-seed validationError via setValidationError,
+      // then verify goNext clears it at the top of its execution before navigating.
+      const steps = [
+        makeStep('setup', 'Setup', () => ({ ok: true as const })),
+        makeStep('design', 'Design'),
+      ];
+      const pathHistory: string[] = [];
+      const getResult = renderWithRouter(
+        '/app/setup',
+        'setup',
+        { steps, buildContext: makeBuildContext(), stepData: emptyStepData },
+        (p) => pathHistory.push(p)
+      );
+      // Pre-seed a validation error directly
+      act(() => { getResult().setValidationError('stale error'); });
+      expect(getResult().validationError).toBe('stale error');
+
+      // goNext calls setValidationError(null) unconditionally at the top,
+      // then validation passes → navigates to design. Error must be null after.
+      await act(async () => { await getResult().goNext(); });
+      expect(getResult().validationError).toBeNull();
+      await waitFor(() => {
+        expect(pathHistory).toContain('/app/design');
+      });
     });
   });
 });
