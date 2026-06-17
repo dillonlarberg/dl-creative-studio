@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { CircleStackIcon, CheckCircleIcon, MagnifyingGlassIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import type { WizardStep, StepRenderProps } from '../../types';
+import type { TemplateBuilderStep, StepContext } from '../types';
 import type { TemplateBuilderStepData, Channel } from '../types';
 import { cn } from '../../../utils/cn';
 import { CHANNEL_RATIOS } from '../../../constants/channelWireframes';
@@ -268,7 +268,7 @@ function FeedList({
 function SetupStepBody({
   stepData,
   mergeStepData,
-}: StepRenderProps<TemplateBuilderStepData>) {
+}: StepContext<TemplateBuilderStepData>) {
   const { dataSources, isLoading: feedsLoading } = useSharedData();
   const tbCtx = useTemplateBuilder();
   const { assetHouse } = useAssetHouse();
@@ -459,7 +459,7 @@ function SetupStepBody({
 
 // ── Lifecycle hooks ──────────────────────────────────────────────────────────
 
-const validate: WizardStep<TemplateBuilderStepData>['validate'] = (data) => {
+const validate: TemplateBuilderStep<TemplateBuilderStepData>['validate'] = (data) => {
   const reqs = [
     { label: 'Template name', met: Boolean(data.templateName?.trim()) },
     { label: 'Channel selected', met: Boolean(data.channel) },
@@ -470,7 +470,7 @@ const validate: WizardStep<TemplateBuilderStepData>['validate'] = (data) => {
   return ok ? { ok: true } : { ok: false, requirements: reqs };
 };
 
-const submit: WizardStep<TemplateBuilderStepData>['submit'] = async ({
+const submit: TemplateBuilderStep<TemplateBuilderStepData>['submit'] = async ({
   stepData,
   mergeStepData,
   client,
@@ -488,7 +488,7 @@ const submit: WizardStep<TemplateBuilderStepData>['submit'] = async ({
 
 // ── Export ───────────────────────────────────────────────────────────────────
 
-export const setupStep: WizardStep<TemplateBuilderStepData> = {
+export const setupStep: TemplateBuilderStep<TemplateBuilderStepData> = {
   id: 'setup',
   name: 'Setup',
   description: 'Name your template, pick a channel and sizes, connect a data feed, and optionally describe the creative.',

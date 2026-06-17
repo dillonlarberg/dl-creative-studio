@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
-import type { WizardStep, StepRenderProps } from '../../types';
+import type { TemplateBuilderStep, StepContext } from '../types';
 import type { TemplateBuilderStepData, RequirementField, ZoneStyle } from '../types';
 import { cn } from '../../../utils/cn';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
@@ -304,7 +304,7 @@ function ZoneStyleToolbar({
 function DesignStepBody({
   stepData,
   mergeStepData,
-}: StepRenderProps<TemplateBuilderStepData>) {
+}: StepContext<TemplateBuilderStepData>) {
   const tbCtx = useTemplateBuilder();
   const { assetHouse } = useAssetHouse();
   const { clientSlug } = useParams<{ clientSlug: string }>();
@@ -1861,7 +1861,7 @@ function DesignStepBody({
 
 // ── Lifecycle hooks ───────────────────────────────────────────────────────────
 
-const validate: WizardStep<TemplateBuilderStepData>['validate'] = (data) => {
+const validate: TemplateBuilderStep<TemplateBuilderStepData>['validate'] = (data) => {
   const hasMappings = Object.keys(data.feedMappings ?? {}).length > 0;
   return hasMappings
     ? { ok: true }
@@ -1874,7 +1874,7 @@ const validate: WizardStep<TemplateBuilderStepData>['validate'] = (data) => {
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export const designStep: WizardStep<TemplateBuilderStepData> = {
+export const designStep: TemplateBuilderStep<TemplateBuilderStepData> = {
   id: 'design',
   name: 'Design & Map',
   description: 'Pick a layout, then map your feed columns to the template fields. The live preview updates as you go.',

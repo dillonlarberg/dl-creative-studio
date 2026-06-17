@@ -5,7 +5,7 @@ import {
   ExclamationCircleIcon,
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
-import type { WizardStep, StepRenderProps } from '../../types';
+import type { TemplateBuilderStep, StepContext } from '../types';
 import type { TemplateBuilderStepData } from '../types';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
@@ -158,7 +158,7 @@ function PublishStepBody({
   stepData,
   mergeStepData,
   client,
-}: StepRenderProps<TemplateBuilderStepData>) {
+}: StepContext<TemplateBuilderStepData>) {
   const tbCtx = useTemplateBuilder();
   const { assetHouse } = useAssetHouse();
 
@@ -546,7 +546,7 @@ function MetaRow({
 // Step export
 // ---------------------------------------------------------------------------
 
-export const publishStep: WizardStep<TemplateBuilderStepData> = {
+export const publishStep: TemplateBuilderStep<TemplateBuilderStepData> = {
   id: 'publish',
   name: 'Publish',
   description: 'Review your template and publish it to the Template Library for use across campaigns.',
