@@ -5,7 +5,7 @@ import {
   ExclamationCircleIcon,
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
-import type { TemplateBuilderStep, StepContext } from '../types';
+import type { WizardStep, StepRenderProps } from '../../types';
 import type { TemplateBuilderStepData } from '../types';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
@@ -158,7 +158,7 @@ function PublishStepBody({
   stepData,
   mergeStepData,
   client,
-}: StepContext<TemplateBuilderStepData>) {
+}: StepRenderProps<TemplateBuilderStepData>) {
   const tbCtx = useTemplateBuilder();
   const { assetHouse } = useAssetHouse();
 
@@ -231,10 +231,10 @@ function PublishStepBody({
       stepData.fieldSourceMode
     ),
     fieldTransforms: stepData.fieldTransforms ?? {},
-    zoneStyles: stepData.zoneStyles,
-    staticValues: stepData.staticValues,
-    fieldSourceMode: stepData.fieldSourceMode,
-    aiSuggestedMappings: stepData.aiSuggestedMappings,
+    ...(stepData.zoneStyles ? { zoneStyles: stepData.zoneStyles } : {}),
+    ...(stepData.staticValues ? { staticValues: stepData.staticValues } : {}),
+    ...(stepData.fieldSourceMode ? { fieldSourceMode: stepData.fieldSourceMode } : {}),
+    ...(stepData.aiSuggestedMappings ? { aiSuggestedMappings: stepData.aiSuggestedMappings } : {}),
     brandOverrides: {
       ...(stepData.backgroundColor ? { primaryColor: stepData.backgroundColor } : {}),
       ...(stepData.accentColor ? { accentColor: stepData.accentColor } : {}),
@@ -546,7 +546,7 @@ function MetaRow({
 // Step export
 // ---------------------------------------------------------------------------
 
-export const publishStep: TemplateBuilderStep<TemplateBuilderStepData> = {
+export const publishStep: WizardStep<TemplateBuilderStepData> = {
   id: 'publish',
   name: 'Publish',
   description: 'Review your template and publish it to the Template Library for use across campaigns.',
