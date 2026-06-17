@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildZoompanArgs, buildBlurredFillArgs } from "./ffmpegImage";
+import { buildZoompanArgs, buildBlurredFillArgs, buildScaleNormalizeArgs } from "./ffmpegImage";
 import { OUTPUT } from "../../cutdown/engine/types";
 
 /** The codec params that MUST be identical across every stitch normalize path for
@@ -63,5 +63,27 @@ describe("buildBlurredFillArgs", () => {
   it("bounds the clip to the requested duration", () => {
     const a = buildBlurredFillArgs({ srcPath: "in.mp4", durationSec: 4, outPath: "out.mp4" });
     expect(a[a.indexOf("-t") + 1]).toBe("4");
+  });
+});
+
+describe("buildScaleNormalizeArgs", () => {
+  it("emits the shared encode invariant", () => {
+    assertEncodeInvariant(
+      buildScaleNormalizeArgs({ srcPath: "in.mp4", isStill: false, durationSec: 3, outPath: "out.mp4" }),
+    );
+  });
+
+  it("pads (never crops) to the output size", () => {
+    const a = buildScaleNormalizeArgs({ srcPath: "in.jpg", isStill: true, durationSec: 2, outPath: "o.mp4" }).join(" ");
+    expect(a).toContain("force_original_aspect_ratio=decrease"); // fit, not crop
+    expect(a).toContain(`pad=${OUTPUT.width}:${OUTPUT.height}`);
+    expect(a).not.toContain("crop=");
+  });
+
+  it("loops a still but not a video", () => {
+    const still = buildScaleNormalizeArgs({ srcPath: "in.jpg", isStill: true, durationSec: 2, outPath: "o.mp4" });
+    const video = buildScaleNormalizeArgs({ srcPath: "in.mp4", isStill: false, durationSec: 2, outPath: "o.mp4" });
+    expect(still).toContain("-loop");
+    expect(video).not.toContain("-loop");
   });
 });

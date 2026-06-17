@@ -79,6 +79,39 @@ export function buildZoompanArgs(opts: {
 }
 
 /**
+ * Pure: ffmpeg args for the SPINE normalize (Slice 1) — scale a 9:16-ish asset to
+ * exactly 1080×1920 with letterbox PAD (never crop), emitting the shared codec
+ * invariant. Handles both a still (looped, held for `durationSec`) and a video
+ * (trimmed to `durationSec`). Off-aspect handling (outpaint / blurred-fill) is
+ * Slices 3 & 4; this is the no-AI path for assets already near 9:16.
+ */
+export function buildScaleNormalizeArgs(opts: {
+  srcPath: string;
+  isStill: boolean;
+  durationSec: number;
+  outPath: string;
+  width?: number;
+  height?: number;
+  fps?: number;
+}): string[] {
+  const w = opts.width ?? OUTPUT.width;
+  const h = opts.height ?? OUTPUT.height;
+  const fps = opts.fps ?? 30;
+  const dur = round3(opts.durationSec);
+  const vf = [
+    `scale=${w}:${h}:force_original_aspect_ratio=decrease`,
+    `pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`,
+    "setsar=1",
+    `fps=${fps}`,
+    "format=yuv420p",
+  ].join(",");
+  const input = opts.isStill
+    ? ["-loop", "1", "-framerate", String(fps), "-i", opts.srcPath]
+    : ["-i", opts.srcPath];
+  return ["-y", ...input, "-t", String(dur), "-vf", vf, ...ENCODE_TAIL, opts.outPath];
+}
+
+/**
  * Pure: ffmpeg args to fit an off-aspect VIDEO into 9:16 via a blurred-fill
  * background (the standard IG/TikTok look). The clip is scaled to FIT (no crop of
  * the subject) and centered over a scaled+cropped+blurred copy of itself. Outpaint
