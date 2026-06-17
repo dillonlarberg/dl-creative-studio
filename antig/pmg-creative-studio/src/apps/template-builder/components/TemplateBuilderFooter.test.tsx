@@ -4,6 +4,17 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import TemplateBuilderFooter from './TemplateBuilderFooter';
 
+// ConfirmPopover ships its own React copy (file: dep) which breaks jsdom hooks.
+// Render trigger + action inline so tests can assert on both.
+vi.mock('@agencypmg/alli-design-system', () => ({
+  Button: ({ children, onClick, variant }: { children: React.ReactNode; onClick?: () => void; variant?: string }) => (
+    <button type="button" data-variant={variant} onClick={onClick}>{children}</button>
+  ),
+  ConfirmPopover: ({ children, action }: { children: React.ReactNode; action: React.ReactNode }) => (
+    <>{children}{action}</>
+  ),
+}));
+
 afterEach(cleanup);
 
 const defaultProps = {
@@ -122,26 +133,22 @@ describe('TemplateBuilderFooter', () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
-  it('shows discard confirm with exact text and calls onDiscard on OK', () => {
+  it('calls onDiscard when the ConfirmPopover action button is clicked', () => {
     const onDiscard = vi.fn();
-    const confirmSpy = vi.fn(() => true);
-    vi.stubGlobal('confirm', confirmSpy);
     renderFooter({ onDiscard });
+    // Trigger opens the popover (mocked inline); action button is always rendered
     fireEvent.click(screen.getByTestId('wizard-discard'));
-    expect(confirmSpy).toHaveBeenCalledWith(
-      'Discard this template? All unsaved work will be lost and cannot be recovered.'
-    );
+    // Click the caution-variant confirm button rendered by the ConfirmPopover mock
+    fireEvent.click(document.querySelector('button[data-variant="caution"]')!);
     expect(onDiscard).toHaveBeenCalledOnce();
-    vi.unstubAllGlobals();
   });
 
-  it('does NOT call onDiscard when confirm is cancelled', () => {
+  it('does NOT call onDiscard when the action button is not clicked', () => {
     const onDiscard = vi.fn();
-    vi.stubGlobal('confirm', vi.fn(() => false));
     renderFooter({ onDiscard });
+    // Click the trigger but do not click the confirm action
     fireEvent.click(screen.getByTestId('wizard-discard'));
     expect(onDiscard).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 
   // --- new coverage ---

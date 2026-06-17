@@ -35,16 +35,22 @@ export default function TemplateBuilderAppRoot() {
   const [fromData, setFromData] = useState<Partial<TemplateBuilderStepData> | null>(null);
   const [loading, setLoading] = useState(!!fromTemplateId);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!fromTemplateId) {
       setLoading(false);
+      setLoadError(null);
       return;
     }
     if (!slug) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
     templateLibraryService
       .getTemplate(slug as ClientSlug, fromTemplateId)
       .then((template) => {
+        if (cancelled) return;
         const data = mapTemplateToStepData(template);
         if (isCopy) {
           data.templateName = `Copy of ${template.name}`;
@@ -54,9 +60,10 @@ export default function TemplateBuilderAppRoot() {
         }
         setFromData(data);
       })
-      .catch((err: Error) => setLoadError(err.message))
-      .finally(() => setLoading(false));
-  }, [fromTemplateId, slug, isCopy]);
+      .catch((err: Error) => { if (!cancelled) setLoadError(err.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [fromTemplateId, slug, isCopy, retryCount]);
 
   // Override initialStepData when prefill is set so usePersistedStepData hydrates
   // with the template values.
@@ -85,11 +92,22 @@ export default function TemplateBuilderAppRoot() {
 
   // localStorage key: wiz_${slug}_template-builder — identical to WizardShell
   // because same hook + same manifest.id = 'template-builder'.
-  const { stepData, mergeStepData, creativeId, discard } = usePersistedStepData<TemplateBuilderStepData>({
+  const { stepData, mergeStepData, creativeId, isLoading: isResumeLoading, discard } = usePersistedStepData<TemplateBuilderStepData>({
     manifest: resolvedManifest,
     clientSlug: slug,
     resumeId,
   });
+
+  // Push prefill values into stepData after the ?from= fetch resolves.
+  // resolvedManifest.initialStepData() is called before fromData is set (async
+  // ordering), so the initialStepData override is dead on this path. Calling
+  // mergeStepData here is the correct way to seed the wizard with prefill values.
+  useEffect(() => {
+    if (!fromData) return;
+    mergeStepData(fromData as Partial<TemplateBuilderStepData>);
+    // mergeStepData is stable (useCallback); fromData is the only real dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromData]);
 
   // Mount effect — replicates WizardShell lines 151-162.
   // manifest.ts does not define onMount today; this is forward-compat.
@@ -161,19 +179,39 @@ export default function TemplateBuilderAppRoot() {
     navigateRouter(`/adlabs/${slug}`);
   }
 
-  // Blocking loading/error states — exact replica of existing AppRoot.tsx lines 124-138
+  // Blocking loading/error states
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+        <p className="text-sm text-blue-gray-500">Loading template…</p>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
         <p className="text-sm text-red-600">Failed to load template: {loadError}</p>
+        <button
+          type="button"
+          onClick={() => setRetryCount((c) => c + 1)}
+          className="text-sm font-medium text-blue-600 hover:text-blue-700"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  // Only gate on isResumeLoading when actually resuming — the hook always starts
+  // isLoading=true even for fresh sessions, so without the resumeId guard every
+  // new wizard would briefly flash "Resuming your draft…".
+  if (isResumeLoading && resumeId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+        <p className="text-sm text-blue-gray-500">Resuming your draft…</p>
       </div>
     );
   }
