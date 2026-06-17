@@ -22,6 +22,7 @@ import { getRegistry } from '../apps/_registry';
 import { BrandKitDrawer } from '../components/brand/BrandKitDrawer';
 import { TemplateLibrarySection } from '../components/templates/TemplateLibrarySection';
 import type { AppManifest } from '../apps/types';
+import { AppInfoPopover } from './AppInfoPopover';
 
 export default function DashboardPage() {
   usePageTitle();
@@ -248,7 +249,7 @@ interface AppCardProps {
   onOpen: () => void;
 }
 
-function AppCard({ manifest, onOpen }: AppCardProps) {
+export function AppCard({ manifest, onOpen }: AppCardProps) {
   const isPreview = (manifest.status ?? 'live') === 'preview';
 
   return (
@@ -271,14 +272,8 @@ function AppCard({ manifest, onOpen }: AppCardProps) {
         </p>
       )}
       <div className="mt-4 flex items-center justify-between">
-        <Button
-          variant="secondary"
-          type="button"
-          onClick={() => console.log('Button was pressed')}
-        >
-          More Info
-        </Button>
-        <Button variant="primary" type="button" onClick={onOpen}>
+        <AppInfoPopover title={manifest.title} overview={manifest.overview} />
+        <Button variant="primary" type="button" onClick={onOpen} className="ml-auto">
           {isPreview ? 'Preview' : 'Open'}
         </Button>
       </div>

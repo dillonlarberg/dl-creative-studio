@@ -9,6 +9,13 @@ const manifest: AppManifest<TemplateBuilderStepData> = {
   basePath: 'template-builder',
   title: 'Template Builder',
   description: 'Build and publish dynamic ad templates for use across all channels.',
+  overview: {
+    blurb: 'Turn a data feed into on-brand creative at scale.',
+    before: '/app-overviews/template-builder/before.png',
+    after: [
+      '/app-overviews/template-builder/after.png',
+    ],
+  },
   status: 'live',
   requiresBrandStandards: true,
   steps: [setupStep, designStep, publishStep],

@@ -4,6 +4,17 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['@agencypmg/alli-design-system'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/alli-frontend-design-system/, /node_modules/],
+      transformMixedEsModules: true,
+      defaultIsModuleExports: 'auto',
+      requireReturnsDefault: 'auto',
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: false,
@@ -26,6 +37,14 @@ export default defineConfig({
       'functions/node_modules',
       'functions/lib',
     ],
+    server: {
+      deps: {
+        // Force the design system through Vite's transform pipeline so that
+        // resolve.dedupe applies and all react requires resolve to the same
+        // copy (prevents "React Element from older version" error in tests).
+        inline: ['@agencypmg/alli-design-system'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
@@ -42,5 +61,6 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
 });

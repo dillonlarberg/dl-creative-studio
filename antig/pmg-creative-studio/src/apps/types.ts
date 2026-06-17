@@ -72,12 +72,24 @@ export interface WizardStep<S extends StepData = StepData> {
   submit?: (ctx: StepContext<S>) => Promise<{ nextStepId?: string }>;
 }
 
+/** Content for the dashboard "More Info" Glance popover. */
+export interface AppOverview {
+  /** Tighter than `description`, ~8–12 words; the popover headline line. */
+  blurb: string;
+  /** "Before"/source image path, e.g. /app-overviews/ad-resizing/before.webp */
+  before: string;
+  /** 1–6 "after"/output image paths. */
+  after: string[];
+}
+
 export interface AppManifest<S extends StepData = StepData> {
   id: AppId;
   basePath: string;
   title: string;
   /** One-sentence description shown under the title in the wizard header. */
   description?: string;
+  /** Optional Glance-popover overview shown by the dashboard "More Info" button. */
+  overview?: AppOverview;
   steps: WizardStep<S>[];
   onMount?: (ctx: AppContext) => void | Promise<void>;
   initialStepData: () => S;
