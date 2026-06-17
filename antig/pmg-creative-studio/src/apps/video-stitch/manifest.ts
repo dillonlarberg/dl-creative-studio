@@ -1,34 +1,17 @@
-import type { AppManifest, StepData, WizardStep } from '../types';
+import type { AppManifest, StepData } from '../types';
 
 /**
- * Video Stitch — preview-status stub manifest.
- *
- * Registered to demonstrate the multi-app shell on the dashboard before the
- * full lift work ships. WizardShell renders the preview view (no Continue,
- * no checklist, no persistence) when status === 'preview'. The single stub
- * step exists only to satisfy the AppManifest contract — it is never
- * rendered.
+ * Video Stitch — LIVE (Slice 1 Lane B). A "lifted" app: AppRoot owns all UI
+ * (mounted directly in App.tsx, not via WizardShell), so `steps` is empty.
  */
-
-type VideoStitchStubData = StepData;
-
-const stubStep: WizardStep<VideoStitchStubData> = {
-  id: 'preview',
-  name: 'Preview',
-  validate: () => ({ ok: false, reason: 'Not yet available' }),
-  render: () => null,
-};
-
-const manifest: AppManifest<VideoStitchStubData> = {
+const manifest: AppManifest<StepData> = {
   id: 'video-stitch',
   basePath: 'video-stitch',
   title: 'Video Stitch',
-  description: 'Stitch multiple clips into one sequenced cut with transitions and timing controls.',
-  status: 'preview',
-  // Preview-status apps are not gated — they only show a "Coming soon" view,
-  // so the brand-standards check would block users from a harmless surface.
+  description: 'Stitch curated clips from your library into a beat-synced 15s social reel.',
+  status: 'live',
   requiresBrandStandards: false,
-  steps: [stubStep],
+  steps: [],
   initialStepData: () => ({}),
 };
 

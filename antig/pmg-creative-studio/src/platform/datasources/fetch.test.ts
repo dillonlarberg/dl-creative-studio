@@ -127,4 +127,47 @@ describe('fetchFeedSample', () => {
     const callBody = executeQuerySpy.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(callBody.limit).toBeUndefined();
   });
+
+  it('keeps video rows on creative_insights_data_export when media is "all" (video-stitch)', async () => {
+    vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
+      results: [
+        { ad_id: '1', creative_type: 'image' },
+        { ad_id: '3', creative_type: 'video' },
+      ],
+    });
+
+    const result = await fetchFeedSample({
+      clientSlug: 'acme',
+      feed: 'creative_insights_data_export',
+      media: 'all',
+    });
+
+    expect(result.sampleData).toHaveLength(2);
+    expect(
+      result.sampleData.some((r) => String(r.creative_type).toLowerCase() === 'video')
+    ).toBe(true);
+  });
+
+  it('namespaces the cache by media so an image-only result cannot poison a video request', async () => {
+    const spy = vi.spyOn(alliService, 'executeQuery').mockResolvedValue({
+      results: [
+        { ad_id: '1', creative_type: 'image' },
+        { ad_id: '3', creative_type: 'video' },
+      ],
+    });
+
+    const imageOnly = await fetchFeedSample({
+      clientSlug: 'acme',
+      feed: 'creative_insights_data_export',
+    });
+    expect(imageOnly.sampleData).toHaveLength(1); // default strips video
+
+    const all = await fetchFeedSample({
+      clientSlug: 'acme',
+      feed: 'creative_insights_data_export',
+      media: 'all',
+    });
+    expect(all.sampleData).toHaveLength(2); // video kept, NOT served from the image-only cache
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
 });
