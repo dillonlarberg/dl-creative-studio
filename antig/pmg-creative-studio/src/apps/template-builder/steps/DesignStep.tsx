@@ -116,7 +116,7 @@ function DesignStepBody({
     mergeStepData({ customZones: (stepData.customZones ?? []).filter((z) => z.id !== id) });
   }, [mergeStepData, stepData.customZones]);
 
-  const handleZoneContentUpdate = useCallback((id: string, patch: { fieldId?: string; textContent?: string }) => {
+  const handleZoneContentUpdate = useCallback((id: string, patch: { fieldId?: string; textContent?: string; assetUrl?: string }) => {
     mergeStepData({
       customZones: (stepData.customZones ?? []).map((z) =>
         z.id === id ? ({ ...z, ...patch } as CustomZone) : z,

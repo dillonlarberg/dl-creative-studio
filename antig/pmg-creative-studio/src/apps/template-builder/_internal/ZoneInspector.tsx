@@ -26,7 +26,7 @@ export interface ZoneInspectorProps {
   zoneStyle?: ZoneStyle;
   onDelete: () => void;
   onClose: () => void;
-  onContentUpdate: (patch: { fieldId?: string; textContent?: string }) => void;
+  onContentUpdate: (patch: { fieldId?: string; textContent?: string; assetUrl?: string }) => void;
   onStyleUpdate: (patch: ZoneStyle) => void;
 }
 
@@ -34,7 +34,7 @@ type SourceMode = 'static' | 'feed' | 'ai';
 
 const CARD_W = 240;
 const CARD_H_TEXT = 220;
-const CARD_H_IMAGE = 40;
+const CARD_H_IMAGE = 140;
 const GAP = 6;
 
 export function ZoneInspector({
@@ -159,7 +159,45 @@ export function ZoneInspector({
         </div>
       </div>
 
-      {/* Body — text zones only */}
+      {/* Body — image zones */}
+      {zone.type === 'image' && (
+        <div className="bg-white border border-gray-200 border-t-0 rounded-b shadow-lg px-2 pt-1.5 pb-2 space-y-1.5">
+          {/* URL input */}
+          <input
+            type="url"
+            value={(zone.assetUrl ?? '')}
+            onChange={(e) => onContentUpdate({ assetUrl: e.target.value || undefined })}
+            onKeyDown={(e) => { if (e.key === 'Enter') applyAndClose(); }}
+            placeholder="Paste image URL…"
+            autoFocus
+            className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          {/* Or pick from feed (image columns) */}
+          {feedColumns.length > 0 && (
+            <select
+              value={zone.fieldId ?? ''}
+              onChange={(e) => onContentUpdate({ fieldId: e.target.value || undefined, assetUrl: undefined })}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">— or link a feed column —</option>
+              {feedColumns.map((col) => (
+                <option key={col} value={col}>{col}</option>
+              ))}
+            </select>
+          )}
+          {/* Thumbnail preview */}
+          {zone.assetUrl && (
+            <img
+              src={zone.assetUrl}
+              alt=""
+              className="w-full h-12 object-cover rounded border border-gray-200"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Body — text zones */}
       {zone.type === 'text' && (
         <div className="bg-white border border-gray-200 border-t-0 rounded-b shadow-lg px-2 pt-1.5 pb-2 space-y-1.5">
           {/* Source tabs */}
