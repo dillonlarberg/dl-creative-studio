@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon, SwatchIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { TemplateBuilderStep, StepContext } from '../types';
-import type { TemplateBuilderStepData, RequirementField, ZoneStyle } from '../types';
+import type { TemplateBuilderStepData, RequirementField, ZoneStyle, ZoneBound } from '../types';
 import { cn } from '../../../utils/cn';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
@@ -11,7 +11,6 @@ import { generateLayouts, suggestMappings, bestSampleRow } from '../../../servic
 import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
 import { FIELD_ID_MAP } from '../_internal/injectIntoHtml';
 import CanvasOverlay from '../_internal/CanvasOverlay';
-import type { ZoneBound } from '../_internal/CanvasOverlay';
 import { TemplatePreview } from '../_internal/TemplatePreview';
 import { CandidatePreview } from '../_internal/CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';

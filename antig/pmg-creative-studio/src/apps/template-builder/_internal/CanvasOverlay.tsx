@@ -1,11 +1,9 @@
 import { useEffect, useRef } from 'react';
+import type { ZoneBound } from '../types';
 
-export interface ZoneBound {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+// ZoneBound has moved to types.ts — re-exported here for backwards compatibility
+// during the CanvasOverlay → CanvasLayer transition. Remove when CanvasOverlay is deleted.
+export type { ZoneBound } from '../types';
 
 export interface CanvasOverlayProps {
   zoneBounds: Record<string, ZoneBound>;  // iframe-space coordinates
