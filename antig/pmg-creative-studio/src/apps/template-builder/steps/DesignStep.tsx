@@ -116,6 +116,14 @@ function DesignStepBody({
     mergeStepData({ customZones: (stepData.customZones ?? []).filter((z) => z.id !== id) });
   }, [mergeStepData, stepData.customZones]);
 
+  const handleZoneContentUpdate = useCallback((id: string, patch: { fieldId?: string; textContent?: string }) => {
+    mergeStepData({
+      customZones: (stepData.customZones ?? []).map((z) =>
+        z.id === id ? ({ ...z, ...patch } as CustomZone) : z,
+      ),
+    });
+  }, [mergeStepData, stepData.customZones]);
+
   const handleZoneAsset = useCallback((zoneId: string, assetUrl: string, isWireframe: boolean) => {
     if (isWireframe) {
       mergeStepData({ zoneAssets: { ...(stepData.zoneAssets ?? {}), [zoneId]: assetUrl } });
@@ -507,6 +515,7 @@ function DesignStepBody({
         onZoneReset={handleZoneReset}
         onZoneDelete={handleZoneDelete}
         onZoneAsset={handleZoneAsset}
+        onZoneContentUpdate={handleZoneContentUpdate}
       />
     </div>
 

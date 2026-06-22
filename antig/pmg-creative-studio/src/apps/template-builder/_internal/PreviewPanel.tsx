@@ -67,6 +67,7 @@ export interface PreviewPanelProps {
   onZoneReset: CanvasLayerProps['onZoneReset'];
   onZoneDelete: CanvasLayerProps['onZoneDelete'];
   onZoneAsset: CanvasLayerProps['onZoneAsset'];
+  onZoneContentUpdate: CanvasLayerProps['onZoneContentUpdate'];
 }
 
 export function PreviewPanel({
@@ -117,6 +118,7 @@ export function PreviewPanel({
   onZoneReset,
   onZoneDelete,
   onZoneAsset,
+  onZoneContentUpdate,
 }: PreviewPanelProps) {
   return (
     <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
@@ -215,7 +217,18 @@ export function PreviewPanel({
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
                   zoneStyles={stepData.zoneStyles}
-                  layoutOverrides={{ zoneOverrides: stepData.zoneOverrides, customZones: stepData.customZones }}
+                  layoutOverrides={{
+                    zoneOverrides: stepData.zoneOverrides,
+                    // Resolve fieldId → feed value so custom text zones show live content
+                    customZones: (stepData.customZones ?? []).map((zone) => {
+                      if (zone.type === 'text' && zone.fieldId && !zone.textContent) {
+                        const row = feedSampleData[feedRowIndex];
+                        const val = row ? String(row[zone.fieldId] ?? '') : '';
+                        return { ...zone, textContent: val };
+                      }
+                      return zone;
+                    }),
+                  }}
                   zoneAssets={stepData.zoneAssets}
                   slotSelectionMode={activeSlotField !== null || addFieldSelectingSlot}
                   highlightSlot={
@@ -261,6 +274,9 @@ export function PreviewPanel({
                   onZoneDelete={onZoneDelete}
                   onZoneAsset={onZoneAsset}
                   activeSlotField={activeSlotField}
+                  feedColumns={feedColumns}
+                  feedSampleRow={feedSampleData[feedRowIndex]}
+                  onZoneContentUpdate={onZoneContentUpdate}
                   onResizeDetected={onResizeDetected}
                 />
               </div>{/* end inner preview wrapper */}

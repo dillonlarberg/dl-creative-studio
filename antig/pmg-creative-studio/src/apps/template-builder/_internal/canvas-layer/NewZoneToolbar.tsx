@@ -21,38 +21,38 @@ export function NewZoneToolbar({
   }
 
   return (
-    <div className="flex items-center gap-1 mb-1">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => handleClick('image')}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 rounded text-xs border transition-colors',
+          'flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors',
           placementMode === 'image'
-            ? 'bg-blue-600 text-white border-blue-600'
-            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'bg-white/90 text-gray-600 border-gray-300 hover:bg-white hover:text-gray-900',
         )}
-        title={placementMode === 'image' ? 'Cancel (Esc)' : 'Draw an image zone on the canvas'}
+        title={placementMode === 'image' ? 'Cancel (Esc)' : 'Draw an image zone'}
       >
-        <PhotoIcon className="h-3.5 w-3.5" />
-        + Image Zone
+        <PhotoIcon className="h-3 w-3" />
+        Image
       </button>
       <button
         type="button"
         onClick={() => handleClick('text')}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 rounded text-xs border transition-colors',
+          'flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors',
           placementMode === 'text'
-            ? 'bg-blue-600 text-white border-blue-600'
-            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'bg-white/90 text-gray-600 border-gray-300 hover:bg-white hover:text-gray-900',
         )}
-        title={placementMode === 'text' ? 'Cancel (Esc)' : 'Draw a text zone on the canvas'}
+        title={placementMode === 'text' ? 'Cancel (Esc)' : 'Draw a text zone'}
       >
-        <DocumentTextIcon className="h-3.5 w-3.5" />
-        + Text Zone
+        <DocumentTextIcon className="h-3 w-3" />
+        Text
       </button>
       {placementMode && (
-        <span className="text-xs text-blue-600 ml-1">
-          Draw a rectangle on the canvas — Esc to cancel
+        <span className="text-[10px] text-indigo-600 font-medium ml-0.5">
+          Draw on canvas · Esc cancels
         </span>
       )}
     </div>

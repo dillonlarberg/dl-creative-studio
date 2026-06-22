@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Rect, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { ZoneBound } from '../../types';
@@ -19,6 +19,7 @@ export interface ZoneRectProps {
   onSelect: () => void;
   onMove: (bounds: ZoneBound) => void;
   onResize: (bounds: ZoneBound) => void;
+  onReset?: () => void;
 }
 
 export function ZoneRect({
@@ -33,9 +34,11 @@ export function ZoneRect({
   onSelect,
   onMove,
   onResize,
+  onReset,
 }: ZoneRectProps) {
   const rectRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const [hovered, setHovered] = useState(false);
 
   // Attach/detach Transformer when selection changes
   useEffect(() => {
@@ -47,6 +50,10 @@ export function ZoneRect({
 
   function handleDragEnd(e: Konva.KonvaEventObject<DragEvent>) {
     const node = e.target;
+    // Restore move cursor after drag
+    const stage = node.getStage();
+    if (stage) stage.container().style.cursor = 'move';
+
     const nx = clampNative(toNative(node.x(), adSize, displaySize), adSize);
     const ny = clampNative(toNative(node.y(), adSize, displaySize), adSize);
     const nw = clampNative(toNative(node.width(), adSize, displaySize), adSize);
@@ -82,22 +89,51 @@ export function ZoneRect({
         y={y}
         width={w}
         height={h}
-        stroke={isSelected ? '#2563eb' : 'rgba(156,163,175,0.6)'}
-        strokeWidth={isSelected ? 2 : 1.5}
-        fill={isSelected ? 'rgba(37,99,235,0.06)' : 'transparent'}
-        cornerRadius={2}
+        stroke={isSelected ? '#2563eb' : hovered ? '#6366f1' : 'rgba(99,102,241,0.45)'}
+        strokeWidth={isSelected ? 2 : hovered ? 2 : 1.5}
+        dash={isSelected ? undefined : hovered ? undefined : [5, 4]}
+        fill={isSelected ? 'rgba(37,99,235,0.07)' : hovered ? 'rgba(99,102,241,0.05)' : 'transparent'}
+        cornerRadius={3}
         draggable
+        hitStrokeWidth={12}
+        onMouseEnter={(e) => {
+          const stage = e.target.getStage();
+          if (stage) stage.container().style.cursor = 'move';
+          setHovered(true);
+        }}
+        onMouseLeave={(e) => {
+          const stage = e.target.getStage();
+          if (stage) stage.container().style.cursor = 'default';
+          setHovered(false);
+        }}
+        onDragStart={(e) => {
+          const stage = e.target.getStage();
+          if (stage) stage.container().style.cursor = 'grabbing';
+        }}
         onClick={onSelect}
         onTap={onSelect}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
+        onContextMenu={(e) => { e.evt.preventDefault(); onReset?.(); }}
       />
       {isSelected && (
         <Transformer
           ref={trRef}
           rotateEnabled={false}
+          // Canva-style: solid blue border, round white handles with blue stroke
+          borderStroke="#2563eb"
+          borderStrokeWidth={1.5}
+          borderDash={[]}
+          anchorFill="white"
+          anchorStroke="#2563eb"
+          anchorStrokeWidth={1.5}
+          anchorSize={8}
+          anchorCornerRadius={4}
+          enabledAnchors={[
+            'top-left', 'top-right', 'bottom-left', 'bottom-right',
+            'top-center', 'bottom-center', 'middle-left', 'middle-right',
+          ]}
           boundBoxFunc={(oldBox, newBox) => {
-            // Prevent collapsing below 8px in either dimension
             if (newBox.width < 8 || newBox.height < 8) return oldBox;
             return newBox;
           }}

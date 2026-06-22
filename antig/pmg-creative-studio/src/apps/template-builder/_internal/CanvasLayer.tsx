@@ -6,6 +6,7 @@ import { toDisplay } from './canvas-layer/canvasCoords';
 import { ZoneRect } from './canvas-layer/ZoneRect';
 import { NewZoneToolbar } from './canvas-layer/NewZoneToolbar';
 import { ZoneContentBadge } from './ZoneContentBadge';
+import { ZoneInspector } from './ZoneInspector';
 import { useCanvasLayer } from './canvas-layer/useCanvasLayer';
 
 export interface CanvasLayerProps {
@@ -33,6 +34,11 @@ export interface CanvasLayerProps {
   // when a slot field is being click-mapped, the Stage must not capture pointer events
   activeSlotField: string | null;
 
+  // inline zone inspector (feed column / static text / delete)
+  feedColumns: string[];
+  feedSampleRow?: Record<string, unknown>;
+  onZoneContentUpdate: (id: string, patch: { fieldId?: string; textContent?: string }) => void;
+
   // fired when the container resizes (caller clears zoneBounds to re-request from iframe)
   onResizeDetected?: () => void;
 }
@@ -52,6 +58,9 @@ export function CanvasLayer({
   onZoneDelete,
   onZoneAsset,
   activeSlotField,
+  feedColumns,
+  feedSampleRow,
+  onZoneContentUpdate,
   onResizeDetected,
 }: CanvasLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,12 +122,9 @@ export function CanvasLayer({
     return () => observer.disconnect();
   }, [onResizeDetected, pendingDisplaySizeRef]);
 
-  // Konva Stage StrictMode guard: destroy Stage on unmount
-  useEffect(() => {
-    return () => {
-      stageRef.current?.destroy();
-    };
-  }, []);
+  // react-konva handles its own Stage cleanup on unmount — do not call stage.destroy() manually.
+  // Doing so in StrictMode dev double-invokes effects, which destroys the Stage on the first
+  // mount/unmount cycle and leaves a broken canvas on the second mount.
 
   // Delete/Backspace key: delete selected custom zones
   useEffect(() => {
@@ -147,8 +153,9 @@ export function CanvasLayer({
   }
 
   function handleStageMouseDown(e: Konva.KonvaEventObject<MouseEvent>) {
-    // Only handle clicks on Stage background (not on a zone Rect)
-    if (e.target !== stageRef.current) return;
+    // Only handle mousedown on Stage background (not on a zone Rect)
+    // e.target is a Konva node; Stage background is the Stage itself
+    if (e.target.getType() !== 'Stage') return;
     const pos = getStagePointer();
     if (!pos) return;
     if (placementMode) {
@@ -158,7 +165,7 @@ export function CanvasLayer({
     }
   }
 
-  function handleStageMouseMove(e: Konva.KonvaEventObject<MouseEvent>) {
+  function handleStageMouseMove(_e: Konva.KonvaEventObject<MouseEvent>) {
     const pos = getStagePointer();
     if (!pos) return;
     if (placementMode && placementRect) {
@@ -187,8 +194,8 @@ export function CanvasLayer({
   }
 
   function handleStageClick(e: Konva.KonvaEventObject<MouseEvent>) {
-    // Clicking Stage background with no drag deselects all
-    if (e.target === stageRef.current) {
+    // Clicking Stage background (not a zone) deselects all
+    if (e.target.getType() === 'Stage') {
       clearSelection();
     }
   }
@@ -211,28 +218,41 @@ export function CanvasLayer({
 
   const customZoneIds = new Set(customZones.map((z) => z.id));
 
-  // Determine cursor
+  // Cursor: crosshair while drawing a new zone; zones set their own cursor on hover.
   const cursor = placementMode ? 'crosshair' : 'default';
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'absolute', top: 0, left: 0, zIndex: 10, width: displaySize, height: displaySize }}
-    >
-      <NewZoneToolbar
-        placementMode={placementMode}
-        onEnterPlacementMode={enterPlacementMode}
-        onCancelPlacementMode={cancelPlacementMode}
-      />
+    // Root overlay: fills the inner wrapper exactly.
+    // When activeSlotField is set (slot-mapping mode), the whole overlay becomes
+    // transparent so clicks reach the iframe. Otherwise the Stage captures events.
+    <div style={{
+      position: 'absolute', top: 0, left: 0, zIndex: 10,
+      width: displaySize, height: displaySize,
+      pointerEvents: activeSlotField !== null ? 'none' : 'auto',
+    }}>
 
+      {/* Toolbar: floats ABOVE the canvas via bottom:100%, never overlays the ad */}
+      <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, paddingBottom: 4, pointerEvents: 'auto' }}>
+        <NewZoneToolbar
+          placementMode={placementMode}
+          onEnterPlacementMode={enterPlacementMode}
+          onCancelPlacementMode={cancelPlacementMode}
+        />
+      </div>
+
+      {/* Stage container: ResizeObserver target + Konva canvas */}
+      <div
+        ref={containerRef}
+        style={{ position: 'absolute', top: 0, left: 0, width: displaySize, height: displaySize }}
+      >
       <Stage
         ref={stageRef}
         width={displaySize}
         height={displaySize}
         // Do NOT set pixelRatio manually — Konva handles HiDPI correctly.
         style={{
+          display: 'block',
           cursor,
-          pointerEvents: activeSlotField !== null ? 'none' : 'auto',
         }}
         onMouseDown={handleStageMouseDown}
         onMouseMove={handleStageMouseMove}
@@ -243,6 +263,7 @@ export function CanvasLayer({
           {/* Wireframe zones (moved/resized via zoneOverrides) */}
           {Object.entries(zoneBounds).map(([slotId, native]) => {
             const override = zoneOverrides[slotId] ?? native;
+            const hasOverride = Boolean(zoneOverrides[slotId]);
             return (
               <ZoneRect
                 key={slotId}
@@ -258,6 +279,7 @@ export function CanvasLayer({
                 onSelect={() => selectId(slotId, false)}
                 onMove={(bounds) => onZoneMove(slotId, bounds)}
                 onResize={(bounds) => onZoneResize(slotId, bounds)}
+                onReset={hasOverride ? () => onZoneReset(slotId) : undefined}
               />
             );
           })}
@@ -316,14 +338,35 @@ export function CanvasLayer({
           )}
         </Layer>
       </Stage>
+      </div>{/* end containerRef / Stage container */}
 
-      {/* ZoneContentBadge — CSS overlay for selected image zones */}
+      {/* ZoneInspector — inline editor + trash for selected CUSTOM zones */}
+      {selectedZoneId && customZoneIds.has(selectedZoneId) && (() => {
+        const zone = customZones.find((z) => z.id === selectedZoneId);
+        const displayBound = allZoneBoundsDisplay[selectedZoneId];
+        if (!zone || !displayBound) return null;
+        return (
+          <ZoneInspector
+            zone={zone}
+            displayBound={displayBound}
+            canvasHeight={displaySize}
+            feedColumns={feedColumns}
+            feedSampleRow={feedSampleRow}
+            onDelete={() => onZoneDelete(selectedZoneId)}
+            onContentUpdate={(patch) => onZoneContentUpdate(selectedZoneId, patch)}
+          />
+        );
+      })()}
+
+      {/* ZoneContentBadge — asset URL picker badge on selected image zones */}
       {selectedZoneId && (() => {
         const isCustom = customZoneIds.has(selectedZoneId);
         const isImage = isCustom
           ? customZones.find((z) => z.id === selectedZoneId)?.type === 'image'
           : true; // wireframe zones are treated as image zones for asset fill
         if (!isImage) return null;
+        // Custom image zones use ZoneInspector (above); wireframe zones get the badge
+        if (isCustom) return null;
 
         const displayBound = allZoneBoundsDisplay[selectedZoneId];
         if (!displayBound) return null;
@@ -336,27 +379,25 @@ export function CanvasLayer({
               top: displayBound.y,
               width: displayBound.w,
               height: displayBound.h,
-              pointerEvents: 'none',
+              pointerEvents: 'auto',
             }}
           >
-            <div style={{ position: 'relative', width: '100%', height: '100%', pointerEvents: 'auto' }}>
-              <ZoneContentBadge
-                zoneId={selectedZoneId}
-                onUrlSubmit={(zoneId, url) =>
-                  onZoneAsset(zoneId, url, !isCustom)
-                }
-              />
-            </div>
+            <ZoneContentBadge
+              zoneId={selectedZoneId}
+              onUrlSubmit={(zoneId, url) => onZoneAsset(zoneId, url, true)}
+            />
           </div>
         );
       })()}
 
       {/* URL dialog for pending image placement */}
       {pendingImageRect && (
-        <ZoneContentBadge
-          zoneId="__pending_image__"
-          onUrlSubmit={handleImageUrlSubmit}
-        />
+        <div style={{ pointerEvents: 'auto' }}>
+          <ZoneContentBadge
+            zoneId="__pending_image__"
+            onUrlSubmit={handleImageUrlSubmit}
+          />
+        </div>
       )}
     </div>
   );
