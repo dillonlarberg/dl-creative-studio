@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Stage, Layer, Rect as KonvaRect } from 'react-konva';
 import type Konva from 'konva';
 import type { ZoneBound, CustomZone } from '../types';
-import { toDisplay } from './canvas-layer/canvasCoords';
+import { toDisplay, toNative, clampNative } from './canvas-layer/canvasCoords';
 import { ZoneRect } from './canvas-layer/ZoneRect';
 import { NewZoneToolbar } from './canvas-layer/NewZoneToolbar';
 import { ZoneContentBadge } from './ZoneContentBadge';
@@ -175,16 +175,28 @@ export function CanvasLayer({
     }
   }
 
+  function toNativeRect(displayRect: ZoneBound): ZoneBound {
+    // placementRect is in display (Konva) coords — must convert to adSize native coords
+    // before storing, because CanvasLayer renders zones as toDisplay(native, adSize, displaySize)
+    return {
+      x: clampNative(toNative(displayRect.x, adSize, displaySize), adSize),
+      y: clampNative(toNative(displayRect.y, adSize, displaySize), adSize),
+      w: clampNative(toNative(displayRect.w, adSize, displaySize), adSize),
+      h: clampNative(toNative(displayRect.h, adSize, displaySize), adSize),
+    };
+  }
+
   function handleStageMouseUp() {
     if (placementMode) {
       const rect = finishPlacement();
       if (rect) {
+        const native = toNativeRect(rect);
         if (placementMode === 'text') {
-          onZoneCreate({ type: 'text', x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+          onZoneCreate({ type: 'text', ...native });
           cancelPlacementMode();
         } else {
-          // image mode: show URL dialog
-          setPendingImageRect({ x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+          // Store in native coords so handleImageUrlSubmit can pass directly to onZoneCreate
+          setPendingImageRect(native);
           cancelPlacementMode();
         }
       }
@@ -349,10 +361,12 @@ export function CanvasLayer({
           <ZoneInspector
             zone={zone}
             displayBound={displayBound}
+            canvasWidth={displaySize}
             canvasHeight={displaySize}
             feedColumns={feedColumns}
             feedSampleRow={feedSampleRow}
-            onDelete={() => onZoneDelete(selectedZoneId)}
+            onDelete={() => { onZoneDelete(selectedZoneId); clearSelection(); }}
+            onClose={() => clearSelection()}
             onContentUpdate={(patch) => onZoneContentUpdate(selectedZoneId, patch)}
           />
         );
