@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { injectIntoHtml, buildInteractiveScript, buildCssRulesString, buildZoneRulesString } from './injectIntoHtml';
-import type { ZoneStyle } from '../types';
+import type { ZoneStyle, ZoneBound, CustomZone } from '../types';
 
 export const FilledTemplatePreview = ({
   templateFile,
@@ -11,6 +11,8 @@ export const FilledTemplatePreview = ({
   cssOverrides,
   slotOverrides,
   zoneStyles,
+  layoutOverrides,
+  zoneAssets,
   onSlotClick,
   highlightSlot,
   slotSelectionMode = false,
@@ -23,6 +25,8 @@ export const FilledTemplatePreview = ({
   cssOverrides?: Record<string, string>;
   slotOverrides?: Record<string, string>;
   zoneStyles?: Record<string, ZoneStyle>;
+  layoutOverrides?: { zoneOverrides?: Record<string, ZoneBound>; customZones?: CustomZone[] };
+  zoneAssets?: Record<string, string>;
   onSlotClick?: (slotId: string) => void;
   highlightSlot?: string | null;
   slotSelectionMode?: boolean;
@@ -54,13 +58,13 @@ export const FilledTemplatePreview = ({
   useEffect(() => {
     if (!rawHtml) return;
     iframeLiveRef.current = false;
-    let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles });
+    let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles, layoutOverrides, zoneAssets });
     if (isInteractive) {
       filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
     }
     setSrcdoc(filled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawHtml, isInteractive]);
+  }, [rawHtml, isInteractive, JSON.stringify(layoutOverrides), JSON.stringify(zoneAssets)]);
 
   // Live update via postMessage when injections/overrides change after the iframe is ready.
   // Skips the full srcdoc reload cycle — updates apply directly to the existing iframe DOM.

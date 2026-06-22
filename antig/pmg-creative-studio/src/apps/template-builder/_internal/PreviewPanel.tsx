@@ -215,6 +215,8 @@ export function PreviewPanel({
                   cssOverrides={cssOverrides}
                   slotOverrides={stepData.slotMappings}
                   zoneStyles={stepData.zoneStyles}
+                  layoutOverrides={{ zoneOverrides: stepData.zoneOverrides, customZones: stepData.customZones }}
+                  zoneAssets={stepData.zoneAssets}
                   slotSelectionMode={activeSlotField !== null || addFieldSelectingSlot}
                   highlightSlot={
                     activeSlotField !== null
