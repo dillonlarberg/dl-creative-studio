@@ -68,6 +68,7 @@ export interface PreviewPanelProps {
   onZoneDelete: CanvasLayerProps['onZoneDelete'];
   onZoneAsset: CanvasLayerProps['onZoneAsset'];
   onZoneContentUpdate: CanvasLayerProps['onZoneContentUpdate'];
+  onZoneStyleUpdate: CanvasLayerProps['onZoneStyleUpdate'];
 }
 
 export function PreviewPanel({
@@ -119,6 +120,7 @@ export function PreviewPanel({
   onZoneDelete,
   onZoneAsset,
   onZoneContentUpdate,
+  onZoneStyleUpdate,
 }: PreviewPanelProps) {
   return (
     <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
@@ -276,7 +278,9 @@ export function PreviewPanel({
                   activeSlotField={activeSlotField}
                   feedColumns={feedColumns}
                   feedSampleRow={feedSampleData[feedRowIndex]}
+                  zoneStyles={stepData.zoneStyles ?? {}}
                   onZoneContentUpdate={onZoneContentUpdate}
+                  onZoneStyleUpdate={onZoneStyleUpdate}
                   onResizeDetected={onResizeDetected}
                 />
               </div>{/* end inner preview wrapper */}

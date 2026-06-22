@@ -34,10 +34,12 @@ export interface CanvasLayerProps {
   // when a slot field is being click-mapped, the Stage must not capture pointer events
   activeSlotField: string | null;
 
-  // inline zone inspector (feed column / static text / delete)
+  // inline zone inspector (feed column / static text / font / delete)
   feedColumns: string[];
   feedSampleRow?: Record<string, unknown>;
+  zoneStyles: Record<string, import('../types').ZoneStyle>;
   onZoneContentUpdate: (id: string, patch: { fieldId?: string; textContent?: string }) => void;
+  onZoneStyleUpdate: (id: string, patch: import('../types').ZoneStyle) => void;
 
   // fired when the container resizes (caller clears zoneBounds to re-request from iframe)
   onResizeDetected?: () => void;
@@ -60,7 +62,9 @@ export function CanvasLayer({
   activeSlotField,
   feedColumns,
   feedSampleRow,
+  zoneStyles,
   onZoneContentUpdate,
+  onZoneStyleUpdate,
   onResizeDetected,
 }: CanvasLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -365,9 +369,11 @@ export function CanvasLayer({
             canvasHeight={displaySize}
             feedColumns={feedColumns}
             feedSampleRow={feedSampleRow}
+            zoneStyle={zoneStyles[selectedZoneId]}
             onDelete={() => { onZoneDelete(selectedZoneId); clearSelection(); }}
             onClose={() => clearSelection()}
             onContentUpdate={(patch) => onZoneContentUpdate(selectedZoneId, patch)}
+            onStyleUpdate={(patch) => onZoneStyleUpdate(selectedZoneId, patch)}
           />
         );
       })()}

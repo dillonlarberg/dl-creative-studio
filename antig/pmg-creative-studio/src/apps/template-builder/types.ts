@@ -137,4 +137,6 @@ export interface ZoneStyle {
   fontWeight?: 'bold' | 'normal';
   fontStyle?: 'italic' | 'normal';
   textDecoration?: 'underline' | 'none';
+  fontFamily?: string;      // applied as font-family
+  textAlign?: 'left' | 'center' | 'right';
 }

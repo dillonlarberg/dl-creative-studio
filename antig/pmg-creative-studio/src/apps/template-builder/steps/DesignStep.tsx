@@ -516,6 +516,7 @@ function DesignStepBody({
         onZoneDelete={handleZoneDelete}
         onZoneAsset={handleZoneAsset}
         onZoneContentUpdate={handleZoneContentUpdate}
+        onZoneStyleUpdate={handleZoneStyleChange}
       />
     </div>
 

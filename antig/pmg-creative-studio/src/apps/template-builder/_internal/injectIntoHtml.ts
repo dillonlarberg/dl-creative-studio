@@ -166,6 +166,8 @@ export function buildZoneRulesString(zoneStyles?: Record<string, ZoneStyle>): st
     if (style.fontWeight) r += `font-weight: ${style.fontWeight} !important; `;
     if (style.fontStyle) r += `font-style: ${style.fontStyle} !important; `;
     if (style.textDecoration) r += `text-decoration: ${style.textDecoration} !important; `;
+    if (style.fontFamily) r += `font-family: ${style.fontFamily} !important; `;
+    if (style.textAlign) r += `text-align: ${style.textAlign} !important; `;
     if (r) rules += `#${slotId} { ${r}}\n`;
   }
   return rules;
@@ -249,6 +251,8 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (style.fontWeight) rules += `font-weight: ${style.fontWeight} !important; `;
       if (style.fontStyle) rules += `font-style: ${style.fontStyle} !important; `;
       if (style.textDecoration) rules += `text-decoration: ${style.textDecoration} !important; `;
+      if (style.fontFamily) rules += `font-family: ${style.fontFamily} !important; `;
+      if (style.textAlign) rules += `text-align: ${style.textAlign} !important; `;
       if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
     }
     if (zoneRules) {

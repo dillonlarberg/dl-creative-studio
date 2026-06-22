@@ -1,8 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { TrashIcon, CheckIcon, PhotoIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import type { CustomZone, ZoneBound } from '../types';
+import type { CustomZone, ZoneBound, ZoneStyle } from '../types';
 import { cn } from '../../../utils/cn';
+
+const FONT_FAMILIES = [
+  { label: 'Inherit', value: '' },
+  { label: 'Inter', value: 'Inter, sans-serif' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+  { label: 'Helvetica', value: '"Helvetica Neue", Helvetica, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Times New Roman', value: '"Times New Roman", serif' },
+  { label: 'Verdana', value: 'Verdana, sans-serif' },
+  { label: 'Impact', value: 'Impact, sans-serif' },
+  { label: 'Courier New', value: '"Courier New", monospace' },
+];
 
 export interface ZoneInspectorProps {
   zone: CustomZone;
@@ -11,15 +23,17 @@ export interface ZoneInspectorProps {
   canvasHeight: number;
   feedColumns: string[];
   feedSampleRow?: Record<string, unknown>;
+  zoneStyle?: ZoneStyle;
   onDelete: () => void;
   onClose: () => void;
   onContentUpdate: (patch: { fieldId?: string; textContent?: string }) => void;
+  onStyleUpdate: (patch: ZoneStyle) => void;
 }
 
 type SourceMode = 'static' | 'feed' | 'ai';
 
 const CARD_W = 240;
-const CARD_H_TEXT = 148;
+const CARD_H_TEXT = 220;
 const CARD_H_IMAGE = 40;
 const GAP = 6;
 
@@ -30,9 +44,11 @@ export function ZoneInspector({
   canvasHeight,
   feedColumns,
   feedSampleRow,
+  zoneStyle,
   onDelete,
   onClose,
   onContentUpdate,
+  onStyleUpdate,
 }: ZoneInspectorProps) {
   const initialMode: SourceMode = zone.fieldId ? 'feed' : 'static';
   const [mode, setMode] = useState<SourceMode>(initialMode);
@@ -200,6 +216,77 @@ export function ZoneInspector({
               Preview: <span className="text-gray-700 font-medium">{previewValue}</span>
             </p>
           )}
+
+          {/* ── Font controls ─────────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-1.5 space-y-1.5">
+            {/* Row 1: bold / italic / underline / align */}
+            <div className="flex items-center gap-0.5">
+              {/* Weight */}
+              <button type="button"
+                onClick={() => onStyleUpdate({ fontWeight: zoneStyle?.fontWeight === 'bold' ? 'normal' : 'bold' })}
+                className={cn('w-6 h-6 rounded text-xs font-bold flex items-center justify-center border transition-colors',
+                  zoneStyle?.fontWeight === 'bold' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                title="Bold">B</button>
+              {/* Italic */}
+              <button type="button"
+                onClick={() => onStyleUpdate({ fontStyle: zoneStyle?.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                className={cn('w-6 h-6 rounded text-xs italic flex items-center justify-center border transition-colors',
+                  zoneStyle?.fontStyle === 'italic' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                title="Italic">I</button>
+              {/* Underline */}
+              <button type="button"
+                onClick={() => onStyleUpdate({ textDecoration: zoneStyle?.textDecoration === 'underline' ? 'none' : 'underline' })}
+                className={cn('w-6 h-6 rounded text-xs underline flex items-center justify-center border transition-colors',
+                  zoneStyle?.textDecoration === 'underline' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                title="Underline">U</button>
+
+              <span className="w-px h-4 bg-gray-200 mx-1" />
+
+              {/* Align left */}
+              {(['left', 'center', 'right'] as const).map((align) => (
+                <button key={align} type="button"
+                  onClick={() => onStyleUpdate({ textAlign: align })}
+                  className={cn('w-6 h-6 rounded text-[10px] flex items-center justify-center border transition-colors',
+                    zoneStyle?.textAlign === align ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50')}
+                  title={`Align ${align}`}>
+                  {align === 'left' ? '⬅' : align === 'center' ? '≡' : '➡'}
+                </button>
+              ))}
+
+              <span className="w-px h-4 bg-gray-200 mx-1" />
+
+              {/* Text color */}
+              <div className="relative" title="Text color">
+                <input type="color"
+                  value={zoneStyle?.color ?? '#000000'}
+                  onChange={(e) => onStyleUpdate({ color: e.target.value })}
+                  className="w-6 h-6 rounded border border-gray-300 cursor-pointer p-0.5"
+                  title="Text color"
+                />
+              </div>
+            </div>
+
+            {/* Row 2: font family + size */}
+            <div className="flex items-center gap-1">
+              <select
+                value={zoneStyle?.fontFamily ?? ''}
+                onChange={(e) => onStyleUpdate({ fontFamily: e.target.value || undefined })}
+                className="flex-1 text-[10px] border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 min-w-0"
+              >
+                {FONT_FAMILIES.map((f) => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={8} max={120}
+                value={zoneStyle?.fontSize ?? ''}
+                onChange={(e) => onStyleUpdate({ fontSize: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="px"
+                className="w-14 text-[10px] border border-gray-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
