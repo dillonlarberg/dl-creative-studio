@@ -6,6 +6,15 @@
 
 import type { ZoneStyle, ZoneBound, CustomZone } from '../types';
 
+/**
+ * Strip characters that can escape a <style> raw-text element when the CSS
+ * rules string is serialized via outerHTML (prevents </style> injection into
+ * the iframe srcDoc). Also removes CSS block delimiters to prevent rule injection.
+ */
+function sanitizeCssVal(val: string): string {
+  return val.replace(/[<>{}]/g, '');
+}
+
 export interface InjectOptions {
   injections: Record<string, { type: 'image' | 'text'; value: string }>;
   cssOverrides?: Record<string, string>;
@@ -148,7 +157,7 @@ export function buildCssRulesString(cssOverrides?: Record<string, string>): stri
     const entries = CSS_INJECTION_MAP[key];
     if (!entries) continue;
     for (const { selector, property } of entries) {
-      rules += `${selector} { ${property}: ${val} !important; }\n`;
+      rules += `${selector} { ${property}: ${sanitizeCssVal(val)} !important; }\n`;
     }
   }
   return rules;
@@ -161,13 +170,13 @@ export function buildZoneRulesString(zoneStyles?: Record<string, ZoneStyle>): st
   for (const [slotId, style] of Object.entries(zoneStyles)) {
     let r = '';
     if (style.fontSize != null) r += `font-size: ${style.fontSize}px !important; `;
-    if (style.color) r += `color: ${style.color} !important; `;
-    if (style.backgroundColor) r += `background-color: ${style.backgroundColor} !important; `;
-    if (style.fontWeight) r += `font-weight: ${style.fontWeight} !important; `;
-    if (style.fontStyle) r += `font-style: ${style.fontStyle} !important; `;
-    if (style.textDecoration) r += `text-decoration: ${style.textDecoration} !important; `;
-    if (style.fontFamily) r += `font-family: ${style.fontFamily} !important; `;
-    if (style.textAlign) r += `text-align: ${style.textAlign} !important; `;
+    if (style.color) r += `color: ${sanitizeCssVal(style.color)} !important; `;
+    if (style.backgroundColor) r += `background-color: ${sanitizeCssVal(style.backgroundColor)} !important; `;
+    if (style.fontWeight) r += `font-weight: ${sanitizeCssVal(style.fontWeight)} !important; `;
+    if (style.fontStyle) r += `font-style: ${sanitizeCssVal(style.fontStyle)} !important; `;
+    if (style.textDecoration) r += `text-decoration: ${sanitizeCssVal(style.textDecoration)} !important; `;
+    if (style.fontFamily) r += `font-family: ${sanitizeCssVal(style.fontFamily)} !important; `;
+    if (style.textAlign) r += `text-align: ${sanitizeCssVal(style.textAlign)} !important; `;
     if (r) rules += `#${slotId} { ${r}}\n`;
   }
   return rules;
@@ -226,7 +235,7 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (!rules) continue;
       for (const { selector, property } of rules) {
         if (doc.querySelector(selector)) {
-          styleRules += `${selector} { ${property}: ${val} !important; }\n`;
+          styleRules += `${selector} { ${property}: ${sanitizeCssVal(val)} !important; }\n`;
         }
       }
     }
@@ -246,13 +255,13 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (!el) continue;
       let rules = '';
       if (style.fontSize != null) rules += `font-size: ${style.fontSize}px !important; `;
-      if (style.color) rules += `color: ${style.color} !important; `;
-      if (style.backgroundColor) rules += `background-color: ${style.backgroundColor} !important; `;
-      if (style.fontWeight) rules += `font-weight: ${style.fontWeight} !important; `;
-      if (style.fontStyle) rules += `font-style: ${style.fontStyle} !important; `;
-      if (style.textDecoration) rules += `text-decoration: ${style.textDecoration} !important; `;
-      if (style.fontFamily) rules += `font-family: ${style.fontFamily} !important; `;
-      if (style.textAlign) rules += `text-align: ${style.textAlign} !important; `;
+      if (style.color) rules += `color: ${sanitizeCssVal(style.color)} !important; `;
+      if (style.backgroundColor) rules += `background-color: ${sanitizeCssVal(style.backgroundColor)} !important; `;
+      if (style.fontWeight) rules += `font-weight: ${sanitizeCssVal(style.fontWeight)} !important; `;
+      if (style.fontStyle) rules += `font-style: ${sanitizeCssVal(style.fontStyle)} !important; `;
+      if (style.textDecoration) rules += `text-decoration: ${sanitizeCssVal(style.textDecoration)} !important; `;
+      if (style.fontFamily) rules += `font-family: ${sanitizeCssVal(style.fontFamily)} !important; `;
+      if (style.textAlign) rules += `text-align: ${sanitizeCssVal(style.textAlign)} !important; `;
       if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
     }
     if (zoneRules) {

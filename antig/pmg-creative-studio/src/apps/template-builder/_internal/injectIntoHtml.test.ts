@@ -214,3 +214,32 @@ describe('injectIntoHtml — layoutOverrides', () => {
     expect(withBoth.replace('src="https://cdn.example.com/asset.jpg"', '')).toContain('injected headline');
   });
 });
+
+describe('injectIntoHtml — CSS value sanitization (XSS prevention)', () => {
+  const baseHtml = `<html><head></head><body><div id="ad"><div id="headline">text</div></div></body></html>`;
+
+  it('strips </style> escape sequences from cssOverrides values (stored XSS vector)', () => {
+    const payload = `Inter } </style><script>alert(1)</script><style> body { font-family: Inter`;
+    const result = injectIntoHtml(baseHtml, {
+      injections: {},
+      cssOverrides: { font_family: payload },
+    });
+    expect(result).not.toContain('</style><script>');
+    expect(result).not.toContain('<script>');
+    // The sanitized value should still appear (without the injection chars)
+    expect(result).toContain('font-family');
+  });
+
+  it('strips CSS block delimiters from zoneStyles fontFamily to prevent rule injection', () => {
+    // { } characters stripped — no valid CSS rule block can form
+    const payload = `Arial } body { background: red; } #ad { font-family: Arial`;
+    const result = injectIntoHtml(baseHtml, {
+      injections: {},
+      zoneStyles: { headline: { fontFamily: payload } },
+    });
+    // The { } were stripped so the injected content cannot form a valid CSS rule
+    expect(result).not.toContain('body {');
+    expect(result).not.toContain('} body');
+    expect(result).toContain('font-family');
+  });
+});
