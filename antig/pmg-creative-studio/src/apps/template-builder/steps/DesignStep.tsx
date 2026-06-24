@@ -42,6 +42,7 @@ function DesignStepBody({
   const { clientSlug } = useParams<{ clientSlug: string }>();
 
   const { candidates, requirements, feedColumns, setCandidates } = tbCtx;
+  const feedSampleData = tbCtx.feedSampleData;
 
   const brandKitReady = !!(
     assetHouse?.primaryColor && assetHouse?.fontPrimary &&
@@ -65,6 +66,7 @@ function DesignStepBody({
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
   const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [overflowZoneIds, setOverflowZoneIds] = useState<Set<string>>(new Set());
   const [zoneCoverageStyleSlot, setZoneCoverageStyleSlot] = useState<string | null>(null);
   const [feedRowIndex, setFeedRowIndex] = useState(0);
   const [userHasEditedStyles, setUserHasEditedStyles] = useState(
@@ -74,6 +76,10 @@ function DesignStepBody({
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
   const zoneStyleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against stale zone-overflow postMessages arriving from the old iframe
+  // after a wireframe change. Set true on wireframe change, cleared when zone-bounds
+  // arrives from the new iframe.
+  const overflowGatedRef = useRef(false);
 
   function handleZoneStyleChange(slotId: string, partial: Partial<ZoneStyle>) {
     setUserHasEditedStyles(true);
@@ -201,7 +207,7 @@ function DesignStepBody({
     return () => { cancelled = true; };
   }, [stepData.wireframeFile]);
 
-  // Listen for zone-bounds postMessages from the iframe.
+  // Listen for zone-bounds and zone-overflow postMessages from the iframe.
   useEffect(() => {
     function handler(e: MessageEvent) {
       if (e.data?.type === 'zone-bounds' && e.data.zones) {
@@ -210,16 +216,33 @@ function DesignStepBody({
             .filter(([id]) => !SKIP_ZONE_IDS.has(id))
         );
         setZoneBounds(filtered);
+        overflowGatedRef.current = false;
+      }
+      if (e.data?.type === 'zone-overflow') {
+        if (overflowGatedRef.current) return;
+        if (!Array.isArray(e.data.overflowing)) return;
+        setOverflowZoneIds(new Set<string>(
+          (e.data.overflowing as string[]).filter((id) => !SKIP_ZONE_IDS.has(id))
+        ));
       }
     }
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Clear zone bounds on wireframe change.
+  // Clear zone state on wireframe change and gate stale overflow messages.
   useEffect(() => {
     setZoneBounds({});
+    setOverflowZoneIds(new Set());
+    overflowGatedRef.current = true;
+    setFeedRowIndex(0);
   }, [stepData.wireframeFile]);
+
+  // Clamp feedRowIndex when feedSampleData shrinks (e.g. after re-upload).
+  useEffect(() => {
+    if (feedSampleData.length === 0) return;
+    setFeedRowIndex((i) => Math.min(i, feedSampleData.length - 1));
+  }, [feedSampleData.length]);
 
   // Empty-state guard: must come after ALL hooks.
   if (requirements.length === 0 && feedColumns.length === 0 && !isLoadingCandidates) {
@@ -244,7 +267,6 @@ function DesignStepBody({
   const selectedCandidateIndex = stepData.selectedCandidateIndex ?? 0;
   const activeCandidate = candidates[selectedCandidateIndex ?? 0];
   const feedMappings = stepData.feedMappings ?? {};
-  const feedSampleData = tbCtx.feedSampleData;
 
   const customFields = stepData.customFields ?? [];
   const fieldTransforms = stepData.fieldTransforms ?? {};
@@ -258,6 +280,29 @@ function DesignStepBody({
       type: f.type,
     })),
   ];
+
+  const mappedZoneIds = new Set<string>(
+    allFields
+      .filter((f) => {
+        const sourceMode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+        return sourceMode === 'static'
+          ? Boolean(stepData.staticValues?.[f.id])
+          : Boolean(feedMappings[f.id]);
+      })
+      .map((f) => getEffectiveSlotId(f.id))
+  );
+
+  const zoneFieldMap: Record<string, { fieldId: string; fieldLabel: string; fieldType: 'text' | 'image'; columnMapped?: string }> = {};
+  for (const field of allFields) {
+    const slotId = getEffectiveSlotId(field.id);
+    const col = feedMappings[field.id] || undefined;
+    zoneFieldMap[slotId] = {
+      fieldId: field.id,
+      fieldLabel: field.label,
+      fieldType: field.type === 'image' ? 'image' : 'text',
+      columnMapped: col,
+    };
+  }
 
   const slotUseCounts: Record<string, string[]> = {};
   for (const [fieldId, slotId] of Object.entries(stepData.slotMappings ?? {})) {
@@ -365,6 +410,7 @@ function DesignStepBody({
             setAddFieldSelectingSlot={setAddFieldSelectingSlot}
             addFieldPendingSlot={addFieldPendingSlot}
             setAddFieldPendingSlot={setAddFieldPendingSlot}
+            overflowZoneIds={overflowZoneIds}
           />
         )}
 
@@ -517,6 +563,10 @@ function DesignStepBody({
         onZoneAsset={handleZoneAsset}
         onZoneContentUpdate={handleZoneContentUpdate}
         onZoneStyleUpdate={handleZoneStyleChange}
+        clientSlug={clientSlug ?? ''}
+        overflowZoneIds={overflowZoneIds}
+        mappedZoneIds={mappedZoneIds}
+        zoneFieldMap={zoneFieldMap}
       />
     </div>
 

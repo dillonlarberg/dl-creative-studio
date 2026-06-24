@@ -461,6 +461,7 @@ export function buildInteractiveScript(): string {
         if (!zoneEl) { zoneEl = document.createElement('style'); zoneEl.id = '__zone-style-overrides__'; document.head.appendChild(zoneEl); }
         zoneEl.textContent = zoneRules;
       } else if (zoneEl) { zoneEl.remove(); }
+      setTimeout(reportOverflow, 150);
     }
   });
 
@@ -476,6 +477,22 @@ export function buildInteractiveScript(): string {
       }
     });
     window.parent.postMessage({ type: 'zone-bounds', zones: zones }, '*');
+    setTimeout(reportOverflow, 150);
+  }
+
+  function reportOverflow() {
+    var overflowing = [];
+    document.querySelectorAll('[id]').forEach(function(el) {
+      if (SKIP.indexOf(el.id) !== -1) return;
+      // Skip elements with no visible area (hidden, display:none, etc.)
+      if (el.clientWidth === 0 && el.clientHeight === 0) return;
+      // scrollHeight reflects full content size even when overflow:hidden clips it —
+      // so this correctly catches text that is too large for its zone.
+      if (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2) {
+        overflowing.push(el.id);
+      }
+    });
+    window.parent.postMessage({ type: 'zone-overflow', overflowing: overflowing }, '*');
   }
 
   var _zoneReportFired = false;

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  SparklesIcon,
   ExclamationTriangleIcon,
   XMarkIcon,
   PlusIcon,
@@ -41,6 +40,7 @@ export interface FieldMappingPanelProps {
   setAddFieldSelectingSlot: (v: boolean) => void;
   addFieldPendingSlot: string | null;
   setAddFieldPendingSlot: (v: string | null) => void;
+  overflowZoneIds?: Set<string>;
 }
 
 export function FieldMappingPanel({
@@ -64,9 +64,9 @@ export function FieldMappingPanel({
   setAddFieldSelectingSlot,
   addFieldPendingSlot,
   setAddFieldPendingSlot,
+  overflowZoneIds,
 }: FieldMappingPanelProps) {
-  const [hoveredField, setHoveredField] = useState<string | null>(null);
-  const [addFieldOpen, setAddFieldOpen] = useState(false);
+const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newFieldPreset, setNewFieldPreset] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
@@ -84,17 +84,66 @@ export function FieldMappingPanel({
     feedColumns
   );
 
+  // Zone coverage progress
+  const mappedZoneCount = Object.values(stepData.slotMappings ?? {}).filter(Boolean).length;
+  const totalZoneCount = discoveredSlots.length;
+  const coveragePct = totalZoneCount > 0 ? Math.round((mappedZoneCount / totalZoneCount) * 100) : 0;
+  const allZonesMapped = totalZoneCount > 0 && mappedZoneCount === totalZoneCount;
+
+  // Per-field status dot: green=feed mapped, blue=static set, purple=ai, amber=empty
+  function fieldDotColor(fieldId: string): string {
+    const mode = stepData.fieldSourceMode?.[fieldId] ?? 'feed';
+    if (mode === 'ai') return 'bg-purple-500';
+    if (mode === 'feed' && feedMappings[fieldId]) return 'bg-green-500';
+    if (mode === 'static' && stepData.staticValues?.[fieldId]) return 'bg-blue-500';
+    return 'bg-amber-400';
+  }
+
   if (allFields.length === 0) return null;
 
   return (
     <div className="space-y-4">
-      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-        Field Mapping
-      </h4>
+      <div className="flex items-center justify-between">
+        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+          Field Mapping
+        </h4>
+        <span className="text-[9px] text-gray-400 tabular-nums">
+          {allFields.filter(f => {
+            const m = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+            return (m === 'feed' && feedMappings[f.id]) || (m === 'static' && stepData.staticValues?.[f.id]) || m === 'ai';
+          }).length}/{allFields.length}
+        </span>
+      </div>
       {stepData.wireframeFile && discoveredSlots.length === 0 && (
         <p className="text-[9px] text-gray-400 italic">
           No injectable slots found — this template may not support zone assignment.
         </p>
+      )}
+
+      {/* Pre-flight issues */}
+      {((overflowZoneIds?.size ?? 0) > 0 || allFields.some((f) => {
+        const mode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+        return mode === 'feed' && !feedMappings[f.id];
+      })) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 space-y-1.5">
+          <p className="text-[9px] font-black text-amber-700 uppercase tracking-[0.2em] flex items-center gap-1.5">
+            <ExclamationTriangleIcon className="h-3 w-3 shrink-0" />
+            Pre-flight issues
+          </p>
+          {[...(overflowZoneIds ?? [])].map((zoneId) => (
+            <p key={`overflow-${zoneId}`} className="text-[9px] text-amber-700 pl-4">
+              Zone <span className="font-semibold">{zoneId}</span> — text overflow
+            </p>
+          ))}
+          {allFields.filter((f) => {
+            const mode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+            return mode === 'feed' && !feedMappings[f.id];
+          }).map((f) => (
+            <p key={`unmapped-${f.id}`} className="text-[9px] text-amber-700 pl-4">
+              <span className="font-semibold">{f.label}</span> — no feed column mapped
+            </p>
+          ))}
+        </div>
       )}
 
       <div className="space-y-4">
@@ -107,19 +156,19 @@ export function FieldMappingPanel({
             <div
               key={field.id}
               className={cn(
-                'space-y-1.5 p-3 rounded-xl transition-all border-2',
-                isSelectingSlot ? 'bg-blue-50 border-blue-200' : 'border-transparent'
+                'py-3 border-b border-gray-100 last:border-0 transition-colors',
+                isSelectingSlot && 'bg-blue-50 rounded-xl px-2.5 -mx-2.5'
               )}
-              onMouseEnter={() => setHoveredField(field.id)}
-              onMouseLeave={() => setHoveredField(null)}
+
             >
-              <div className="flex items-center gap-2">
-                <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex-1">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={cn('shrink-0 w-1.5 h-1.5 rounded-full mt-px', fieldDotColor(field.id))} />
+                <label className="text-[9px] font-black text-gray-700 uppercase tracking-widest flex-1 truncate">
                   {field.label}
                 </label>
                 <span
                   className={cn(
-                    'px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest',
+                    'px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest shrink-0',
                     field.type === 'image'
                       ? 'bg-amber-50 text-amber-600'
                       : 'bg-gray-100 text-gray-400'
@@ -128,31 +177,29 @@ export function FieldMappingPanel({
                   {field.type}
                 </span>
                 {assignedSlot && (slotUseCounts[assignedSlot]?.length ?? 0) > 1 && (
-                  <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-red-50 text-red-500" title="Two fields share this slot — only one will render">
-                    Dup slot
+                  <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-red-50 text-red-500 shrink-0" title="Two fields share this slot — only one will render">
+                    Dup
                   </span>
                 )}
-                {/* Cursor — click-assign zone in preview */}
                 {discoveredSlots.length > 0 && (
                   <button
                     type="button"
                     title={isSelectingSlot ? 'Cancel zone selection' : 'Click a zone in the preview to assign'}
                     onClick={() => setActiveSlotField(isSelectingSlot ? null : field.id)}
                     className={cn(
-                      'h-4 w-4 transition-colors shrink-0',
+                      'h-3.5 w-3.5 transition-colors shrink-0',
                       isSelectingSlot ? 'text-blue-600' : 'text-gray-300 hover:text-blue-500'
                     )}
                   >
                     <CursorArrowRaysIcon className="h-3.5 w-3.5" />
                   </button>
                 )}
-                {/* Paintbrush — toggle zone style toolbar */}
                 <button
                   type="button"
                   title="Edit zone styles"
                   onClick={() => setStyleOpenFieldId(styleOpenFieldId === field.id ? null : field.id)}
                   className={cn(
-                    'h-4 w-4 transition-colors shrink-0',
+                    'h-3.5 w-3.5 transition-colors shrink-0',
                     styleOpenFieldId === field.id ? 'text-indigo-600' : 'text-gray-300 hover:text-indigo-500'
                   )}
                 >
@@ -162,7 +209,7 @@ export function FieldMappingPanel({
                   type="button"
                   title="Ask Alli about this field"
                   onClick={() => onOpenAskAlli(field.id)}
-                  className="h-4 w-4 text-indigo-400 hover:text-indigo-600 transition-colors shrink-0"
+                  className="h-3.5 w-3.5 text-indigo-400 hover:text-indigo-600 transition-colors shrink-0"
                 >
                   <SparklesIconSolid className="h-3.5 w-3.5" />
                 </button>
@@ -188,7 +235,7 @@ export function FieldMappingPanel({
                 </div>
               )}
               {/* Source mode: Static | Feed | AI */}
-              <div className="flex gap-1 mb-1">
+              <div className="flex gap-1 mb-2">
                 {(['static', 'feed', 'ai'] as const).map((mode) => (
                   <button
                     key={mode}
@@ -201,13 +248,13 @@ export function FieldMappingPanel({
                       }
                     }}
                     className={cn(
-                      'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
+                      'px-2.5 py-0.5 rounded-full text-[8px] font-semibold border transition-all',
                       (stepData.fieldSourceMode?.[field.id] ?? 'feed') === mode
-                        ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        ? mode === 'ai' ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-transparent text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600'
                     )}
                   >
-                    {mode === 'ai' ? '✦ AI' : mode}
+                    {mode === 'ai' ? '✦ AI' : mode === 'feed' ? 'Feed' : 'Static'}
                   </button>
                 ))}
               </div>
@@ -222,7 +269,7 @@ export function FieldMappingPanel({
                         staticValues: { ...(stepData.staticValues ?? {}), [field.id]: e.target.value },
                       })
                     }
-                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none text-[10px] font-medium text-gray-800"
                   />
                   {field.type === 'image' && (
                     <label className="flex items-center gap-2 cursor-pointer w-fit">
@@ -276,10 +323,10 @@ export function FieldMappingPanel({
                       })
                     }
                     className={cn(
-                      'w-full px-3 py-2 rounded-xl border-2 focus:ring-4 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white',
+                      'w-full px-2.5 py-1.5 rounded-lg border outline-none transition-all text-[10px] font-medium text-gray-800 bg-white focus:ring-2',
                       field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k))
-                        ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-50'
-                        : 'border-gray-100 focus:border-blue-600 focus:ring-blue-50'
+                        ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-100'
+                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500/10'
                     )}
                   >
                     <option value="">— Select column —</option>
@@ -319,7 +366,7 @@ export function FieldMappingPanel({
                         onChange={(e) => {
                           mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [field.id]: e.target.value } });
                         }}
-                        className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                        className="flex-1 px-2 py-1 rounded-lg border border-gray-200 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
                       >
                         <option value="">— auto —</option>
                         {discoveredSlots.map((slot) => (
@@ -440,34 +487,60 @@ export function FieldMappingPanel({
         </button>
       )}
 
-      {/* Zone Coverage panel — shows slot mapping status */}
+      {/* Zone Coverage */}
       {discoveredSlots.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Zone Coverage</span>
-            <span className="text-[8px] text-gray-400">
-              {Object.values(stepData.slotMappings ?? {}).filter(Boolean).length}/{discoveredSlots.length} mapped
+        <div className="pt-4 border-t border-gray-100">
+          {/* Header + count */}
+          <div className="flex items-center justify-between mb-2">
+            <h4 className={cn(
+              'text-[10px] font-black uppercase tracking-[0.2em] transition-colors',
+              allZonesMapped ? 'text-green-700' : 'text-gray-400'
+            )}>
+              {allZonesMapped ? '✓ All Zones Assigned' : 'Zone Coverage'}
+            </h4>
+            <span className={cn(
+              'text-[9px] font-bold tabular-nums transition-colors',
+              allZonesMapped ? 'text-green-600' : mappedZoneCount > 0 ? 'text-blue-600' : 'text-gray-400'
+            )}>
+              {mappedZoneCount}/{totalZoneCount}
             </span>
           </div>
-          <div className="divide-y divide-gray-50">
+
+          {/* Progress bar */}
+          <div className="h-1 bg-gray-100 rounded-full mb-3 overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                allZonesMapped ? 'bg-green-500' : coveragePct >= 50 ? 'bg-blue-500' : 'bg-amber-400'
+              )}
+              style={{ width: `${coveragePct}%` }}
+            />
+          </div>
+
+          {/* Zone rows */}
+          <div className="space-y-px">
             {discoveredSlots.map((slot) => {
               const isMapped = Object.values(stepData.slotMappings ?? {}).includes(slot.slotId);
               const ownerFieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slot.slotId)?.[0];
               const styleOpen = zoneCoverageStyleSlot === slot.slotId;
               return (
-                <div key={slot.slotId} className="px-3 py-1.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[7px] font-black ${
-                        isMapped ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {isMapped ? '✓' : '!'}
-                      </span>
-                      <span className="text-[9px] font-medium text-gray-700 truncate">{slot.label}</span>
-                      <span className="shrink-0 text-[7px] text-gray-400 font-mono">{slot.slotId}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {/* Cursor — assign/reassign slot to a field */}
+                <div key={slot.slotId}>
+                  <div className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors',
+                    isMapped ? 'hover:bg-gray-50' : 'hover:bg-amber-50/60'
+                  )}>
+                    <span className={cn(
+                      'shrink-0 w-1.5 h-1.5 rounded-full',
+                      isMapped ? 'bg-green-500' : 'bg-amber-400'
+                    )} />
+                    <span className={cn(
+                      'flex-1 text-[9px] font-medium truncate',
+                      isMapped ? 'text-gray-500' : 'text-gray-700'
+                    )}>
+                      {slot.label}
+                    </span>
+                    <code className="shrink-0 text-[8px] font-mono text-gray-400">{slot.slotId}</code>
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         title={isMapped ? 'Reassign this zone' : 'Assign to a field'}
@@ -476,21 +549,23 @@ export function FieldMappingPanel({
                             setActiveSlotField(ownerFieldId);
                           } else {
                             setAddFieldPendingSlot(slot.slotId);
+                            setNewFieldCustomLabel(slot.label);
+                            setNewFieldPreset('__custom__');
+                            setNewFieldType(IMAGE_COLUMN_KEYWORDS.some((k) => slot.label.toLowerCase().includes(k)) ? 'image' : 'text');
                             setAddFieldOpen(true);
                           }
                         }}
-                        className="text-gray-400 hover:text-blue-500 transition-colors"
+                        className="text-gray-300 hover:text-blue-500 transition-colors"
                       >
-                        <CursorArrowRaysIcon className="h-3.5 w-3.5" />
+                        <CursorArrowRaysIcon className="h-3 w-3" />
                       </button>
-                      {/* Paintbrush — style this zone directly */}
                       <button
                         type="button"
                         title="Edit zone styles"
                         onClick={() => setZoneCoverageStyleSlot(styleOpen ? null : slot.slotId)}
                         className={cn(
-                          'p-0.5 rounded transition-colors',
-                          styleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
+                          'transition-colors',
+                          styleOpen ? 'text-indigo-600' : 'text-gray-300 hover:text-indigo-500'
                         )}
                       >
                         <PaintBrushIcon className="h-3 w-3" />
@@ -498,21 +573,28 @@ export function FieldMappingPanel({
                       {!isMapped && (
                         <button
                           type="button"
-                          onClick={() => { setAddFieldPendingSlot(slot.slotId); setAddFieldOpen(true); }}
-                          className="text-[8px] font-black text-indigo-600 hover:text-indigo-800"
+                          onClick={() => {
+                            setAddFieldPendingSlot(slot.slotId);
+                            setNewFieldCustomLabel(slot.label);
+                            setNewFieldPreset('__custom__');
+                            setNewFieldType(IMAGE_COLUMN_KEYWORDS.some((k) => slot.label.toLowerCase().includes(k)) ? 'image' : 'text');
+                            setAddFieldOpen(true);
+                          }}
+                          className="text-[8px] font-semibold text-blue-600 hover:text-blue-800 ml-0.5 transition-colors"
                         >
                           Add →
                         </button>
                       )}
                     </div>
                   </div>
-                  {/* Inline zone style toolbar */}
                   {styleOpen && (
-                    <ZoneStyleToolbar
-                      slotId={slot.slotId}
-                      current={stepData.zoneStyles?.[slot.slotId]}
-                      onChange={onZoneStyleChange}
-                    />
+                    <div className="px-2 pb-2">
+                      <ZoneStyleToolbar
+                        slotId={slot.slotId}
+                        current={stepData.zoneStyles?.[slot.slotId]}
+                        onChange={onZoneStyleChange}
+                      />
+                    </div>
                   )}
                 </div>
               );
@@ -532,179 +614,179 @@ export function FieldMappingPanel({
           Add Field
         </button>
       ) : (
-        <div className="border-2 border-blue-100 rounded-xl p-4 space-y-3 bg-blue-50/30 mt-2">
-          <div className="flex items-center gap-2">
-            <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">New Field</p>
+        <div className="border border-blue-100 rounded-xl p-4 space-y-4 bg-blue-50/20 mt-3">
+
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">Add field</p>
             {addFieldPendingSlot && (
-              <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase tracking-wide">
-                → {addFieldPendingSlot}
+              <span className="text-[9px] text-blue-600 font-medium">
+                Zone: <code className="font-mono bg-blue-100 px-1 rounded text-blue-700">{addFieldPendingSlot}</code>
               </span>
             )}
           </div>
 
-          {/* Preset picker */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {([
-              { id: 'headline_2', label: 'Headline 2', type: 'text' },
-              { id: 'callout', label: 'Callout', type: 'text' },
-              { id: 'price', label: 'Price', type: 'currency' },
-              { id: 'background_image', label: 'BG Image', type: 'image' },
-              { id: 'cta', label: 'CTA', type: 'text' },
-              { id: '__custom__', label: 'Custom', type: 'text' },
-            ] as Array<{ id: string; label: string; type: 'text' | 'image' | 'currency' }>).map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => {
-                  setNewFieldPreset(preset.id);
-                  setNewFieldType(preset.type);
-                  if (preset.id !== '__custom__') setNewFieldCustomLabel('');
-                  setAddFieldError(null);
-                }}
-                className={cn(
-                  'px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wide border-2 transition-all',
-                  newFieldPreset === preset.id
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-100 text-gray-400 hover:border-blue-200'
-                )}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom label input */}
-          {newFieldPreset === '__custom__' && (
-            <input
-              type="text"
-              placeholder="Field label (e.g. Sub-headline)"
-              value={newFieldCustomLabel}
-              onChange={(e) => { setNewFieldCustomLabel(e.target.value); setAddFieldError(null); }}
-              className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
-            />
-          )}
-
-          {/* Source mode tabs */}
-          <div className="flex gap-1">
-            {(['static', 'feed', 'ai'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => { setNewFieldSourceMode(mode); setNewFieldStaticValue(''); }}
-                className={cn(
-                  'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
-                  newFieldSourceMode === mode
-                    ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                )}
-              >
-                {mode === 'ai' ? '✦ AI' : mode}
-              </button>
-            ))}
-          </div>
-
-          {/* Column picker / static input / AI */}
-          {newFieldSourceMode === 'feed' ? (
-            <select
-              value={newFieldColumn}
-              onChange={(e) => setNewFieldColumn(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
-            >
-              <option value="">— Select feed column —</option>
-              {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
-                <optgroup key={groupLabel} label={groupLabel}>
-                  {cols.map((col) => (
-                    <option key={col} value={col}>{col}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          ) : newFieldSourceMode === 'static' ? (
-            <div className="space-y-1.5">
+          {/* Step 1: Field name */}
+          <div className="space-y-1.5">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Field name</p>
+            <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder={newFieldType === 'image' ? 'Paste image URL…' : 'Enter static value…'}
-                value={newFieldStaticValue}
-                onChange={(e) => setNewFieldStaticValue(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
+                placeholder="e.g. Headline, Price, BG Image…"
+                value={newFieldCustomLabel}
+                autoFocus
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewFieldCustomLabel(val);
+                  setNewFieldPreset(val.trim() ? '__custom__' : '');
+                  setAddFieldError(null);
+                }}
+                className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none text-[10px] font-medium text-gray-800 bg-white"
               />
-              {newFieldType === 'image' && (
-                <label className="flex items-center gap-2 cursor-pointer w-fit">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id="upload-new-field"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        if (ev.target?.result) setNewFieldStaticValue(ev.target.result as string);
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                  />
-                  <label
-                    htmlFor="upload-new-field"
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
-                  >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                    Upload image
-                  </label>
-                  {newFieldStaticValue.startsWith('data:') && (
-                    <span className="text-[8px] font-bold text-green-600">✓ uploaded</span>
+              {(['text', 'image'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewFieldType(t)}
+                  className={cn(
+                    'px-2 py-1 rounded-md text-[8px] font-semibold border transition-all shrink-0',
+                    newFieldType === t
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 text-gray-400 bg-white hover:border-blue-300 hover:text-gray-600'
                   )}
-                </label>
-              )}
+                >
+                  {t === 'text' ? 'Text' : 'Image'}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div
-              className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
-              onClick={() => {
-                // Field doesn't exist yet — commit it first, then open Ask Alli
-                if (!newFieldPreset) return;
-                const id = newFieldPreset === '__custom__'
-                  ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-                  : newFieldPreset;
-                const label = newFieldPreset === '__custom__'
-                  ? newFieldCustomLabel.trim()
-                  : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
-                if (!id || !label) return;
-                const existingCustom = stepData.customFields ?? [];
-                const requirements = allFields.filter((f) => !customFields.some((cf) => cf.id === f.id));
-                if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
-                  setAddFieldError(`"${label}" already exists — use a different name.`);
-                  return;
-                }
-                mergeStepData({
-                  customFields: [...existingCustom, { id, label, type: newFieldType }],
-                  fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'ai' },
-                  ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
-                });
-                setAddFieldOpen(false);
-                setAddFieldPendingSlot(null);
-                setNewFieldPreset('');
-                setNewFieldCustomLabel('');
-                setNewFieldColumn('');
-                setNewFieldSourceMode('feed');
-                setNewFieldStaticValue('');
-                onOpenAskAlli(id);
-              }}
-            >
-              Generate via Ask Alli →
+          </div>
+
+          {/* Step 2: Data source (appears after field name chosen) */}
+          {newFieldPreset && (
+            <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Data source</p>
+              <div className="flex gap-1">
+                {(['static', 'feed', 'ai'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => { setNewFieldSourceMode(mode); setNewFieldStaticValue(''); }}
+                    className={cn(
+                      'px-2.5 py-0.5 rounded-full text-[8px] font-semibold border transition-all',
+                      newFieldSourceMode === mode
+                        ? mode === 'ai' ? 'bg-purple-600 text-white border-purple-600' : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-transparent text-gray-400 border-gray-200 hover:border-gray-300 hover:text-gray-600'
+                    )}
+                  >
+                    {mode === 'ai' ? '✦ AI' : mode === 'feed' ? 'Feed' : 'Static'}
+                  </button>
+                ))}
+              </div>
+
+              {newFieldSourceMode === 'feed' ? (
+                <select
+                  value={newFieldColumn}
+                  onChange={(e) => setNewFieldColumn(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none text-[10px] font-medium text-gray-800 bg-white"
+                >
+                  <option value="">— Select feed column —</option>
+                  {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
+                    <optgroup key={groupLabel} label={groupLabel}>
+                      {cols.map((col) => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : newFieldSourceMode === 'static' ? (
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder={newFieldType === 'image' ? 'Paste image URL…' : 'Enter static value…'}
+                    value={newFieldStaticValue}
+                    onChange={(e) => setNewFieldStaticValue(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none text-[10px] font-medium text-gray-800 bg-white"
+                  />
+                  {newFieldType === 'image' && (
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        id="upload-new-field"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            if (ev.target?.result) setNewFieldStaticValue(ev.target.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                      <label
+                        htmlFor="upload-new-field"
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-semibold text-gray-500 hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
+                      >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                        Upload image
+                      </label>
+                      {newFieldStaticValue.startsWith('data:') && (
+                        <span className="text-[8px] font-semibold text-green-600">✓ uploaded</span>
+                      )}
+                    </label>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="w-full px-2.5 py-2 rounded-lg border border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
+                  onClick={() => {
+                    if (!newFieldPreset) return;
+                    const id = newFieldPreset === '__custom__'
+                      ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+                      : newFieldPreset;
+                    const label = newFieldPreset === '__custom__'
+                      ? newFieldCustomLabel.trim()
+                      : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
+                    if (!id || !label) return;
+                    const existingCustom = stepData.customFields ?? [];
+                    const requirements = allFields.filter((f) => !customFields.some((cf) => cf.id === f.id));
+                    if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
+                      setAddFieldError(`"${label}" already exists — use a different name.`);
+                      return;
+                    }
+                    mergeStepData({
+                      customFields: [...existingCustom, { id, label, type: newFieldType }],
+                      fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'ai' },
+                      ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
+                    });
+                    setAddFieldOpen(false);
+                    setAddFieldPendingSlot(null);
+                    setNewFieldPreset('');
+                    setNewFieldCustomLabel('');
+                    setNewFieldColumn('');
+                    setNewFieldSourceMode('feed');
+                    setNewFieldStaticValue('');
+                    onOpenAskAlli(id);
+                  }}
+                >
+                  Generate via Ask Alli →
+                </div>
+              )}
             </div>
           )}
 
-          {/* Slot assignment (optional) */}
-          {discoveredSlots.length > 0 && (
+          {/* Step 3: Zone assignment (optional, appears after field name chosen) */}
+          {discoveredSlots.length > 0 && newFieldPreset && (
             <div className="space-y-1.5">
+              <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">
+                Zone <span className="normal-case font-normal text-gray-300">(optional)</span>
+              </p>
               <div className="flex items-center gap-2">
-                <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Zone</span>
                 <select
                   value={addFieldPendingSlot ?? ''}
                   onChange={(e) => { setAddFieldPendingSlot(e.target.value || null); setAddFieldSelectingSlot(false); }}
-                  className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
+                  className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 outline-none text-[9px] font-medium text-gray-700 bg-white"
                 >
                   <option value="">— Skip for now —</option>
                   {discoveredSlots.map((slot) => (
@@ -713,36 +795,26 @@ export function FieldMappingPanel({
                     </option>
                   ))}
                 </select>
-                {/* Cursor — click a zone in the preview to assign */}
                 <button
                   type="button"
                   title={addFieldSelectingSlot ? 'Cancel — click preview to assign zone' : 'Click a zone in the preview to assign'}
                   onClick={() => setAddFieldSelectingSlot(!addFieldSelectingSlot)}
-                  className={cn(
-                    'shrink-0 transition-colors',
-                    addFieldSelectingSlot ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500'
-                  )}
+                  className={cn('shrink-0 transition-colors', addFieldSelectingSlot ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500')}
                 >
                   <CursorArrowRaysIcon className="h-3.5 w-3.5" />
                 </button>
-                {/* Paintbrush — style the pending zone */}
                 <button
                   type="button"
                   title="Edit zone styles"
                   disabled={!addFieldPendingSlot}
                   onClick={() => setAddFieldStyleOpen((v) => !v)}
-                  className={cn(
-                    'shrink-0 transition-colors disabled:opacity-30',
-                    addFieldStyleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
-                  )}
+                  className={cn('shrink-0 transition-colors disabled:opacity-30', addFieldStyleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500')}
                 >
                   <PaintBrushIcon className="h-3.5 w-3.5" />
                 </button>
               </div>
               {addFieldSelectingSlot && (
-                <p className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">
-                  Click a zone in the preview →
-                </p>
+                <p className="text-[8px] font-semibold text-blue-600">Click a zone in the preview →</p>
               )}
               {addFieldStyleOpen && addFieldPendingSlot && (
                 <ZoneStyleToolbar
@@ -754,78 +826,83 @@ export function FieldMappingPanel({
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={
-                !newFieldPreset ||
-                (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim()) ||
-                (newFieldSourceMode === 'feed' && !newFieldColumn) ||
-                (newFieldSourceMode === 'static' && !newFieldStaticValue.trim()) ||
-                newFieldSourceMode === 'ai'
-              }
-              onClick={() => {
-                const id =
-                  newFieldPreset === '__custom__'
-                    ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-                    : newFieldPreset;
-                const label =
-                  newFieldPreset === '__custom__'
-                    ? newFieldCustomLabel.trim()
-                    : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
-
-                const existingCustom = stepData.customFields ?? [];
-                const requirements = allFields.filter((f) => !customFields.some((cf) => cf.id === f.id));
-                if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
-                  setAddFieldError(`"${label}" already exists — use a different name.`);
-                  return;
+          {/* Actions + hint */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={
+                  !newFieldPreset ||
+                  (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim()) ||
+                  (newFieldSourceMode === 'feed' && !newFieldColumn) ||
+                  (newFieldSourceMode === 'static' && !newFieldStaticValue.trim()) ||
+                  newFieldSourceMode === 'ai'
                 }
-                setAddFieldError(null);
-                mergeStepData({
-                  customFields: [...existingCustom, { id, label, type: newFieldType }],
-                  ...(newFieldSourceMode === 'feed'
-                    ? { feedMappings: { ...feedMappings, [id]: newFieldColumn } }
-                    : { fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'static' },
-                        staticValues: { ...(stepData.staticValues ?? {}), [id]: newFieldStaticValue } }),
-                  ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
-                });
-                setAddFieldOpen(false);
-                setAddFieldPendingSlot(null);
-                setNewFieldPreset('');
-                setNewFieldCustomLabel('');
-                setNewFieldColumn('');
-                setNewFieldSourceMode('feed');
-                setNewFieldStaticValue('');
-                setAddFieldSelectingSlot(false);
-                setAddFieldStyleOpen(false);
-              }}
-              className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:bg-gray-100 disabled:text-gray-300 transition-all"
-            >
-              Add
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAddFieldOpen(false);
-                setAddFieldPendingSlot(null);
-                setAddFieldError(null);
-                setNewFieldPreset('');
-                setNewFieldCustomLabel('');
-                setNewFieldColumn('');
-                setNewFieldSourceMode('feed');
-                setNewFieldStaticValue('');
-                setAddFieldSelectingSlot(false);
-                setAddFieldStyleOpen(false);
-              }}
-              className="py-2 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600"
-            >
-              Cancel
-            </button>
+                onClick={() => {
+                  const id =
+                    newFieldPreset === '__custom__'
+                      ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+                      : newFieldPreset;
+                  const label =
+                    newFieldPreset === '__custom__'
+                      ? newFieldCustomLabel.trim()
+                      : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
+                  const existingCustom = stepData.customFields ?? [];
+                  const requirements = allFields.filter((f) => !customFields.some((cf) => cf.id === f.id));
+                  if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
+                    setAddFieldError(`"${label}" already exists — use a different name.`);
+                    return;
+                  }
+                  setAddFieldError(null);
+                  mergeStepData({
+                    customFields: [...existingCustom, { id, label, type: newFieldType }],
+                    ...(newFieldSourceMode === 'feed'
+                      ? { feedMappings: { ...feedMappings, [id]: newFieldColumn } }
+                      : { fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'static' },
+                          staticValues: { ...(stepData.staticValues ?? {}), [id]: newFieldStaticValue } }),
+                    ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
+                  });
+                  setAddFieldOpen(false);
+                  setAddFieldPendingSlot(null);
+                  setNewFieldPreset('');
+                  setNewFieldCustomLabel('');
+                  setNewFieldColumn('');
+                  setNewFieldSourceMode('feed');
+                  setNewFieldStaticValue('');
+                  setAddFieldSelectingSlot(false);
+                  setAddFieldStyleOpen(false);
+                }}
+                className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:bg-blue-700"
+              >
+                Add field
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddFieldOpen(false);
+                  setAddFieldPendingSlot(null);
+                  setAddFieldError(null);
+                  setNewFieldPreset('');
+                  setNewFieldCustomLabel('');
+                  setNewFieldColumn('');
+                  setNewFieldSourceMode('feed');
+                  setNewFieldStaticValue('');
+                  setAddFieldSelectingSlot(false);
+                  setAddFieldStyleOpen(false);
+                }}
+                className="py-2 px-3 rounded-lg text-[9px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+            {(() => {
+              if (addFieldError) return <p className="text-[8px] font-semibold text-red-500">{addFieldError}</p>;
+              if (!newFieldPreset) return <p className="text-[8px] text-gray-400 text-center">Pick a field name to continue</p>;
+              if (newFieldSourceMode === 'feed' && !newFieldColumn) return <p className="text-[8px] text-amber-500 text-center">Select a feed column to add</p>;
+              if (newFieldSourceMode === 'static' && !newFieldStaticValue.trim()) return <p className="text-[8px] text-amber-500 text-center">Enter a static value to add</p>;
+              return null;
+            })()}
           </div>
-          {addFieldError && (
-            <p className="text-[9px] font-bold text-red-500 mt-1">{addFieldError}</p>
-          )}
         </div>
       )}
     </div>

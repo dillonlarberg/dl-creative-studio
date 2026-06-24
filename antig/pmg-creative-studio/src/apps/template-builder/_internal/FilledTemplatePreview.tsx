@@ -80,6 +80,24 @@ export const FilledTemplatePreview = ({
       },
       '*'
     );
+    // Parent-side overflow check — runs 300ms after apply-updates to give the iframe DOM
+    // time to reflow. This bypasses the baked-in reportOverflow script so the check always
+    // uses the latest logic (e.g. detects overflow:hidden zone containers with large fonts).
+    const tid = setTimeout(() => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+      try {
+        const overflowing: string[] = [];
+        doc.querySelectorAll<HTMLElement>('[id]').forEach((el) => {
+          if (el.clientWidth === 0 && el.clientHeight === 0) return;
+          if (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2) {
+            overflowing.push(el.id);
+          }
+        });
+        window.postMessage({ type: 'zone-overflow', overflowing }, '*');
+      } catch (_e) { /* cross-origin safety guard */ }
+    }, 300);
+    return () => clearTimeout(tid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), JSON.stringify(zoneStyles)]);
 

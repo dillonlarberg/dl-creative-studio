@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from 'react';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import { SwatchIcon } from '@heroicons/react/24/outline';
@@ -6,7 +7,7 @@ import { cn } from '../../../utils/cn';
 import { FilledTemplatePreview } from './FilledTemplatePreview';
 import { AskAlliPanel } from './AskAlliPanel';
 import { CanvasLayer } from './CanvasLayer';
-import type { CanvasLayerProps } from './CanvasLayer';
+import type { CanvasLayerProps, ZoneFieldInfo } from './CanvasLayer';
 import { TemplatePreview } from './TemplatePreview';
 import { CandidatePreview } from './CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
@@ -33,7 +34,8 @@ export interface PreviewPanelProps {
   setPreviewRatioIndex: (i: number) => void;
   selectedRatioStr: string;
   feedRowIndex: number;
-  setFeedRowIndex: (fn: (i: number) => number) => void;
+  setFeedRowIndex: Dispatch<SetStateAction<number>>;
+  mappedZoneIds?: Set<string>;
   // zone state
   zoneBounds: Record<string, ZoneBound>;
   selectedZoneId: string | null;
@@ -58,9 +60,12 @@ export interface PreviewPanelProps {
   onBrandKitOpen: () => void;
   brandKitReady: boolean;
   assetHouse: ClientAssetHouse | null | undefined;
+  overflowZoneIds?: Set<string>;
+  zoneFieldMap?: Record<string, ZoneFieldInfo>;
   // resize
   onResizeDetected: () => void;
   // mutation handlers (passed through to CanvasLayer)
+  clientSlug: string;
   onZoneMove: CanvasLayerProps['onZoneMove'];
   onZoneResize: CanvasLayerProps['onZoneResize'];
   onZoneCreate: CanvasLayerProps['onZoneCreate'];
@@ -112,6 +117,9 @@ export function PreviewPanel({
   onBrandKitOpen,
   brandKitReady,
   assetHouse,
+  overflowZoneIds,
+  mappedZoneIds,
+  zoneFieldMap,
   onResizeDetected,
   onZoneMove,
   onZoneResize,
@@ -121,6 +129,7 @@ export function PreviewPanel({
   onZoneAsset,
   onZoneContentUpdate,
   onZoneStyleUpdate,
+  clientSlug,
 }: PreviewPanelProps) {
   return (
     <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
@@ -278,7 +287,14 @@ export function PreviewPanel({
                   activeSlotField={activeSlotField}
                   feedColumns={feedColumns}
                   feedSampleRow={feedSampleData[feedRowIndex]}
+                  feedSampleData={feedSampleData}
+                  feedRowIndex={feedRowIndex}
+                  onFeedRowChange={setFeedRowIndex}
+                  mappedZoneIds={mappedZoneIds}
+                  overflowZoneIds={overflowZoneIds}
+                  zoneFieldMap={zoneFieldMap}
                   zoneStyles={stepData.zoneStyles ?? {}}
+                  clientSlug={clientSlug}
                   onZoneContentUpdate={onZoneContentUpdate}
                   onZoneStyleUpdate={onZoneStyleUpdate}
                   onResizeDetected={onResizeDetected}
@@ -312,29 +328,62 @@ export function PreviewPanel({
           </div>
 
           {/* Feed row navigator */}
-          {feedSampleData.length > 0 && (
-            <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
-              <button
-                type="button"
-                onClick={() => setFeedRowIndex((i) => Math.max(0, i - 1))}
-                disabled={feedRowIndex === 0}
-                className="text-[8px] font-black text-gray-400 uppercase tracking-widest disabled:opacity-30 hover:text-blue-600 transition-colors"
-              >
-                ← Prev
-              </button>
-              <span className="text-[8px] font-medium text-gray-400">
-                Row {feedRowIndex + 1} of {feedSampleData.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setFeedRowIndex((i) => Math.min(feedSampleData.length - 1, i + 1))}
-                disabled={feedRowIndex >= feedSampleData.length - 1}
-                className="text-[8px] font-black text-blue-600 uppercase tracking-widest disabled:opacity-30 hover:text-blue-800 transition-colors"
-              >
-                Next →
-              </button>
-            </div>
-          )}
+          {feedSampleData.length > 0 && (() => {
+            // Find the row with the most total text across all mapped text fields.
+            // Used by the "Worst" button so users can jump straight to the hardest row
+            // without scrolling through thousands of records manually.
+            const worstCaseRowIndex = feedSampleData.reduce<{ len: number; idx: number }>(
+              (best, row, i) => {
+                const totalLen = allFields
+                  .filter((f) => f.type !== 'image')
+                  .reduce((sum, f) => {
+                    const col = feedMappings[f.id];
+                    return col ? sum + String((row as Record<string, unknown>)[col] ?? '').length : sum;
+                  }, 0);
+                return totalLen > best.len ? { len: totalLen, idx: i } : best;
+              },
+              { len: 0, idx: 0 }
+            ).idx;
+            const isAtWorstCase = feedRowIndex === worstCaseRowIndex;
+            return (
+              <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setFeedRowIndex((i) => Math.max(0, i - 1))}
+                  disabled={feedRowIndex === 0}
+                  className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] disabled:opacity-30 hover:text-blue-600 transition-colors"
+                >
+                  ← Prev
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-medium text-gray-400">
+                    Row {feedRowIndex + 1} of {feedSampleData.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFeedRowIndex(worstCaseRowIndex)}
+                    title="Jump to the row with the longest text content — useful for checking overflow at worst case"
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-[0.2em] transition-colors px-1.5 py-0.5 rounded-md',
+                      isAtWorstCase
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'text-amber-500 hover:bg-amber-50 hover:text-amber-700'
+                    )}
+                  >
+                    {isAtWorstCase ? '⚠ Worst' : 'Worst'}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedRowIndex((i) => Math.min(feedSampleData.length - 1, i + 1))}
+                  disabled={feedRowIndex >= feedSampleData.length - 1}
+                  className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] disabled:opacity-30 hover:text-blue-800 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Compact brand overrides */}
           <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2.5">

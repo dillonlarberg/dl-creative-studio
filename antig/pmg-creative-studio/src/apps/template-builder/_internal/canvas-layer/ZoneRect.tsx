@@ -20,6 +20,7 @@ export interface ZoneRectProps {
   onMove: (bounds: ZoneBound) => void;
   onResize: (bounds: ZoneBound) => void;
   onReset?: () => void;
+  onHoverChange?: (hovered: boolean) => void;
 }
 
 export function ZoneRect({
@@ -35,6 +36,7 @@ export function ZoneRect({
   onMove,
   onResize,
   onReset,
+  onHoverChange,
 }: ZoneRectProps) {
   const rectRef = useRef<Konva.Rect>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -100,11 +102,13 @@ export function ZoneRect({
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'move';
           setHovered(true);
+          onHoverChange?.(true);
         }}
         onMouseLeave={(e) => {
           const stage = e.target.getStage();
           if (stage) stage.container().style.cursor = 'default';
           setHovered(false);
+          onHoverChange?.(false);
         }}
         onDragStart={(e) => {
           const stage = e.target.getStage();
