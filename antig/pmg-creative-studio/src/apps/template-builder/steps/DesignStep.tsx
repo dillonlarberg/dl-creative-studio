@@ -73,6 +73,72 @@ function DesignStepBody({
     () => Object.keys(stepData.zoneStyles ?? {}).length > 0
   );
 
+  // ── Undo / redo history ───────────────────────────────────────────────────
+  // Snapshot only the canvas/field keys that canvas mutations touch.
+  type HistorySnap = Pick<TemplateBuilderStepData,
+    'zoneOverrides' | 'customZones' | 'zoneStyles' | 'zoneAssets' | 'feedMappings' | 'slotMappings'
+  >;
+  const MAX_HISTORY = 20;
+  const [undoStack, setUndoStack] = useState<HistorySnap[]>([]);
+  const [redoStack, setRedoStack] = useState<HistorySnap[]>([]);
+
+  // stepDataRef ensures undo/redo handlers always read the latest stepData even
+  // though the keyboard listener is registered only once (stable closure via ref).
+  const stepDataRef = useRef(stepData);
+  stepDataRef.current = stepData;
+  const undoFnRef = useRef<() => void>(() => {});
+  const redoFnRef = useRef<() => void>(() => {});
+
+  function snapHistory(): HistorySnap {
+    const d = stepDataRef.current;
+    return {
+      zoneOverrides: d.zoneOverrides,
+      customZones: d.customZones,
+      zoneStyles: d.zoneStyles,
+      zoneAssets: d.zoneAssets,
+      feedMappings: d.feedMappings,
+      slotMappings: d.slotMappings,
+    };
+  }
+
+  function pushHistory() {
+    const snap = snapHistory();
+    setUndoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snap]);
+    setRedoStack([]);
+  }
+
+  undoFnRef.current = function handleUndo() {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setRedoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snapHistory()]);
+    setUndoStack((s) => s.slice(0, -1));
+    mergeStepData(prev);
+  };
+
+  redoFnRef.current = function handleRedo() {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snapHistory()]);
+    setRedoStack((s) => s.slice(0, -1));
+    mergeStepData(next);
+  };
+
+  // Keyboard listener registered once; always calls current undo/redo via ref.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoFnRef.current(); }
+      if (mod && e.key === 'z' && e.shiftKey)  { e.preventDefault(); redoFnRef.current(); }
+      if (mod && e.key === 'y')                 { e.preventDefault(); redoFnRef.current(); }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Track style-push sessions to avoid spamming history on every color-picker tick.
+  const styleHistoryRef = useRef<{ slotId: string; pushedAt: number } | null>(null);
+
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
   const zoneStyleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,6 +148,16 @@ function DesignStepBody({
   const overflowGatedRef = useRef(false);
 
   function handleZoneStyleChange(slotId: string, partial: Partial<ZoneStyle>) {
+    // Push history once per zone per style session (new slot or >1s since last push).
+    const now = Date.now();
+    if (
+      !styleHistoryRef.current ||
+      styleHistoryRef.current.slotId !== slotId ||
+      now - styleHistoryRef.current.pushedAt > 1000
+    ) {
+      pushHistory();
+      styleHistoryRef.current = { slotId, pushedAt: now };
+    }
     setUserHasEditedStyles(true);
     const next = {
       ...(stepData.zoneStyles ?? {}),
@@ -100,37 +176,50 @@ function DesignStepBody({
   // ── Task 13: Canvas layer mutation handlers ───────────────────────────────
 
   const handleZoneMove = useCallback((id: string, bounds: ZoneBound) => {
+    pushHistory();
     mergeStepData({ zoneOverrides: { ...(stepData.zoneOverrides ?? {}), [id]: bounds } });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.zoneOverrides]);
 
   const handleZoneResize = useCallback((id: string, bounds: ZoneBound) => {
+    pushHistory();
     mergeStepData({ zoneOverrides: { ...(stepData.zoneOverrides ?? {}), [id]: bounds } });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.zoneOverrides]);
 
   const handleZoneCreate = useCallback((zone: Omit<CustomZone, 'id'>) => {
+    pushHistory();
     const newZone = { ...zone, id: `custom_zone_${nanoid(6)}` } as CustomZone;
     mergeStepData({ customZones: [...(stepData.customZones ?? []), newZone] });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.customZones]);
 
   const handleZoneReset = useCallback((id: string) => {
+    pushHistory();
     const next = { ...(stepData.zoneOverrides ?? {}) };
     delete next[id]; // NEVER assign undefined — use delete
     mergeStepData({ zoneOverrides: next });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.zoneOverrides]);
 
   const handleZoneDelete = useCallback((id: string) => {
+    pushHistory();
     mergeStepData({ customZones: (stepData.customZones ?? []).filter((z) => z.id !== id) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.customZones]);
 
   const handleZoneContentUpdate = useCallback((id: string, patch: { fieldId?: string; textContent?: string; assetUrl?: string }) => {
+    pushHistory();
     mergeStepData({
       customZones: (stepData.customZones ?? []).map((z) =>
         z.id === id ? ({ ...z, ...patch } as CustomZone) : z,
       ),
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.customZones]);
 
   const handleZoneAsset = useCallback((zoneId: string, assetUrl: string, isWireframe: boolean) => {
+    pushHistory();
     if (isWireframe) {
       mergeStepData({ zoneAssets: { ...(stepData.zoneAssets ?? {}), [zoneId]: assetUrl } });
     } else {
@@ -140,6 +229,7 @@ function DesignStepBody({
         ),
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mergeStepData, stepData.zoneAssets, stepData.customZones]);
 
   // ── Effects ───────────────────────────────────────────────────────────────
@@ -567,6 +657,10 @@ function DesignStepBody({
         overflowZoneIds={overflowZoneIds}
         mappedZoneIds={mappedZoneIds}
         zoneFieldMap={zoneFieldMap}
+        canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
+        onUndo={undoFnRef.current}
+        onRedo={redoFnRef.current}
       />
     </div>
 

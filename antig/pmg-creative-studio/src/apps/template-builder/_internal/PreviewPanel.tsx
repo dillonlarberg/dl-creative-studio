@@ -74,6 +74,10 @@ export interface PreviewPanelProps {
   onZoneAsset: CanvasLayerProps['onZoneAsset'];
   onZoneContentUpdate: CanvasLayerProps['onZoneContentUpdate'];
   onZoneStyleUpdate: CanvasLayerProps['onZoneStyleUpdate'];
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export function PreviewPanel({
@@ -130,6 +134,10 @@ export function PreviewPanel({
   onZoneContentUpdate,
   onZoneStyleUpdate,
   clientSlug,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: PreviewPanelProps) {
   return (
     <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
@@ -298,6 +306,10 @@ export function PreviewPanel({
                   onZoneContentUpdate={onZoneContentUpdate}
                   onZoneStyleUpdate={onZoneStyleUpdate}
                   onResizeDetected={onResizeDetected}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={onUndo}
+                  onRedo={onRedo}
                 />
               </div>{/* end inner preview wrapper */}
               {activeSlotField !== null && (

@@ -62,6 +62,12 @@ export interface CanvasLayerProps {
 
   // fired when the container resizes (caller clears zoneBounds to re-request from iframe)
   onResizeDetected?: () => void;
+
+  // undo/redo
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export function CanvasLayer({
@@ -92,6 +98,10 @@ export function CanvasLayer({
   overflowZoneIds,
   zoneFieldMap,
   onResizeDetected,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
 }: CanvasLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -244,6 +254,10 @@ export function CanvasLayer({
           placementMode={placementMode}
           onEnterPlacementMode={enterPlacementMode}
           onCancelPlacementMode={cancelPlacementMode}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={onUndo}
+          onRedo={onRedo}
         />
       </div>
 
