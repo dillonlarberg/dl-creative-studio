@@ -32,7 +32,7 @@ function makeProps(overrides: Partial<FieldMappingPanelProps> = {}): FieldMappin
     feedColumns: ['product_name', 'image_url', 'price'],
     feedSampleData: [{ product_name: 'Nike Air', image_url: 'https://example.com/img.jpg', price: '$99' }],
     discoveredSlots: [
-      { id: 'headline', type: 'text', rect: { x: 0, y: 0, w: 200, h: 50 } },
+      { slotId: 'headline', type: 'text', label: 'Headline', isKnown: true },
     ],
     activeSlotField: null,
     setActiveSlotField: vi.fn(),
@@ -44,6 +44,8 @@ function makeProps(overrides: Partial<FieldMappingPanelProps> = {}): FieldMappin
     getEffectiveSlotId: (id) => id,
     slotUseCounts: {},
     onOpenAskAlli: vi.fn(),
+    addFieldOpen: false,
+    setAddFieldOpen: vi.fn(),
     addFieldSelectingSlot: false,
     setAddFieldSelectingSlot: vi.fn(),
     addFieldPendingSlot: null,
@@ -55,8 +57,10 @@ function makeProps(overrides: Partial<FieldMappingPanelProps> = {}): FieldMappin
 describe('FieldMappingPanel', () => {
   it('renders a field row for each field', () => {
     render(<FieldMappingPanel {...makeProps()} />);
-    expect(screen.getByText('Headline')).toBeTruthy();
-    expect(screen.getByText('Image')).toBeTruthy();
+    // Use getAllByText — the pre-flight panel also renders field labels in spans,
+    // so there may be multiple elements with the same text.
+    expect(screen.getAllByText('Headline').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Image').length).toBeGreaterThan(0);
   });
 
   it('renders feed column options in the dropdown for a text field', () => {
@@ -73,10 +77,9 @@ describe('FieldMappingPanel', () => {
     const mergeStepData = vi.fn();
     render(<FieldMappingPanel {...makeProps({ mergeStepData })} />);
     const selects = document.querySelectorAll('select');
-    if (selects.length > 0) {
-      fireEvent.change(selects[0], { target: { value: 'product_name' } });
-      expect(mergeStepData).toHaveBeenCalled();
-    }
+    expect(selects.length).toBeGreaterThan(0);
+    fireEvent.change(selects[0], { target: { value: 'product_name' } });
+    expect(mergeStepData).toHaveBeenCalled();
   });
 
   it('renders "Add Field" button', () => {
@@ -87,6 +90,6 @@ describe('FieldMappingPanel', () => {
   it('shows slot mapping indicator when activeSlotField is set', () => {
     render(<FieldMappingPanel {...makeProps({ activeSlotField: 'headline' })} />);
     // The active field row should be highlighted — check for the field label still visible
-    expect(screen.getByText('Headline')).toBeTruthy();
+    expect(screen.getAllByText('Headline').length).toBeGreaterThan(0);
   });
 });

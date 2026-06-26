@@ -470,6 +470,19 @@ export function buildInteractiveScript(): string {
         if (!zoneEl) { zoneEl = document.createElement('style'); zoneEl.id = '__zone-style-overrides__'; document.head.appendChild(zoneEl); }
         zoneEl.textContent = zoneRules;
       } else if (zoneEl) { zoneEl.remove(); }
+      var zoneStyles = e.data.zoneStyles || {};
+      var PROPS = ['fontSize','color','backgroundColor','fontWeight','fontStyle','textDecoration','fontFamily','textAlign'];
+      var CSS_PROPS = ['font-size','color','background-color','font-weight','font-style','text-decoration','font-family','text-align'];
+      for (var zid in zoneStyles) {
+        var zel = document.getElementById(zid);
+        if (!zel) continue;
+        var zs = zoneStyles[zid];
+        for (var pi = 0; pi < PROPS.length; pi++) {
+          var val = zs[PROPS[pi]];
+          if (val == null || val === '') { zel.style.removeProperty(CSS_PROPS[pi]); continue; }
+          zel.style.setProperty(CSS_PROPS[pi], PROPS[pi] === 'fontSize' ? val + 'px' : val, 'important');
+        }
+      }
       setTimeout(reportOverflow, 150);
     }
   });

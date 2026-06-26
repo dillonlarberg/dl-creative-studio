@@ -341,22 +341,21 @@ export function PreviewPanel({
 
           {/* Feed row navigator */}
           {feedSampleData.length > 0 && (() => {
-            // Find the row with the most total text across all mapped text fields.
-            // Used by the "Worst" button so users can jump straight to the hardest row
-            // without scrolling through thousands of records manually.
-            const worstCaseRowIndex = feedSampleData.reduce<{ len: number; idx: number }>(
-              (best, row, i) => {
-                const totalLen = allFields
-                  .filter((f) => f.type !== 'image')
-                  .reduce((sum, f) => {
-                    const col = feedMappings[f.id];
-                    return col ? sum + String((row as Record<string, unknown>)[col] ?? '').length : sum;
-                  }, 0);
-                return totalLen > best.len ? { len: totalLen, idx: i } : best;
-              },
-              { len: 0, idx: 0 }
-            ).idx;
-            const isAtWorstCase = feedRowIndex === worstCaseRowIndex;
+            const rowLengths = feedSampleData.map((row) =>
+              allFields
+                .filter((f) => f.type !== 'image')
+                .reduce((sum, f) => {
+                  const col = feedMappings[f.id];
+                  return col ? sum + String((row as Record<string, unknown>)[col] ?? '').length : sum;
+                }, 0)
+            );
+            const maxRowIndex = rowLengths.reduce((best, len, i) => (len > rowLengths[best] ? i : best), 0);
+            const minRowIndex = rowLengths.reduce(
+              (best, len, i) => (len > 0 && (rowLengths[best] === 0 || len < rowLengths[best]) ? i : best),
+              0
+            );
+            const isAtMax = feedRowIndex === maxRowIndex;
+            const isAtMin = feedRowIndex === minRowIndex;
             return (
               <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
                 <button
@@ -373,16 +372,29 @@ export function PreviewPanel({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setFeedRowIndex(worstCaseRowIndex)}
-                    title="Jump to the row with the longest text content — useful for checking overflow at worst case"
+                    onClick={() => setFeedRowIndex(minRowIndex)}
+                    title="Jump to the row with the shortest text — minimum content load"
                     className={cn(
                       'text-[9px] font-black uppercase tracking-[0.2em] transition-colors px-1.5 py-0.5 rounded-md',
-                      isAtWorstCase
+                      isAtMin
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-blue-400 hover:bg-blue-50 hover:text-blue-600'
+                    )}
+                  >
+                    Min
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeedRowIndex(maxRowIndex)}
+                    title="Jump to the row with the longest text — maximum content load"
+                    className={cn(
+                      'text-[9px] font-black uppercase tracking-[0.2em] transition-colors px-1.5 py-0.5 rounded-md',
+                      isAtMax
                         ? 'bg-amber-100 text-amber-700'
                         : 'text-amber-500 hover:bg-amber-50 hover:text-amber-700'
                     )}
                   >
-                    {isAtWorstCase ? '⚠ Worst' : 'Worst'}
+                    Max
                   </button>
                 </div>
                 <button

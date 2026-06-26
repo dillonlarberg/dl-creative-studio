@@ -150,6 +150,9 @@ export function CanvasLayer({
   // We detect the new zone by watching customZones.length grow.
   const prevCustomZonesCountRef = useRef(customZones.length);
   const autoSelectNextRef = useRef(false);
+  // Konva fires click AFTER mouseup, so without this flag handleStageClick would always
+  // call clearSelection() immediately after finishLasso() sets the lasso selection.
+  const wasLassoRef = useRef(false);
   useEffect(() => {
     if (autoSelectNextRef.current && customZones.length > prevCustomZonesCountRef.current) {
       const newest = customZones[customZones.length - 1];
@@ -197,6 +200,7 @@ export function CanvasLayer({
     if (e.target.getType() !== 'Stage') return;
     const pos = getStagePointer();
     if (!pos) return;
+    wasLassoRef.current = false;
     if (placementMode) startPlacement(pos.x, pos.y);
     else startLasso(pos.x, pos.y);
   }
@@ -229,11 +233,13 @@ export function CanvasLayer({
         cancelPlacementMode();
       }
     } else if (lassoRect) {
+      wasLassoRef.current = true;
       finishLasso();
     }
   }
 
   function handleStageClick(e: Konva.KonvaEventObject<MouseEvent>) {
+    if (wasLassoRef.current) { wasLassoRef.current = false; return; }
     if (e.target.getType() === 'Stage') clearSelection();
   }
 
@@ -260,6 +266,38 @@ export function CanvasLayer({
           onRedo={onRedo}
         />
       </div>
+
+      {/* Multi-zone lasso action bar */}
+      {selectedIds.size > 1 && (
+        <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 40, pointerEvents: 'auto' }}>
+          <div className="flex items-center gap-1.5 bg-white/95 rounded-lg shadow-lg border border-gray-200 px-2 py-1">
+            <span className="text-[9px] font-bold text-gray-500">{selectedIds.size} zones</span>
+            {[...selectedIds].some((id) => !customZoneIds.has(id) && zoneOverrides[id]) && (
+              <button
+                type="button"
+                className="text-[9px] font-semibold text-blue-600 hover:text-blue-800 px-1.5 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => {
+                  for (const id of selectedIds) {
+                    if (!customZoneIds.has(id) && zoneOverrides[id]) onZoneReset(id);
+                  }
+                }}
+              >
+                Reset
+              </button>
+            )}
+            {[...selectedIds].some((id) => customZoneIds.has(id)) && (
+              <button
+                type="button"
+                className="text-[9px] font-semibold text-red-600 hover:text-red-800 px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors"
+                onClick={() => deleteSelected(customZoneIds, onZoneDelete)}
+              >
+                Delete
+              </button>
+            )}
+            <button type="button" className="text-[9px] text-gray-400 hover:text-gray-600 ml-1 transition-colors" onClick={clearSelection}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Stage container */}
       <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: displaySize, height: displaySize }}>
@@ -364,7 +402,7 @@ export function CanvasLayer({
       })}
 
       {/* Zone hover label — shows the zone ID so users can identify zones */}
-      {hoveredZoneId && hoveredZoneId !== selectedZoneId && (() => {
+      {hoveredZoneId && (() => {
         const bounds = allZoneBoundsDisplay[hoveredZoneId];
         if (!bounds) return null;
         return (

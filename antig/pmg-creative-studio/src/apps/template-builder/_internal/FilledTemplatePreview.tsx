@@ -77,6 +77,7 @@ export const FilledTemplatePreview = ({
         slotOverrides: slotOverrides ?? {},
         cssRules: buildCssRulesString(cssOverrides),
         zoneRules: buildZoneRulesString(zoneStyles),
+        zoneStyles: zoneStyles ?? {},
       },
       '*'
     );

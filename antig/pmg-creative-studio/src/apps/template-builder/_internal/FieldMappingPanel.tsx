@@ -9,6 +9,7 @@ import {
 import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 import type { TemplateBuilderStepData, RequirementField } from '../types';
 import type { TemplateSlot } from './discoverSlots';
+import type { FeedOverflowRiskMap } from './feedOverflowAnalysis';
 import { cn } from '../../../utils/cn';
 import { ZoneStyleToolbar } from './ZoneStyleToolbar';
 import { IMAGE_COLUMN_KEYWORDS, inferColumnTypes, groupColumnsByInferredType } from './columnUtils';
@@ -35,12 +36,18 @@ export interface FieldMappingPanelProps {
   slotUseCounts: Record<string, string[]>;
   // Ask Alli
   onOpenAskAlli: (fieldId: string) => void;
+  // add-field open state (lifted to DesignStep so PreviewPanel can also open it)
+  addFieldOpen: boolean;
+  setAddFieldOpen: (v: boolean) => void;
   // add-field slot selection mode
   addFieldSelectingSlot: boolean;
   setAddFieldSelectingSlot: (v: boolean) => void;
   addFieldPendingSlot: string | null;
   setAddFieldPendingSlot: (v: string | null) => void;
   overflowZoneIds?: Set<string>;
+  feedOverflowRisk?: FeedOverflowRiskMap;
+  highlightedCoverageSlot?: string | null;
+  onCoverageSlotHighlight?: (id: string | null) => void;
 }
 
 export function FieldMappingPanel({
@@ -60,13 +67,17 @@ export function FieldMappingPanel({
   getEffectiveSlotId,
   slotUseCounts,
   onOpenAskAlli,
+  addFieldOpen,
+  setAddFieldOpen,
   addFieldSelectingSlot,
   setAddFieldSelectingSlot,
   addFieldPendingSlot,
   setAddFieldPendingSlot,
   overflowZoneIds,
+  feedOverflowRisk,
+  highlightedCoverageSlot,
+  onCoverageSlotHighlight,
 }: FieldMappingPanelProps) {
-const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [newFieldPreset, setNewFieldPreset] = useState('');
   const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
   const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
@@ -121,18 +132,31 @@ const [addFieldOpen, setAddFieldOpen] = useState(false);
       )}
 
       {/* Pre-flight issues */}
-      {((overflowZoneIds?.size ?? 0) > 0 || allFields.some((f) => {
-        const mode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
-        return mode === 'feed' && !feedMappings[f.id];
-      })) && (
+      {((overflowZoneIds?.size ?? 0) > 0 ||
+        Object.keys(feedOverflowRisk ?? {}).length > 0 ||
+        allFields.some((f) => {
+          const mode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+          return mode === 'feed' && !feedMappings[f.id];
+        })) && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-2.5 space-y-1.5">
           <p className="text-[9px] font-black text-amber-700 uppercase tracking-[0.2em] flex items-center gap-1.5">
             <ExclamationTriangleIcon className="h-3 w-3 shrink-0" />
             Pre-flight issues
           </p>
+          {/* Current-row overflow (live iframe check) */}
           {[...(overflowZoneIds ?? [])].map((zoneId) => (
             <p key={`overflow-${zoneId}`} className="text-[9px] text-amber-700 pl-4">
-              Zone <span className="font-semibold">{zoneId}</span> — text overflow
+              Zone <span className="font-semibold">{zoneId}</span> — text overflow on current row
+            </p>
+          ))}
+          {/* Feed-wide overflow risk (analysis across all feed rows) */}
+          {Object.values(feedOverflowRisk ?? {}).map((risk) => (
+            <p key={`feed-risk-${risk.slotId}`} className="text-[9px] text-amber-700 pl-4">
+              <span className="font-semibold">{risk.fieldLabel}</span>
+              {' '}— at {risk.currentFontSize}px, overflows on ~{risk.overflowRows.toLocaleString()}/{risk.totalRows.toLocaleString()} rows
+              {risk.suggestedFontSize != null && (
+                <span className="text-amber-600"> · suggested max: {risk.suggestedFontSize}px</span>
+              )}
             </p>
           ))}
           {allFields.filter((f) => {
@@ -523,12 +547,18 @@ const [addFieldOpen, setAddFieldOpen] = useState(false);
               const isMapped = Object.values(stepData.slotMappings ?? {}).includes(slot.slotId);
               const ownerFieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slot.slotId)?.[0];
               const styleOpen = zoneCoverageStyleSlot === slot.slotId;
+              const isHighlighted = highlightedCoverageSlot === slot.slotId;
               return (
                 <div key={slot.slotId}>
-                  <div className={cn(
-                    'flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors',
-                    isMapped ? 'hover:bg-gray-50' : 'hover:bg-amber-50/60'
-                  )}>
+                  <div
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors cursor-pointer',
+                      isHighlighted
+                        ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                        : isMapped ? 'hover:bg-gray-50' : 'hover:bg-amber-50/60'
+                    )}
+                    onClick={() => onCoverageSlotHighlight?.(isHighlighted ? null : slot.slotId)}
+                  >
                     <span className={cn(
                       'shrink-0 w-1.5 h-1.5 rounded-full',
                       isMapped ? 'bg-green-500' : 'bg-amber-400'

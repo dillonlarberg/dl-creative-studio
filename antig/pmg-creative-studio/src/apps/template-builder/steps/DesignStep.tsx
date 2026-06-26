@@ -15,6 +15,8 @@ import type { TemplateSlot } from '../_internal/discoverSlots';
 import { applyClientTransforms } from '../_internal/transformExecutor';
 import { BrandKitDrawer } from '../../../components/brand/BrandKitDrawer';
 import { SKIP_ZONE_IDS } from '../_internal/columnUtils';
+import { analyzeFeedOverflow } from '../_internal/feedOverflowAnalysis';
+import type { FeedOverflowRiskMap } from '../_internal/feedOverflowAnalysis';
 import { CandidateSelector } from '../_internal/CandidateSelector';
 import { FieldMappingPanel } from '../_internal/FieldMappingPanel';
 import { PreviewPanel } from '../_internal/PreviewPanel';
@@ -54,19 +56,20 @@ function DesignStepBody({
   const [brandOpen, setBrandOpen] = useState(false);
   const [brandKitOpen, setBrandKitOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
-  // hoveredField for preview highlight — FieldMappingPanel owns hover state internally;
-  // PreviewPanel receives null here (no cross-panel hover propagation needed post-refactor).
-  const hoveredField: string | null = null;
+  // hoveredField drives the preview highlight; set by Zone Coverage row clicks in FieldMappingPanel.
+  const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
   const [previewRatioIndex, setPreviewRatioIndex] = useState(0);
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
+  const [addFieldOpen, setAddFieldOpen] = useState(false);
   const [addFieldSelectingSlot, setAddFieldSelectingSlot] = useState(false);
   const [addFieldPendingSlot, setAddFieldPendingSlot] = useState<string | null>(null);
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
   const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [overflowZoneIds, setOverflowZoneIds] = useState<Set<string>>(new Set());
+  const [feedOverflowRisk, setFeedOverflowRisk] = useState<FeedOverflowRiskMap>({});
   const [zoneCoverageStyleSlot, setZoneCoverageStyleSlot] = useState<string | null>(null);
   const [feedRowIndex, setFeedRowIndex] = useState(0);
   const [userHasEditedStyles, setUserHasEditedStyles] = useState(
@@ -334,6 +337,83 @@ function DesignStepBody({
     setFeedRowIndex((i) => Math.min(i, feedSampleData.length - 1));
   }, [feedSampleData.length]);
 
+  // Feed-aware overflow analysis — runs debounced (800ms) after font-size, feed
+  // mapping, or zone-bounds changes. Reads latest values via ref so the listener
+  // doesn't re-register on every render.
+  const feedAnalysisInputsRef = useRef({ allFields: [] as typeof allFields, feedMappings: {} as Record<string, string>, feedSampleData: [] as typeof feedSampleData, zoneBounds: {} as typeof zoneBounds, stepData: stepData, getEffectiveSlotId: getEffectiveSlotId as typeof getEffectiveSlotId });
+  const feedOverflowDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the ref current every render so the debounced callback sees the latest values.
+  // (allFields and getEffectiveSlotId are derived in the render scope below — we
+  //  must delay this assignment until after their declarations, done via a separate
+  //  effect that runs synchronously before the debounced one.)
+
+  useEffect(() => {
+    if (feedOverflowDebounceRef.current) clearTimeout(feedOverflowDebounceRef.current);
+    feedOverflowDebounceRef.current = setTimeout(() => {
+      const { allFields: fields, feedMappings: fm, feedSampleData: fsd, zoneBounds: zb, stepData: sd, getEffectiveSlotId: getSlot } = feedAnalysisInputsRef.current;
+
+      const SAMPLE_CAP = 500;
+      const zones = fields
+        .filter((f) => f.type !== 'image')
+        .flatMap((f) => {
+          const col = fm[f.id];
+          if (!col) return [];
+          // Resolve the actual element ID: slotMappings wins, then iterate FIELD_ID_MAP
+          // targets to find one present in zoneBounds (template zones often differ from field IDs).
+          const slotId = (() => {
+            const explicit = sd.slotMappings?.[f.id];
+            if (explicit && zb[explicit]) return explicit;
+            const targets = FIELD_ID_MAP[f.id]?.targets ?? [];
+            const matched = targets.find((t) => zb[t] != null);
+            if (matched) return matched;
+            const fallback = getSlot(f.id);
+            return fallback;
+          })();
+          const fontSize = sd.zoneStyles?.[slotId]?.fontSize;
+          if (!fontSize) return [];
+          const native = zb[slotId];
+          if (!native) return [];
+          const effective = sd.zoneOverrides?.[slotId] ?? native;
+
+          const total = fsd.length;
+          const step = total > SAMPLE_CAP ? Math.ceil(total / SAMPLE_CAP) : 1;
+          const feedValues: string[] = [];
+          for (let i = 0; i < total; i += step) {
+            const v = String((fsd[i] as Record<string, unknown>)[col] ?? '').trim();
+            if (v) feedValues.push(v);
+          }
+
+          return [{
+            slotId,
+            fieldLabel: f.label,
+            zoneW: effective.w,
+            zoneH: effective.h,
+            fontSize,
+            fontFamily: sd.fontFamily ?? 'sans-serif',
+            feedValues,
+            _sampleRatio: step,
+            _feedTotal: total,
+          }];
+        });
+
+      if (zones.length === 0) { setFeedOverflowRisk({}); return; }
+
+      const raw = analyzeFeedOverflow(zones);
+      // Scale overflow counts back to full-feed estimate if we sampled.
+      const scaled: FeedOverflowRiskMap = {};
+      for (const [id, risk] of Object.entries(raw)) {
+        const z = zones.find((zn) => zn.slotId === id) as (typeof zones[0] & { _sampleRatio: number; _feedTotal: number }) | undefined;
+        const step = z?._sampleRatio ?? 1;
+        const feedTotal = z?._feedTotal ?? risk.totalRows;
+        scaled[id] = { ...risk, overflowRows: Math.round(risk.overflowRows * step), totalRows: feedTotal };
+      }
+      setFeedOverflowRisk(scaled);
+    }, 800);
+    return () => { if (feedOverflowDebounceRef.current) clearTimeout(feedOverflowDebounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepData.zoneStyles, stepData.feedMappings, stepData.zoneOverrides, zoneBounds]);
+
   // Empty-state guard: must come after ALL hooks.
   if (requirements.length === 0 && feedColumns.length === 0 && !isLoadingCandidates) {
     return (
@@ -370,6 +450,9 @@ function DesignStepBody({
       type: f.type,
     })),
   ];
+
+  // Keep analysis ref current so the debounced callback always has fresh values.
+  feedAnalysisInputsRef.current = { allFields, feedMappings, feedSampleData, zoneBounds, stepData, getEffectiveSlotId };
 
   const mappedZoneIds = new Set<string>(
     allFields
@@ -496,11 +579,16 @@ function DesignStepBody({
             getEffectiveSlotId={getEffectiveSlotId}
             slotUseCounts={slotUseCounts}
             onOpenAskAlli={(fieldId) => { setAskAlliTargetField(fieldId); setAskAlliOpen(true); }}
+            addFieldOpen={addFieldOpen}
+            setAddFieldOpen={setAddFieldOpen}
             addFieldSelectingSlot={addFieldSelectingSlot}
             setAddFieldSelectingSlot={setAddFieldSelectingSlot}
             addFieldPendingSlot={addFieldPendingSlot}
             setAddFieldPendingSlot={setAddFieldPendingSlot}
             overflowZoneIds={overflowZoneIds}
+            feedOverflowRisk={feedOverflowRisk}
+            highlightedCoverageSlot={hoveredField}
+            onCoverageSlotHighlight={setHoveredField}
           />
         )}
 
@@ -633,7 +721,7 @@ function DesignStepBody({
         setAddFieldSelectingSlot={setAddFieldSelectingSlot}
         addFieldPendingSlot={addFieldPendingSlot}
         setAddFieldPendingSlot={setAddFieldPendingSlot}
-        setAddFieldOpen={() => {}}
+        setAddFieldOpen={setAddFieldOpen}
         hoveredField={hoveredField}
         getEffectiveSlotId={getEffectiveSlotId}
         setStyleOpenFieldId={setStyleOpenFieldId}
@@ -659,8 +747,8 @@ function DesignStepBody({
         zoneFieldMap={zoneFieldMap}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
-        onUndo={undoFnRef.current}
-        onRedo={redoFnRef.current}
+        onUndo={() => undoFnRef.current()}
+        onRedo={() => redoFnRef.current()}
       />
     </div>
 
