@@ -4,7 +4,16 @@
  * priority order), and CSS injection rules for color/font overrides.
  */
 
-import type { ZoneStyle } from '../types';
+import type { ZoneStyle, ZoneBound, CustomZone } from '../types';
+
+/**
+ * Strip characters that can escape a <style> raw-text element when the CSS
+ * rules string is serialized via outerHTML (prevents </style> injection into
+ * the iframe srcDoc). Also removes CSS block delimiters to prevent rule injection.
+ */
+function sanitizeCssVal(val: string): string {
+  return val.replace(/[<>{}]/g, '');
+}
 
 export interface InjectOptions {
   injections: Record<string, { type: 'image' | 'text'; value: string }>;
@@ -12,6 +21,18 @@ export interface InjectOptions {
   slotOverrides?: Record<string, string>;
   fieldTransforms?: Record<string, string[]>;
   zoneStyles?: Record<string, ZoneStyle>;
+  /**
+   * Canvas layer position/size overrides — applied independently of feed injections.
+   * All coordinate values are adSize (native) coords. The iframe renders at adSize
+   * resolution, so these pixel values map 1:1 to the wireframe's coordinate space.
+   * Do NOT use displaySize coords here.
+   */
+  layoutOverrides?: {
+    zoneOverrides?: Record<string, ZoneBound>;
+    customZones?: CustomZone[];
+  };
+  /** slotId → Asset House URL; sets img src or background-image independently of injections. */
+  zoneAssets?: Record<string, string>;
 }
 
 export const FIELD_ID_MAP: Record<
@@ -136,7 +157,7 @@ export function buildCssRulesString(cssOverrides?: Record<string, string>): stri
     const entries = CSS_INJECTION_MAP[key];
     if (!entries) continue;
     for (const { selector, property } of entries) {
-      rules += `${selector} { ${property}: ${val} !important; }\n`;
+      rules += `${selector} { ${property}: ${sanitizeCssVal(val)} !important; }\n`;
     }
   }
   return rules;
@@ -149,18 +170,20 @@ export function buildZoneRulesString(zoneStyles?: Record<string, ZoneStyle>): st
   for (const [slotId, style] of Object.entries(zoneStyles)) {
     let r = '';
     if (style.fontSize != null) r += `font-size: ${style.fontSize}px !important; `;
-    if (style.color) r += `color: ${style.color} !important; `;
-    if (style.backgroundColor) r += `background-color: ${style.backgroundColor} !important; `;
-    if (style.fontWeight) r += `font-weight: ${style.fontWeight} !important; `;
-    if (style.fontStyle) r += `font-style: ${style.fontStyle} !important; `;
-    if (style.textDecoration) r += `text-decoration: ${style.textDecoration} !important; `;
+    if (style.color) r += `color: ${sanitizeCssVal(style.color)} !important; `;
+    if (style.backgroundColor) r += `background-color: ${sanitizeCssVal(style.backgroundColor)} !important; `;
+    if (style.fontWeight) r += `font-weight: ${sanitizeCssVal(style.fontWeight)} !important; `;
+    if (style.fontStyle) r += `font-style: ${sanitizeCssVal(style.fontStyle)} !important; `;
+    if (style.textDecoration) r += `text-decoration: ${sanitizeCssVal(style.textDecoration)} !important; `;
+    if (style.fontFamily) r += `font-family: ${sanitizeCssVal(style.fontFamily)} !important; `;
+    if (style.textAlign) r += `text-align: ${sanitizeCssVal(style.textAlign)} !important; `;
     if (r) rules += `#${slotId} { ${r}}\n`;
   }
   return rules;
 }
 
 export function injectIntoHtml(html: string, options: InjectOptions): string {
-  const { injections, cssOverrides, slotOverrides, zoneStyles } = options;
+  const { injections, cssOverrides, slotOverrides, zoneStyles, layoutOverrides, zoneAssets } = options;
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
 
@@ -212,7 +235,7 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (!rules) continue;
       for (const { selector, property } of rules) {
         if (doc.querySelector(selector)) {
-          styleRules += `${selector} { ${property}: ${val} !important; }\n`;
+          styleRules += `${selector} { ${property}: ${sanitizeCssVal(val)} !important; }\n`;
         }
       }
     }
@@ -232,11 +255,13 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       if (!el) continue;
       let rules = '';
       if (style.fontSize != null) rules += `font-size: ${style.fontSize}px !important; `;
-      if (style.color) rules += `color: ${style.color} !important; `;
-      if (style.backgroundColor) rules += `background-color: ${style.backgroundColor} !important; `;
-      if (style.fontWeight) rules += `font-weight: ${style.fontWeight} !important; `;
-      if (style.fontStyle) rules += `font-style: ${style.fontStyle} !important; `;
-      if (style.textDecoration) rules += `text-decoration: ${style.textDecoration} !important; `;
+      if (style.color) rules += `color: ${sanitizeCssVal(style.color)} !important; `;
+      if (style.backgroundColor) rules += `background-color: ${sanitizeCssVal(style.backgroundColor)} !important; `;
+      if (style.fontWeight) rules += `font-weight: ${sanitizeCssVal(style.fontWeight)} !important; `;
+      if (style.fontStyle) rules += `font-style: ${sanitizeCssVal(style.fontStyle)} !important; `;
+      if (style.textDecoration) rules += `text-decoration: ${sanitizeCssVal(style.textDecoration)} !important; `;
+      if (style.fontFamily) rules += `font-family: ${sanitizeCssVal(style.fontFamily)} !important; `;
+      if (style.textAlign) rules += `text-align: ${sanitizeCssVal(style.textAlign)} !important; `;
       if (rules) zoneRules += `#${slotId} { ${rules}}\n`;
     }
     if (zoneRules) {
@@ -244,6 +269,67 @@ export function injectIntoHtml(html: string, options: InjectOptions): string {
       zoneStyleEl.id = '__zone-style-overrides__';
       zoneStyleEl.textContent = zoneRules;
       doc.head.appendChild(zoneStyleEl);
+    }
+  }
+
+  // --- Layout overrides (zoneOverrides + customZones from canvas layer) ---
+  // CSS values are adSize (native) coords — the iframe renders at adSize resolution.
+  // Do NOT use displaySize coords here.
+  if (layoutOverrides) {
+    if (layoutOverrides.zoneOverrides) {
+      for (const [slotId, bound] of Object.entries(layoutOverrides.zoneOverrides)) {
+        const el = doc.getElementById(slotId) as HTMLElement | null;
+        if (!el) continue;
+        const pos = el.style.position || getComputedStyle(el).position;
+        if (pos === 'relative' || pos === 'sticky' || pos === 'static') {
+          console.warn(`[injectIntoHtml] Skipping zoneOverride for #${slotId}: position:${pos} is incompatible with absolute override.`);
+          continue;
+        }
+        el.style.position = 'absolute';
+        el.style.left = `${bound.x}px`;
+        el.style.top = `${bound.y}px`;
+        el.style.width = `${bound.w}px`;
+        el.style.height = `${bound.h}px`;
+      }
+    }
+
+    if (layoutOverrides.customZones) {
+      for (const zone of layoutOverrides.customZones) {
+        const posStyle = `position:absolute;left:${zone.x}px;top:${zone.y}px;width:${zone.w}px;height:${zone.h}px;`;
+        if (zone.type === 'image') {
+          const img = doc.createElement('img');
+          img.id = zone.id;
+          img.dataset.canvasCustom = 'true';
+          img.style.cssText = posStyle;
+          if (zone.assetUrl) img.src = zone.assetUrl;
+          doc.body.appendChild(img);
+        } else {
+          const div = doc.createElement('div');
+          div.id = zone.id;
+          div.dataset.canvasCustom = 'true';
+          div.style.cssText = posStyle;
+          if (zone.textContent) div.textContent = zone.textContent;
+          doc.body.appendChild(div);
+        }
+      }
+    }
+  }
+
+  // --- Zone asset overrides (Asset House URLs for wireframe image zones) ---
+  // Independent of the injections pipeline — writes directly to element src/background.
+  if (zoneAssets) {
+    for (const [slotId, assetUrl] of Object.entries(zoneAssets)) {
+      if (!assetUrl) continue;
+      const el = doc.getElementById(slotId) as HTMLElement | null;
+      if (!el) continue;
+      if (el.tagName === 'IMG') {
+        (el as HTMLImageElement).src = assetUrl;
+        el.removeAttribute('srcset');
+      } else {
+        el.style.backgroundImage = `url('${assetUrl}')`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+      }
     }
   }
 
@@ -384,6 +470,20 @@ export function buildInteractiveScript(): string {
         if (!zoneEl) { zoneEl = document.createElement('style'); zoneEl.id = '__zone-style-overrides__'; document.head.appendChild(zoneEl); }
         zoneEl.textContent = zoneRules;
       } else if (zoneEl) { zoneEl.remove(); }
+      var zoneStyles = e.data.zoneStyles || {};
+      var PROPS = ['fontSize','color','backgroundColor','fontWeight','fontStyle','textDecoration','fontFamily','textAlign'];
+      var CSS_PROPS = ['font-size','color','background-color','font-weight','font-style','text-decoration','font-family','text-align'];
+      for (var zid in zoneStyles) {
+        var zel = document.getElementById(zid);
+        if (!zel) continue;
+        var zs = zoneStyles[zid];
+        for (var pi = 0; pi < PROPS.length; pi++) {
+          var val = zs[PROPS[pi]];
+          if (val == null || val === '') { zel.style.removeProperty(CSS_PROPS[pi]); continue; }
+          zel.style.setProperty(CSS_PROPS[pi], PROPS[pi] === 'fontSize' ? val + 'px' : val, 'important');
+        }
+      }
+      setTimeout(reportOverflow, 150);
     }
   });
 
@@ -399,6 +499,22 @@ export function buildInteractiveScript(): string {
       }
     });
     window.parent.postMessage({ type: 'zone-bounds', zones: zones }, '*');
+    setTimeout(reportOverflow, 150);
+  }
+
+  function reportOverflow() {
+    var overflowing = [];
+    document.querySelectorAll('[id]').forEach(function(el) {
+      if (SKIP.indexOf(el.id) !== -1) return;
+      // Skip elements with no visible area (hidden, display:none, etc.)
+      if (el.clientWidth === 0 && el.clientHeight === 0) return;
+      // scrollHeight reflects full content size even when overflow:hidden clips it —
+      // so this correctly catches text that is too large for its zone.
+      if (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2) {
+        overflowing.push(el.id);
+      }
+    });
+    window.parent.postMessage({ type: 'zone-overflow', overflowing: overflowing }, '*');
   }
 
   var _zoneReportFired = false;

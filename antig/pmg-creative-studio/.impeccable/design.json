@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-06-24",
+  "contextDir": "antig/pmg-creative-studio",
+  "northStar": "The Campaign Desk",
+  "componentFeel": "Confident and purposeful",
+  "elevation": "Flat with structural shadows",
+  "colorStrategy": "restrained",
+  "tailwindVersion": 4,
+  "tailwindConfigFile": "src/index.css",
+  "tailwindThemeBlock": "@theme",
+  "tokens": {
+    "colors": {
+      "brand-blue": "#0C69EA",
+      "brand-blue-deep": "#0b5ed4",
+      "campaign-slate": "#2D3142",
+      "slate-mid": "#42485C",
+      "slate-muted": "#6F768B",
+      "slate-border": "#CCD2DD",
+      "surface-bg": "#EEF1F7",
+      "surface-wash": "#F4F7FC",
+      "surface-canvas": "#F9FBFE",
+      "body-text": "#1f2937",
+      "success": "#16a34a",
+      "warning": "#f59e0b",
+      "error": "#ef4444",
+      "ai-accent": "#9333ea"
+    },
+    "tailwindAliases": {
+      "brand-blue": "blue-600",
+      "brand-blue-deep": "blue-700",
+      "campaign-slate": "blue-gray-800",
+      "slate-mid": "blue-gray-700",
+      "slate-muted": "blue-gray-500",
+      "slate-border": "blue-gray-200",
+      "surface-bg": "blue-gray-100",
+      "surface-wash": "blue-gray-50",
+      "surface-canvas": "blue-gray-25",
+      "success": "green-600",
+      "warning": "amber-500",
+      "error": "red-500",
+      "ai-accent": "purple-600"
+    },
+    "typography": {
+      "fontFamily": "Inter, system-ui, sans-serif",
+      "scale": [7, 9, 10, 12, 14, 24],
+      "roles": {
+        "display": { "size": "24px", "weight": 600, "transform": "none", "tracking": "normal" },
+        "title": { "size": "10px", "weight": 900, "transform": "uppercase", "tracking": "0.2em" },
+        "body": { "size": "14px", "weight": 400, "transform": "none", "tracking": "normal" },
+        "label": { "size": "9px", "weight": 900, "transform": "uppercase", "tracking": "0.2em" },
+        "micro": { "size": "7px", "weight": 900, "transform": "uppercase", "tracking": "0.3em" }
+      }
+    },
+    "rounded": {
+      "sm": "6px",
+      "md": "8px",
+      "lg": "12px",
+      "full": "9999px"
+    },
+    "spacing": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "16px",
+      "lg": "24px",
+      "xl": "32px"
+    }
+  },
+  "extensions": {
+    "shadows": {
+      "card": "0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+      "elevated": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+      "modal": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+    },
+    "semanticRules": {
+      "primaryBlueMaxCoverage": 0.1,
+      "purpleForAIOnly": true,
+      "flatByDefault": true,
+      "shadowCardUsagePerViewport": 1
+    },
+    "antiReferences": ["Canva", "Google Ads UI", "Figma"],
+    "signatureComponents": [
+      "ZoneInspector",
+      "WizardStepper",
+      "FieldMappingPanel",
+      "PreflightIssuesPanel"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { injectIntoHtml, buildInteractiveScript, buildCssRulesString, buildZoneRulesString } from './injectIntoHtml';
-import type { ZoneStyle } from '../types';
+import type { ZoneStyle, ZoneBound, CustomZone } from '../types';
 
 export const FilledTemplatePreview = ({
   templateFile,
@@ -11,6 +11,8 @@ export const FilledTemplatePreview = ({
   cssOverrides,
   slotOverrides,
   zoneStyles,
+  layoutOverrides,
+  zoneAssets,
   onSlotClick,
   highlightSlot,
   slotSelectionMode = false,
@@ -23,6 +25,8 @@ export const FilledTemplatePreview = ({
   cssOverrides?: Record<string, string>;
   slotOverrides?: Record<string, string>;
   zoneStyles?: Record<string, ZoneStyle>;
+  layoutOverrides?: { zoneOverrides?: Record<string, ZoneBound>; customZones?: CustomZone[] };
+  zoneAssets?: Record<string, string>;
   onSlotClick?: (slotId: string) => void;
   highlightSlot?: string | null;
   slotSelectionMode?: boolean;
@@ -54,13 +58,13 @@ export const FilledTemplatePreview = ({
   useEffect(() => {
     if (!rawHtml) return;
     iframeLiveRef.current = false;
-    let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles });
+    let filled = injectIntoHtml(rawHtml, { injections, cssOverrides, slotOverrides, zoneStyles, layoutOverrides, zoneAssets });
     if (isInteractive) {
       filled = filled.replace('</body>', `${buildInteractiveScript()}</body>`);
     }
     setSrcdoc(filled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawHtml, isInteractive]);
+  }, [rawHtml, isInteractive, JSON.stringify(layoutOverrides), JSON.stringify(zoneAssets)]);
 
   // Live update via postMessage when injections/overrides change after the iframe is ready.
   // Skips the full srcdoc reload cycle — updates apply directly to the existing iframe DOM.
@@ -73,9 +77,28 @@ export const FilledTemplatePreview = ({
         slotOverrides: slotOverrides ?? {},
         cssRules: buildCssRulesString(cssOverrides),
         zoneRules: buildZoneRulesString(zoneStyles),
+        zoneStyles: zoneStyles ?? {},
       },
       '*'
     );
+    // Parent-side overflow check — runs 300ms after apply-updates to give the iframe DOM
+    // time to reflow. This bypasses the baked-in reportOverflow script so the check always
+    // uses the latest logic (e.g. detects overflow:hidden zone containers with large fonts).
+    const tid = setTimeout(() => {
+      const doc = iframeRef.current?.contentDocument;
+      if (!doc) return;
+      try {
+        const overflowing: string[] = [];
+        doc.querySelectorAll<HTMLElement>('[id]').forEach((el) => {
+          if (el.clientWidth === 0 && el.clientHeight === 0) return;
+          if (el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2) {
+            overflowing.push(el.id);
+          }
+        });
+        window.postMessage({ type: 'zone-overflow', overflowing }, '*');
+      } catch (_e) { /* cross-origin safety guard */ }
+    }, 300);
+    return () => clearTimeout(tid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(injections), JSON.stringify(cssOverrides), JSON.stringify(slotOverrides), JSON.stringify(zoneStyles)]);
 
@@ -106,6 +129,7 @@ export const FilledTemplatePreview = ({
   useEffect(() => {
     if (!onSlotClick) return;
     const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === 'slot-click' && e.data.slotId) {
         onSlotClick(e.data.slotId as string);
       }

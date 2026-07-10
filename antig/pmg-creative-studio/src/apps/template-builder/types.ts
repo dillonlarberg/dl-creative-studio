@@ -78,6 +78,11 @@ export interface TemplateBuilderStepData {
   fieldSourceMode?: Record<string, 'feed' | 'static' | 'ai'>;  // fieldId → active source tab per field
   aiSuggestedMappings?: Record<string, true>;      // fieldId → true when AI auto-suggested; cleared on Accept
 
+  // ── canvas layer overrides (additive — old templates without these fields are unaffected) ──
+  zoneOverrides?: Record<string, ZoneBound>;       // slotId → moved/resized wireframe zone (adSize coords)
+  customZones?: CustomZone[];                       // user-drawn zones not in the wireframe HTML
+  zoneAssets?: Record<string, string>;             // slotId → Asset House URL for wireframe image zones
+
   // ── wireframe (Social channel only) ───────────────────────────────
   selectedWireframeId?: string;
   wireframeFile?: string;
@@ -92,6 +97,39 @@ export interface TemplateBuilderStepData {
   [k: string]: unknown;
 }
 
+// ── Canvas Layer types ─────────────────────────────────────────────────────
+
+export interface ZoneBound {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export type CustomZone =
+  | {
+      id: string;
+      type: 'image';
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      fieldId?: string;
+      assetUrl?: string;
+      textContent?: never;
+    }
+  | {
+      id: string;
+      type: 'text';
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      fieldId?: string;
+      textContent?: string;
+      assetUrl?: never;
+    };
+
 export interface ZoneStyle {
   fontSize?: number;        // applied as font-size: Npx
   color?: string;           // applied as color
@@ -99,4 +137,6 @@ export interface ZoneStyle {
   fontWeight?: 'bold' | 'normal';
   fontStyle?: 'italic' | 'normal';
   textDecoration?: 'underline' | 'none';
+  fontFamily?: string;      // applied as font-family
+  textAlign?: 'left' | 'center' | 'right';
 }

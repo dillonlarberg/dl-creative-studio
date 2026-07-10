@@ -1,36 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { SparklesIcon, ExclamationTriangleIcon, XMarkIcon, PlusIcon, CursorArrowRaysIcon, ChevronUpIcon, ChevronDownIcon, PaintBrushIcon, SwatchIcon } from '@heroicons/react/24/outline';
-import { SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
+import { ExclamationTriangleIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { nanoid } from 'nanoid';
 import type { TemplateBuilderStep, StepContext } from '../types';
-import type { TemplateBuilderStepData, RequirementField, ZoneStyle } from '../types';
+import type { TemplateBuilderStepData, RequirementField, ZoneStyle, ZoneBound, CustomZone } from '../types';
 import { cn } from '../../../utils/cn';
 import { useAssetHouse } from '../../../platform/assetHouse/AssetHouseContext';
 import { useTemplateBuilder } from '../TemplateBuilderContext';
 import { generateLayouts, suggestMappings, bestSampleRow } from '../../../services/ai/templateAI';
-import { FilledTemplatePreview } from '../_internal/FilledTemplatePreview';
 import { FIELD_ID_MAP } from '../_internal/injectIntoHtml';
-import CanvasOverlay from '../_internal/CanvasOverlay';
-import type { ZoneBound } from '../_internal/CanvasOverlay';
-import { TemplatePreview } from '../_internal/TemplatePreview';
-import { CandidatePreview } from '../_internal/CandidatePreview';
 import { SOCIAL_WIREFRAMES } from '../../../constants/useCases';
 import { discoverSlots } from '../_internal/discoverSlots';
 import type { TemplateSlot } from '../_internal/discoverSlots';
-import { AskAlliPanel } from '../_internal/AskAlliPanel';
 import { applyClientTransforms } from '../_internal/transformExecutor';
 import { BrandKitDrawer } from '../../../components/brand/BrandKitDrawer';
-import { SkeletonCard } from '../_internal/SkeletonCard';
-import { CandidateCard } from '../_internal/CandidateCard';
-import { ZoneStyleToolbar } from '../_internal/ZoneStyleToolbar';
-import { IMAGE_COLUMN_KEYWORDS, SKIP_ZONE_IDS, inferColumnTypes, groupColumnsByInferredType } from '../_internal/columnUtils';
+import { SKIP_ZONE_IDS } from '../_internal/columnUtils';
+import { analyzeFeedOverflow } from '../_internal/feedOverflowAnalysis';
+import type { FeedOverflowRiskMap } from '../_internal/feedOverflowAnalysis';
+import { CandidateSelector } from '../_internal/CandidateSelector';
+import { FieldMappingPanel } from '../_internal/FieldMappingPanel';
+import { PreviewPanel } from '../_internal/PreviewPanel';
 
 /**
  * Design step — "Design & Map" (Step 2 of 3: Setup → Design → Publish).
  *
  * Split-screen layout:
- *   Left  40% — Candidate selector, field mapping, brand overrides
- *   Right 60% — Live preview
+ *   Left  40% — Candidate selector, field mapping
+ *   Right 60% — Live preview (CanvasLayer replaces CanvasOverlay)
  *
  * Uses the module-level ref pattern (same as SetupStep's _submitCallback)
  * so onEnter can call into context hooks that are only available inside
@@ -48,6 +44,7 @@ function DesignStepBody({
   const { clientSlug } = useParams<{ clientSlug: string }>();
 
   const { candidates, requirements, feedColumns, setCandidates } = tbCtx;
+  const feedSampleData = tbCtx.feedSampleData;
 
   const brandKitReady = !!(
     assetHouse?.primaryColor && assetHouse?.fontPrimary &&
@@ -59,36 +56,111 @@ function DesignStepBody({
   const [brandOpen, setBrandOpen] = useState(false);
   const [brandKitOpen, setBrandKitOpen] = useState(false);
   const [activeSlotField, setActiveSlotField] = useState<string | null>(null);
+  // hoveredField drives the preview highlight; set by Zone Coverage row clicks in FieldMappingPanel.
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [discoveredSlots, setDiscoveredSlots] = useState<TemplateSlot[]>([]);
   const [previewRatioIndex, setPreviewRatioIndex] = useState(0);
   const [askAlliOpen, setAskAlliOpen] = useState(false);
   const [askAlliTargetField, setAskAlliTargetField] = useState<string | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
+  const [addFieldSelectingSlot, setAddFieldSelectingSlot] = useState(false);
   const [addFieldPendingSlot, setAddFieldPendingSlot] = useState<string | null>(null);
-  const [newFieldPreset, setNewFieldPreset] = useState('');
-  const [newFieldType, setNewFieldType] = useState<'text' | 'image' | 'currency'>('text');
-  const [newFieldCustomLabel, setNewFieldCustomLabel] = useState('');
-  const [addFieldError, setAddFieldError] = useState<string | null>(null);
-  const [newFieldColumn, setNewFieldColumn] = useState('');
   const [styleOpenFieldId, setStyleOpenFieldId] = useState<string | null>(null);
   const [zoneBounds, setZoneBounds] = useState<Record<string, ZoneBound>>({});
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [overflowZoneIds, setOverflowZoneIds] = useState<Set<string>>(new Set());
+  const [feedOverflowRisk, setFeedOverflowRisk] = useState<FeedOverflowRiskMap>({});
   const [zoneCoverageStyleSlot, setZoneCoverageStyleSlot] = useState<string | null>(null);
   const [feedRowIndex, setFeedRowIndex] = useState(0);
   const [userHasEditedStyles, setUserHasEditedStyles] = useState(
     () => Object.keys(stepData.zoneStyles ?? {}).length > 0
   );
-  const [newFieldSourceMode, setNewFieldSourceMode] = useState<'feed' | 'static' | 'ai'>('feed');
-  const [newFieldStaticValue, setNewFieldStaticValue] = useState('');
-  const [addFieldSelectingSlot, setAddFieldSelectingSlot] = useState(false);
-  const [addFieldStyleOpen, setAddFieldStyleOpen] = useState(false);
+
+  // ── Undo / redo history ───────────────────────────────────────────────────
+  // Snapshot only the canvas/field keys that canvas mutations touch.
+  type HistorySnap = Pick<TemplateBuilderStepData,
+    'zoneOverrides' | 'customZones' | 'zoneStyles' | 'zoneAssets' | 'feedMappings' | 'slotMappings'
+  >;
+  const MAX_HISTORY = 20;
+  const [undoStack, setUndoStack] = useState<HistorySnap[]>([]);
+  const [redoStack, setRedoStack] = useState<HistorySnap[]>([]);
+
+  // stepDataRef ensures undo/redo handlers always read the latest stepData even
+  // though the keyboard listener is registered only once (stable closure via ref).
+  const stepDataRef = useRef(stepData);
+  stepDataRef.current = stepData;
+  const undoFnRef = useRef<() => void>(() => {});
+  const redoFnRef = useRef<() => void>(() => {});
+
+  function snapHistory(): HistorySnap {
+    const d = stepDataRef.current;
+    return {
+      zoneOverrides: d.zoneOverrides,
+      customZones: d.customZones,
+      zoneStyles: d.zoneStyles,
+      zoneAssets: d.zoneAssets,
+      feedMappings: d.feedMappings,
+      slotMappings: d.slotMappings,
+    };
+  }
+
+  function pushHistory() {
+    const snap = snapHistory();
+    setUndoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snap]);
+    setRedoStack([]);
+  }
+
+  undoFnRef.current = function handleUndo() {
+    if (undoStack.length === 0) return;
+    const prev = undoStack[undoStack.length - 1];
+    setRedoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snapHistory()]);
+    setUndoStack((s) => s.slice(0, -1));
+    mergeStepData(prev);
+  };
+
+  redoFnRef.current = function handleRedo() {
+    if (redoStack.length === 0) return;
+    const next = redoStack[redoStack.length - 1];
+    setUndoStack((s) => [...s.slice(-(MAX_HISTORY - 1)), snapHistory()]);
+    setRedoStack((s) => s.slice(0, -1));
+    mergeStepData(next);
+  };
+
+  // Keyboard listener registered once; always calls current undo/redo via ref.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undoFnRef.current(); }
+      if (mod && e.key === 'z' && e.shiftKey)  { e.preventDefault(); redoFnRef.current(); }
+      if (mod && e.key === 'y')                 { e.preventDefault(); redoFnRef.current(); }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Track style-push sessions to avoid spamming history on every color-picker tick.
+  const styleHistoryRef = useRef<{ slotId: string; pushedAt: number } | null>(null);
 
   // Debounce ref for zoneStyles: color picker fires at ~60fps; without debounce
   // each drag event causes an iframe reload. 150ms means ~6 reloads/second max.
   const zoneStyleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against stale zone-overflow postMessages arriving from the old iframe
+  // after a wireframe change. Set true on wireframe change, cleared when zone-bounds
+  // arrives from the new iframe.
+  const overflowGatedRef = useRef(false);
 
   function handleZoneStyleChange(slotId: string, partial: Partial<ZoneStyle>) {
+    // Push history once per zone per style session (new slot or >1s since last push).
+    const now = Date.now();
+    if (
+      !styleHistoryRef.current ||
+      styleHistoryRef.current.slotId !== slotId ||
+      now - styleHistoryRef.current.pushedAt > 1000
+    ) {
+      pushHistory();
+      styleHistoryRef.current = { slotId, pushedAt: now };
+    }
     setUserHasEditedStyles(true);
     const next = {
       ...(stepData.zoneStyles ?? {}),
@@ -101,15 +173,71 @@ function DesignStepBody({
   }
 
   // Effective target slot for a field: explicit override wins, otherwise use FIELD_ID_MAP's first target.
-  // Lets users style any field without having to manually assign a slot override first.
   const getEffectiveSlotId = (fieldId: string): string =>
     stepData.slotMappings?.[fieldId] ?? FIELD_ID_MAP[fieldId]?.targets[0] ?? fieldId;
 
+  // ── Task 13: Canvas layer mutation handlers ───────────────────────────────
+
+  const handleZoneMove = useCallback((id: string, bounds: ZoneBound) => {
+    pushHistory();
+    mergeStepData({ zoneOverrides: { ...(stepData.zoneOverrides ?? {}), [id]: bounds } });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.zoneOverrides]);
+
+  const handleZoneResize = useCallback((id: string, bounds: ZoneBound) => {
+    pushHistory();
+    mergeStepData({ zoneOverrides: { ...(stepData.zoneOverrides ?? {}), [id]: bounds } });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.zoneOverrides]);
+
+  const handleZoneCreate = useCallback((zone: Omit<CustomZone, 'id'>) => {
+    pushHistory();
+    const newZone = { ...zone, id: `custom_zone_${nanoid(6)}` } as CustomZone;
+    mergeStepData({ customZones: [...(stepData.customZones ?? []), newZone] });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.customZones]);
+
+  const handleZoneReset = useCallback((id: string) => {
+    pushHistory();
+    const next = { ...(stepData.zoneOverrides ?? {}) };
+    delete next[id]; // NEVER assign undefined — use delete
+    mergeStepData({ zoneOverrides: next });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.zoneOverrides]);
+
+  const handleZoneDelete = useCallback((id: string) => {
+    pushHistory();
+    mergeStepData({ customZones: (stepData.customZones ?? []).filter((z) => z.id !== id) });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.customZones]);
+
+  const handleZoneContentUpdate = useCallback((id: string, patch: { fieldId?: string; textContent?: string; assetUrl?: string }) => {
+    pushHistory();
+    mergeStepData({
+      customZones: (stepData.customZones ?? []).map((z) =>
+        z.id === id ? ({ ...z, ...patch } as CustomZone) : z,
+      ),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.customZones]);
+
+  const handleZoneAsset = useCallback((zoneId: string, assetUrl: string, isWireframe: boolean) => {
+    pushHistory();
+    if (isWireframe) {
+      mergeStepData({ zoneAssets: { ...(stepData.zoneAssets ?? {}), [zoneId]: assetUrl } });
+    } else {
+      mergeStepData({
+        customZones: (stepData.customZones ?? []).map((z) =>
+          z.id === zoneId ? ({ ...z, assetUrl } as CustomZone) : z,
+        ),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mergeStepData, stepData.zoneAssets, stepData.customZones]);
+
+  // ── Effects ───────────────────────────────────────────────────────────────
+
   // Run layout generation + mapping suggestions on mount.
-  // Cannot use onEnter for this because the wizard fires onEnter BEFORE navigating
-  // to the step, so DesignStepBody is not yet mounted and _designCtx is null.
-  // useEffect fires after mount, by which time requirements + feedColumns are
-  // already set in context from SetupStep's submit.
   useEffect(() => {
     const run = async () => {
       if (candidates.length === 0) {
@@ -129,11 +257,6 @@ function DesignStepBody({
           });
           setCandidates(generated);
 
-          // Auto-apply the top candidate's wireframeId if the user hasn't manually
-          // selected a wireframe yet. stepData is a snapshot from mount time — if the
-          // user clicks the wireframe grid during the Gemini call, this check uses the
-          // stale snapshot and may overwrite their selection. Acceptable trade-off:
-          // re-clicking the desired wireframe recovers immediately.
           const top = generated[0];
           if (top?.wireframeId && !stepData.selectedWireframeId) {
             const wf = SOCIAL_WIREFRAMES.find((w) => w.id === top.wireframeId);
@@ -149,7 +272,6 @@ function DesignStepBody({
         }
       }
 
-      // Only apply column suggestions to feedMappings if none exist yet.
       try {
         const suggested = await suggestMappings({ requirements, feedColumns });
         const hasExisting = Object.keys(stepData.feedMappings ?? {}).length > 0;
@@ -170,14 +292,15 @@ function DesignStepBody({
 
   useEffect(() => {
     if (!stepData.wireframeFile) { setDiscoveredSlots([]); return; }
+    let cancelled = false;
     fetch(`/template_examples/social/${stepData.wireframeFile}`)
       .then((r) => r.text())
-      .then((html) => setDiscoveredSlots(discoverSlots(html)))
-      .catch(() => setDiscoveredSlots([]));
+      .then((html) => { if (!cancelled) setDiscoveredSlots(discoverSlots(html)); })
+      .catch(() => { if (!cancelled) setDiscoveredSlots([]); });
+    return () => { cancelled = true; };
   }, [stepData.wireframeFile]);
 
-  // Listen for zone-bounds postMessages from the iframe (sent by buildInteractiveScript).
-  // Clears when the wireframe changes so stale bounds don't linger during reload.
+  // Listen for zone-bounds and zone-overflow postMessages from the iframe.
   useEffect(() => {
     function handler(e: MessageEvent) {
       if (e.data?.type === 'zone-bounds' && e.data.zones) {
@@ -186,20 +309,112 @@ function DesignStepBody({
             .filter(([id]) => !SKIP_ZONE_IDS.has(id))
         );
         setZoneBounds(filtered);
+        overflowGatedRef.current = false;
+      }
+      if (e.data?.type === 'zone-overflow') {
+        if (overflowGatedRef.current) return;
+        if (!Array.isArray(e.data.overflowing)) return;
+        setOverflowZoneIds(new Set<string>(
+          (e.data.overflowing as string[]).filter((id) => !SKIP_ZONE_IDS.has(id))
+        ));
       }
     }
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Clear zone bounds on wireframe change so the overlay hides until the next natural load.
+  // Clear zone state on wireframe change and gate stale overflow messages.
   useEffect(() => {
     setZoneBounds({});
+    setOverflowZoneIds(new Set());
+    overflowGatedRef.current = true;
+    setFeedRowIndex(0);
   }, [stepData.wireframeFile]);
 
-  // Empty-state guard: requirements + feedColumns live in React context, not Firestore.
-  // On browser refresh at Step 2, they are always empty. Guide user back to Setup.
-  // IMPORTANT: this early return must come after ALL useState/useRef/useEffect calls above.
+  // Clamp feedRowIndex when feedSampleData shrinks (e.g. after re-upload).
+  useEffect(() => {
+    if (feedSampleData.length === 0) return;
+    setFeedRowIndex((i) => Math.min(i, feedSampleData.length - 1));
+  }, [feedSampleData.length]);
+
+  // Feed-aware overflow analysis — runs debounced (800ms) after font-size, feed
+  // mapping, or zone-bounds changes. Reads latest values via ref so the listener
+  // doesn't re-register on every render.
+  const feedAnalysisInputsRef = useRef({ allFields: [] as typeof allFields, feedMappings: {} as Record<string, string>, feedSampleData: [] as typeof feedSampleData, zoneBounds: {} as typeof zoneBounds, stepData: stepData, getEffectiveSlotId: getEffectiveSlotId as typeof getEffectiveSlotId });
+  const feedOverflowDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the ref current every render so the debounced callback sees the latest values.
+  // (allFields and getEffectiveSlotId are derived in the render scope below — we
+  //  must delay this assignment until after their declarations, done via a separate
+  //  effect that runs synchronously before the debounced one.)
+
+  useEffect(() => {
+    if (feedOverflowDebounceRef.current) clearTimeout(feedOverflowDebounceRef.current);
+    feedOverflowDebounceRef.current = setTimeout(() => {
+      const { allFields: fields, feedMappings: fm, feedSampleData: fsd, zoneBounds: zb, stepData: sd, getEffectiveSlotId: getSlot } = feedAnalysisInputsRef.current;
+
+      const SAMPLE_CAP = 500;
+      const zones = fields
+        .filter((f) => f.type !== 'image')
+        .flatMap((f) => {
+          const col = fm[f.id];
+          if (!col) return [];
+          // Resolve the actual element ID: slotMappings wins, then iterate FIELD_ID_MAP
+          // targets to find one present in zoneBounds (template zones often differ from field IDs).
+          const slotId = (() => {
+            const explicit = sd.slotMappings?.[f.id];
+            if (explicit && zb[explicit]) return explicit;
+            const targets = FIELD_ID_MAP[f.id]?.targets ?? [];
+            const matched = targets.find((t) => zb[t] != null);
+            if (matched) return matched;
+            const fallback = getSlot(f.id);
+            return fallback;
+          })();
+          const fontSize = sd.zoneStyles?.[slotId]?.fontSize;
+          if (!fontSize) return [];
+          const native = zb[slotId];
+          if (!native) return [];
+          const effective = sd.zoneOverrides?.[slotId] ?? native;
+
+          const total = fsd.length;
+          const step = total > SAMPLE_CAP ? Math.ceil(total / SAMPLE_CAP) : 1;
+          const feedValues: string[] = [];
+          for (let i = 0; i < total; i += step) {
+            const v = String((fsd[i] as Record<string, unknown>)[col] ?? '').trim();
+            if (v) feedValues.push(v);
+          }
+
+          return [{
+            slotId,
+            fieldLabel: f.label,
+            zoneW: effective.w,
+            zoneH: effective.h,
+            fontSize,
+            fontFamily: sd.fontFamily ?? 'sans-serif',
+            feedValues,
+            _sampleRatio: step,
+            _feedTotal: total,
+          }];
+        });
+
+      if (zones.length === 0) { setFeedOverflowRisk({}); return; }
+
+      const raw = analyzeFeedOverflow(zones);
+      // Scale overflow counts back to full-feed estimate if we sampled.
+      const scaled: FeedOverflowRiskMap = {};
+      for (const [id, risk] of Object.entries(raw)) {
+        const z = zones.find((zn) => zn.slotId === id) as (typeof zones[0] & { _sampleRatio: number; _feedTotal: number }) | undefined;
+        const step = z?._sampleRatio ?? 1;
+        const feedTotal = z?._feedTotal ?? risk.totalRows;
+        scaled[id] = { ...risk, overflowRows: Math.round(risk.overflowRows * step), totalRows: feedTotal };
+      }
+      setFeedOverflowRisk(scaled);
+    }, 800);
+    return () => { if (feedOverflowDebounceRef.current) clearTimeout(feedOverflowDebounceRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stepData.zoneStyles, stepData.feedMappings, stepData.zoneOverrides, zoneBounds]);
+
+  // Empty-state guard: must come after ALL hooks.
   if (requirements.length === 0 && feedColumns.length === 0 && !isLoadingCandidates) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4 p-8">
@@ -217,18 +432,14 @@ function DesignStepBody({
     );
   }
 
-  // Derived values
+  // ── Derived values ────────────────────────────────────────────────────────
+
   const selectedCandidateIndex = stepData.selectedCandidateIndex ?? 0;
   const activeCandidate = candidates[selectedCandidateIndex ?? 0];
   const feedMappings = stepData.feedMappings ?? {};
-  const feedSampleData = tbCtx.feedSampleData;
 
   const customFields = stepData.customFields ?? [];
   const fieldTransforms = stepData.fieldTransforms ?? {};
-  const inferredColTypes = inferColumnTypes(
-    feedSampleData as Array<Record<string, unknown>>,
-    feedColumns
-  );
   const allFields: Array<RequirementField> = [
     ...requirements.filter((r) => r.category === 'Dynamic'),
     ...customFields.map((f) => ({
@@ -240,7 +451,32 @@ function DesignStepBody({
     })),
   ];
 
-  // Map slotId → fieldIds that use it (for duplicate-slot warning)
+  // Keep analysis ref current so the debounced callback always has fresh values.
+  feedAnalysisInputsRef.current = { allFields, feedMappings, feedSampleData, zoneBounds, stepData, getEffectiveSlotId };
+
+  const mappedZoneIds = new Set<string>(
+    allFields
+      .filter((f) => {
+        const sourceMode = stepData.fieldSourceMode?.[f.id] ?? 'feed';
+        return sourceMode === 'static'
+          ? Boolean(stepData.staticValues?.[f.id])
+          : Boolean(feedMappings[f.id]);
+      })
+      .map((f) => getEffectiveSlotId(f.id))
+  );
+
+  const zoneFieldMap: Record<string, { fieldId: string; fieldLabel: string; fieldType: 'text' | 'image'; columnMapped?: string }> = {};
+  for (const field of allFields) {
+    const slotId = getEffectiveSlotId(field.id);
+    const col = feedMappings[field.id] || undefined;
+    zoneFieldMap[slotId] = {
+      fieldId: field.id,
+      fieldLabel: field.label,
+      fieldType: field.type === 'image' ? 'image' : 'text',
+      columnMapped: col,
+    };
+  }
+
   const slotUseCounts: Record<string, string[]> = {};
   for (const [fieldId, slotId] of Object.entries(stepData.slotMappings ?? {})) {
     if (slotId) {
@@ -250,11 +486,9 @@ function DesignStepBody({
 
   const isSocial = stepData.channel === 'Social';
   const hasWireframe = Boolean(stepData.selectedWireframeId && stepData.wireframeFile);
-
-  // Build injections for FilledTemplatePreview (when wireframe is selected)
   const wireframe = SOCIAL_WIREFRAMES.find((w) => w.id === stepData.selectedWireframeId);
 
-  // Multi-ratio preview: compute container height from the selected ratio pill
+  // Multi-ratio preview
   const previewBaseSize = askAlliOpen ? 280 : 360;
   const previewAdSize = wireframe?.adSize || 1024;
   const selectedRatioStr = (stepData.ratios ?? ['1:1'])[previewRatioIndex] ?? '1:1';
@@ -262,16 +496,12 @@ function DesignStepBody({
   const previewAspect = (_rw && _rh) ? _rw / _rh : 1;
   const previewContainerH = Math.round(previewBaseSize / previewAspect);
 
-  // Helper: find the first non-empty value for a column across all sample rows.
-  // Row 0 may have empty cells; scanning forward finds the first real value.
   const firstVal = (col: string): string => {
-    // Try the currently-previewed row first
     const currentRow = feedSampleData[feedRowIndex] as Record<string, unknown> | undefined;
     if (currentRow) {
       const v = String(currentRow[col] ?? '').trim();
       if (v) return v;
     }
-    // Fallback: scan all rows for any non-empty value
     for (const row of feedSampleData) {
       const v = String((row as Record<string, unknown>)[col] ?? '').trim();
       if (v) return v;
@@ -290,7 +520,6 @@ function DesignStepBody({
         const col = feedMappings[field.id];
         if (col) raw = firstVal(col);
       }
-      // 'ai' mode: Ask Alli writes back into feedMappings; handled naturally on next render
       if (raw) {
         const transforms = fieldTransforms[field.id] ?? [];
         const val = applyClientTransforms(raw, transforms, field.type);
@@ -300,7 +529,6 @@ function DesignStepBody({
         };
       }
     }
-    // Inject logo from asset house
     const logoVal =
       stepData.logoVariant === 'inverse'
         ? assetHouse?.logoInverse || assetHouse?.logoPrimary || ''
@@ -320,844 +548,51 @@ function DesignStepBody({
       {/* ── Left panel (40%) ─────────────────────────────────────────── */}
       <div className="w-2/5 border-r border-gray-100 px-6 py-6 space-y-8 overflow-y-auto max-h-[calc(100vh-200px)]">
 
-        {/* Candidate selector */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <SparklesIcon className="h-3.5 w-3.5 text-blue-600" />
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-              Layout Candidate
-            </h4>
-          </div>
+        {/* Task 10: Candidate selector */}
+        <CandidateSelector
+          stepData={stepData}
+          mergeStepData={mergeStepData}
+          isLoadingCandidates={isLoadingCandidates}
+          setIsLoadingCandidates={setIsLoadingCandidates}
+          layoutError={layoutError}
+          setLayoutError={setLayoutError}
+          selectedCandidateIndex={selectedCandidateIndex}
+          userHasEditedStyles={userHasEditedStyles}
+        />
 
-          {layoutError && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-              {layoutError}
-            </div>
-          )}
-
-          {isLoadingCandidates ? (
-            <div className="space-y-3">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-          ) : candidates.length === 0 && !isSocial ? (
-            <div className="py-8 text-center border-2 border-dashed border-gray-100 rounded-2xl">
-              <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
-                Generating layout options…
-              </p>
-            </div>
-          ) : candidates.length === 0 && isSocial ? null : (
-            <div className="space-y-3">
-              {candidates.map((c, idx) => (
-                <CandidateCard
-                  key={c.id}
-                  candidate={c}
-                  selected={idx === selectedCandidateIndex}
-                  onClick={() => {
-                    const wf = c.wireframeId
-                      ? SOCIAL_WIREFRAMES.find((w) => w.id === c.wireframeId)
-                      : null;
-                    mergeStepData({
-                      selectedCandidateIndex: idx,
-                      ...(wf ? { selectedWireframeId: wf.id, wireframeFile: wf.file } : {}),
-                    });
-                    // auto-apply AI zone style suggestions if user hasn't manually edited styles
-                    if (
-                      !userHasEditedStyles &&
-                      c.suggestedZoneStyles &&
-                      Object.keys(c.suggestedZoneStyles).length > 0
-                    ) {
-                      mergeStepData({ zoneStyles: c.suggestedZoneStyles });
-                    }
-                  }}
-                />
-              ))}
-              {/* Regenerate button */}
-              <button
-                type="button"
-                disabled={isLoadingCandidates}
-                onClick={async () => {
-                  setIsLoadingCandidates(true);
-                  setLayoutError(null);
-                  try {
-                    const generated = await generateLayouts({
-                      requirements,
-                      channel: stepData.channel ?? 'Social',
-                      brand: assetHouse,
-                      feedColumns,
-                      brief: stepData.brief,
-                      feedSampleRow: bestSampleRow(
-                        (feedSampleData ?? []).map(row =>
-                          Object.fromEntries(Object.entries(row as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')]))
-                        )
-                      ),
-                    });
-                    setCandidates(generated);
-                  } catch (err) {
-                    console.error('[DesignStep] regenerate failed:', err);
-                    setLayoutError('Failed to regenerate layouts. Please try again.');
-                  } finally {
-                    setIsLoadingCandidates(false);
-                  }
-                }}
-                className="w-full py-2 border border-gray-200 rounded-xl text-[9px] font-black text-gray-400 uppercase tracking-widest hover:bg-gray-50 disabled:opacity-40 flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-                Regenerate
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Field mapping */}
+        {/* Task 11: Field mapping panel */}
         {allFields.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-              Field Mapping
-            </h4>
-            {stepData.wireframeFile && discoveredSlots.length === 0 && (
-              <p className="text-[9px] text-gray-400 italic">
-                No injectable slots found — this template may not support zone assignment.
-              </p>
-            )}
-
-            <div className="space-y-4">
-              {allFields.map((field) => {
-                const currentVal = feedMappings[field.id] ?? '';
-
-                const assignedSlot = (stepData.slotMappings ?? {})[field.id];
-                const isSelectingSlot = activeSlotField === field.id;
-
-                return (
-                  <div
-                    key={field.id}
-                    className={cn(
-                      'space-y-1.5 p-3 rounded-xl transition-all border-2',
-                      isSelectingSlot ? 'bg-blue-50 border-blue-200' : 'border-transparent'
-                    )}
-                    onMouseEnter={() => setHoveredField(field.id)}
-                    onMouseLeave={() => setHoveredField(null)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <label className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex-1">
-                        {field.label}
-                      </label>
-                      <span
-                        className={cn(
-                          'px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest',
-                          field.type === 'image'
-                            ? 'bg-amber-50 text-amber-600'
-                            : 'bg-gray-100 text-gray-400'
-                        )}
-                      >
-                        {field.type}
-                      </span>
-                      {assignedSlot && (slotUseCounts[assignedSlot]?.length ?? 0) > 1 && (
-                        <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-red-50 text-red-500" title="Two fields share this slot — only one will render">
-                          Dup slot
-                        </span>
-                      )}
-                      {/* Cursor — click-assign zone in preview */}
-                      {discoveredSlots.length > 0 && (
-                        <button
-                          type="button"
-                          title={isSelectingSlot ? 'Cancel zone selection' : 'Click a zone in the preview to assign'}
-                          onClick={() => setActiveSlotField(isSelectingSlot ? null : field.id)}
-                          className={cn(
-                            'h-4 w-4 transition-colors shrink-0',
-                            isSelectingSlot ? 'text-blue-600' : 'text-gray-300 hover:text-blue-500'
-                          )}
-                        >
-                          <CursorArrowRaysIcon className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      {/* Paintbrush — toggle zone style toolbar */}
-                      <button
-                        type="button"
-                        title="Edit zone styles"
-                        onClick={() => setStyleOpenFieldId(styleOpenFieldId === field.id ? null : field.id)}
-                        className={cn(
-                          'h-4 w-4 transition-colors shrink-0',
-                          styleOpenFieldId === field.id ? 'text-indigo-600' : 'text-gray-300 hover:text-indigo-500'
-                        )}
-                      >
-                        <PaintBrushIcon className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        title="Ask Alli about this field"
-                        onClick={() => { setAskAlliTargetField(field.id); setAskAlliOpen(true); }}
-                        className="h-4 w-4 text-indigo-400 hover:text-indigo-600 transition-colors shrink-0"
-                      >
-                        <SparklesIconSolid className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    {/* AI suggested badge + Accept */}
-                    {stepData.aiSuggestedMappings?.[field.id] && (
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 rounded-full">
-                          <SparklesIconSolid className="h-2.5 w-2.5 text-purple-600" />
-                          <span className="text-[7px] font-black text-purple-700 uppercase tracking-widest">AI suggested</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = { ...(stepData.aiSuggestedMappings ?? {}) };
-                            delete next[field.id];
-                            mergeStepData({ aiSuggestedMappings: next });
-                          }}
-                          className="px-2 py-0.5 rounded-lg border border-green-100 bg-green-50 text-[8px] font-black text-green-700 uppercase tracking-widest hover:bg-green-100 transition-colors"
-                        >
-                          Accept ✓
-                        </button>
-                      </div>
-                    )}
-                    {/* Source mode: Static | Feed | AI — static listed first to signal it overrides feed */}
-                    <div className="flex gap-1 mb-1">
-                      {(['static', 'feed', 'ai'] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => {
-                            const next = { ...(stepData.fieldSourceMode ?? {}), [field.id]: mode };
-                            mergeStepData({ fieldSourceMode: next });
-                            if (mode === 'ai') {
-                              setAskAlliTargetField(field.id);
-                              setAskAlliOpen(true);
-                            }
-                          }}
-                          className={cn(
-                            'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
-                            (stepData.fieldSourceMode?.[field.id] ?? 'feed') === mode
-                              ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                          )}
-                        >
-                          {mode === 'ai' ? '✦ AI' : mode}
-                        </button>
-                      ))}
-                    </div>
-                    {(stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'static' ? (
-                      <div className="space-y-1.5">
-                        <input
-                          type="text"
-                          placeholder={field.type === 'image' ? 'Paste image URL…' : `Enter ${field.label.toLowerCase()}…`}
-                          value={stepData.staticValues?.[field.id] ?? ''}
-                          onChange={(e) =>
-                            mergeStepData({
-                              staticValues: { ...(stepData.staticValues ?? {}), [field.id]: e.target.value },
-                            })
-                          }
-                          className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900"
-                        />
-                        {field.type === 'image' && (
-                          <label className="flex items-center gap-2 cursor-pointer w-fit">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              id={`upload-static-${field.id}`}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
-                                const reader = new FileReader();
-                                reader.onload = (ev) => {
-                                  if (ev.target?.result) {
-                                    mergeStepData({ staticValues: { ...(stepData.staticValues ?? {}), [field.id]: ev.target.result as string } });
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }}
-                            />
-                            <label
-                              htmlFor={`upload-static-${field.id}`}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
-                            >
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                              Upload image
-                            </label>
-                            {stepData.staticValues?.[field.id]?.startsWith('data:') && (
-                              <span className="text-[8px] font-bold text-green-600">✓ uploaded</span>
-                            )}
-                          </label>
-                        )}
-                      </div>
-                    ) : (stepData.fieldSourceMode?.[field.id] ?? 'feed') === 'ai' ? (
-                      <div className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
-                        onClick={() => { setAskAlliTargetField(field.id); setAskAlliOpen(true); }}>
-                        Generate via Ask Alli →
-                      </div>
-                    ) : (
-                      <>
-                        <select
-                          value={currentVal}
-                          onChange={(e) =>
-                            mergeStepData({
-                              feedMappings: {
-                                ...feedMappings,
-                                [field.id]: e.target.value,
-                              },
-                            })
-                          }
-                          className={cn(
-                            'w-full px-3 py-2 rounded-xl border-2 focus:ring-4 outline-none transition-all text-[10px] font-bold text-gray-900 bg-white',
-                            field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k))
-                              ? 'border-amber-300 focus:border-amber-400 focus:ring-amber-50'
-                              : 'border-gray-100 focus:border-blue-600 focus:ring-blue-50'
-                          )}
-                        >
-                          <option value="">— Select column —</option>
-                          {groupColumnsByInferredType(feedColumns, inferredColTypes, field.type).map(({ groupLabel, cols }) => (
-                            <optgroup key={groupLabel} label={groupLabel}>
-                              {cols.map((col) => (
-                                <option key={col} value={col}>
-                                  {col}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                        {field.type === 'image' && currentVal && !IMAGE_COLUMN_KEYWORDS.some((k) => currentVal.toLowerCase().includes(k)) && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <ExclamationTriangleIcon className="h-3 w-3 text-amber-500 shrink-0" />
-                            <p className="text-[9px] font-bold text-amber-600">
-                              "{currentVal}" may not contain image URLs — check this column has image links, not text or dates.
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {/* Slot picker */}
-                    {discoveredSlots.length > 0 && (
-                      <div className="flex items-center gap-2 pt-0.5">
-                        <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Slot</span>
-                        {isSelectingSlot ? (
-                          <div className="flex items-center gap-1.5 flex-1">
-                            <span className="text-[9px] text-blue-600 font-bold">Click a zone in the preview →</span>
-                            <button type="button" onClick={() => setActiveSlotField(null)} className="text-[8px] text-gray-400 hover:text-gray-600">cancel</button>
-                          </div>
-                        ) : (
-                          <>
-                            <select
-                              value={assignedSlot ?? ''}
-                              onChange={(e) => {
-                                mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [field.id]: e.target.value } });
-                              }}
-                              className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
-                            >
-                              <option value="">— auto —</option>
-                              {discoveredSlots.map((slot) => (
-                                <option key={slot.slotId} value={slot.slotId}>
-                                  {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              title="Assign by clicking a zone in the preview"
-                              onClick={() => setActiveSlotField(field.id)}
-                              className="text-gray-300 hover:text-blue-500 transition-colors"
-                            >
-                              <CursorArrowRaysIcon className="h-3.5 w-3.5" />
-                            </button>
-                            {/* Palette button — toggle per-zone style toolbar */}
-                            <button
-                              type="button"
-                              onClick={() => setStyleOpenFieldId(
-                                styleOpenFieldId === field.id ? null : field.id
-                              )}
-                              title="Edit zone styles"
-                              className={cn(
-                                'p-1 rounded-lg transition-colors',
-                                styleOpenFieldId === field.id
-                                  ? 'bg-indigo-100 text-indigo-600'
-                                  : 'text-gray-500 hover:text-indigo-500'
-                              )}
-                            >
-                              <PaintBrushIcon className="w-3 h-3" />
-                            </button>
-                            {assignedSlot && (
-                              <button
-                                type="button"
-                                title="Clear slot"
-                                onClick={() => {
-                                  const next = { ...(stepData.slotMappings ?? {}) };
-                                  delete next[field.id];
-                                  mergeStepData({ slotMappings: next });
-                                }}
-                                className="text-gray-300 hover:text-red-400 transition-colors"
-                              >
-                                <XMarkIcon className="h-3 w-3" />
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {/* Zone style toolbar — shown when palette button is toggled */}
-                    {styleOpenFieldId === field.id && (
-                      <ZoneStyleToolbar
-                        slotId={getEffectiveSlotId(field.id)}
-                        current={stepData.zoneStyles?.[getEffectiveSlotId(field.id)]}
-                        onChange={handleZoneStyleChange}
-                      />
-                    )}
-                    {/* Transform badges */}
-                    {(fieldTransforms[field.id] ?? []).length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-0.5">
-                        {(fieldTransforms[field.id] ?? []).map((transform) => (
-                          <span
-                            key={transform}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[8px] font-black uppercase tracking-wide"
-                          >
-                            {transform.replace(/_/g, ' ')}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = { ...fieldTransforms };
-                                next[field.id] = (next[field.id] ?? []).filter((t) => t !== transform);
-                                if ((next[field.id] ?? []).length === 0) delete next[field.id];
-                                mergeStepData({ fieldTransforms: next });
-                              }}
-                              className="ml-0.5 text-indigo-400 hover:text-indigo-700 leading-none"
-                              title={`Remove ${transform}`}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {customFields.some((f) => f.id === field.id) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = { ...feedMappings };
-                          delete next[field.id];
-                          const nextSlots = { ...(stepData.slotMappings ?? {}) };
-                          delete nextSlots[field.id];
-                          mergeStepData({
-                            customFields: customFields.filter((f) => f.id !== field.id),
-                            feedMappings: next,
-                            slotMappings: nextSlots,
-                          });
-                        }}
-                        className="text-[8px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors mt-0.5"
-                      >
-                        Remove field
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-                    {/* Accept All AI Suggestions */}
-                    {Object.keys(stepData.aiSuggestedMappings ?? {}).length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => mergeStepData({ aiSuggestedMappings: {} })}
-                        className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-[9px] font-black uppercase tracking-[0.2em] hover:bg-purple-700 flex items-center justify-center gap-2 transition-colors mt-2"
-                      >
-                        <SparklesIconSolid className="h-3.5 w-3.5" />
-                        Accept All AI Suggestions
-                      </button>
-                    )}
-
-            {/* Zone Coverage panel — shows slot mapping status */}
-            {discoveredSlots.length > 0 && (
-              <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-                  <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Zone Coverage</span>
-                  <span className="text-[8px] text-gray-400">
-                    {Object.values(stepData.slotMappings ?? {}).filter(Boolean).length}/{discoveredSlots.length} mapped
-                  </span>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {discoveredSlots.map((slot) => {
-                    const isMapped = Object.values(stepData.slotMappings ?? {}).includes(slot.slotId);
-                    const ownerFieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slot.slotId)?.[0];
-                    const styleOpen = zoneCoverageStyleSlot === slot.slotId;
-                    return (
-                      <div key={slot.slotId} className="px-3 py-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`shrink-0 inline-flex items-center justify-center w-4 h-4 rounded-full text-[7px] font-black ${
-                              isMapped ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {isMapped ? '✓' : '!'}
-                            </span>
-                            <span className="text-[9px] font-medium text-gray-700 truncate">{slot.label}</span>
-                            <span className="shrink-0 text-[7px] text-gray-400 font-mono">{slot.slotId}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            {/* Cursor — assign/reassign slot to a field */}
-                            <button
-                              type="button"
-                              title={isMapped ? 'Reassign this zone' : 'Assign to a field'}
-                              onClick={() => {
-                                if (isMapped && ownerFieldId) {
-                                  setActiveSlotField(ownerFieldId);
-                                } else {
-                                  setAddFieldPendingSlot(slot.slotId);
-                                  setAddFieldOpen(true);
-                                }
-                              }}
-                              className="text-gray-400 hover:text-blue-500 transition-colors"
-                            >
-                              <CursorArrowRaysIcon className="h-3.5 w-3.5" />
-                            </button>
-                            {/* Paintbrush — style this zone directly */}
-                            <button
-                              type="button"
-                              title="Edit zone styles"
-                              onClick={() => setZoneCoverageStyleSlot(styleOpen ? null : slot.slotId)}
-                              className={cn(
-                                'p-0.5 rounded transition-colors',
-                                styleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
-                              )}
-                            >
-                              <PaintBrushIcon className="h-3 w-3" />
-                            </button>
-                            {!isMapped && (
-                              <button
-                                type="button"
-                                onClick={() => { setAddFieldPendingSlot(slot.slotId); setAddFieldOpen(true); }}
-                                className="text-[8px] font-black text-indigo-600 hover:text-indigo-800"
-                              >
-                                Add →
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        {/* Inline zone style toolbar */}
-                        {styleOpen && (
-                          <ZoneStyleToolbar
-                            slotId={slot.slotId}
-                            current={stepData.zoneStyles?.[slot.slotId]}
-                            onChange={handleZoneStyleChange}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Add Field */}
-            {!addFieldOpen ? (
-              <button
-                type="button"
-                onClick={() => setAddFieldOpen(true)}
-                className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors mt-2"
-              >
-                <PlusIcon className="h-3 w-3" />
-                Add Field
-              </button>
-            ) : (
-              <div className="border-2 border-blue-100 rounded-xl p-4 space-y-3 bg-blue-50/30 mt-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">New Field</p>
-                  {addFieldPendingSlot && (
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase tracking-wide">
-                      → {addFieldPendingSlot}
-                    </span>
-                  )}
-                </div>
-
-                {/* Preset picker */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {([
-                    { id: 'headline_2', label: 'Headline 2', type: 'text' },
-                    { id: 'callout', label: 'Callout', type: 'text' },
-                    { id: 'price', label: 'Price', type: 'currency' },
-                    { id: 'background_image', label: 'BG Image', type: 'image' },
-                    { id: 'cta', label: 'CTA', type: 'text' },
-                    { id: '__custom__', label: 'Custom', type: 'text' },
-                  ] as Array<{ id: string; label: string; type: 'text' | 'image' | 'currency' }>).map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        setNewFieldPreset(preset.id);
-                        setNewFieldType(preset.type);
-                        if (preset.id !== '__custom__') setNewFieldCustomLabel('');
-                        setAddFieldError(null);
-                      }}
-                      className={cn(
-                        'px-2 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wide border-2 transition-all',
-                        newFieldPreset === preset.id
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-100 text-gray-400 hover:border-blue-200'
-                      )}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom label input */}
-                {newFieldPreset === '__custom__' && (
-                  <input
-                    type="text"
-                    placeholder="Field label (e.g. Sub-headline)"
-                    value={newFieldCustomLabel}
-                    onChange={(e) => { setNewFieldCustomLabel(e.target.value); setAddFieldError(null); }}
-                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
-                  />
-                )}
-
-                {/* Source mode tabs — static first to signal it overrides feed */}
-                <div className="flex gap-1">
-                  {(['static', 'feed', 'ai'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => { setNewFieldSourceMode(mode); setNewFieldStaticValue(''); }}
-                      className={cn(
-                        'px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wide transition-colors',
-                        newFieldSourceMode === mode
-                          ? mode === 'ai' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      )}
-                    >
-                      {mode === 'ai' ? '✦ AI' : mode}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Column picker / static input / AI — conditional on source mode */}
-                {newFieldSourceMode === 'feed' ? (
-                  <select
-                    value={newFieldColumn}
-                    onChange={(e) => setNewFieldColumn(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 outline-none text-[10px] font-bold text-gray-900 bg-white"
-                  >
-                    <option value="">— Select feed column —</option>
-                    {groupColumnsByInferredType(feedColumns, inferredColTypes, newFieldType).map(({ groupLabel, cols }) => (
-                      <optgroup key={groupLabel} label={groupLabel}>
-                        {cols.map((col) => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                ) : newFieldSourceMode === 'static' ? (
-                  <div className="space-y-1.5">
-                    <input
-                      type="text"
-                      placeholder={newFieldType === 'image' ? 'Paste image URL…' : 'Enter static value…'}
-                      value={newFieldStaticValue}
-                      onChange={(e) => setNewFieldStaticValue(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-blue-600 focus:ring-4 focus:ring-blue-50 outline-none text-[10px] font-bold text-gray-900 bg-white"
-                    />
-                    {newFieldType === 'image' && (
-                      <label className="flex items-center gap-2 cursor-pointer w-fit">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          id="upload-new-field"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              if (ev.target?.result) setNewFieldStaticValue(ev.target.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }}
-                        />
-                        <label
-                          htmlFor="upload-new-field"
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 cursor-pointer transition-colors"
-                        >
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
-                          Upload image
-                        </label>
-                        {newFieldStaticValue.startsWith('data:') && (
-                          <span className="text-[8px] font-bold text-green-600">✓ uploaded</span>
-                        )}
-                      </label>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="w-full px-3 py-2 rounded-xl border-2 border-purple-200 bg-purple-50 text-[9px] font-medium text-purple-800 cursor-pointer hover:bg-purple-100 transition-colors"
-                    onClick={() => {
-                      // Field doesn't exist yet — commit it first, then open Ask Alli
-                      if (!newFieldPreset) return;
-                      const id = newFieldPreset === '__custom__'
-                        ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-                        : newFieldPreset;
-                      const label = newFieldPreset === '__custom__'
-                        ? newFieldCustomLabel.trim()
-                        : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
-                      if (!id || !label) return;
-                      const existingCustom = stepData.customFields ?? [];
-                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
-                        setAddFieldError(`"${label}" already exists — use a different name.`);
-                        return;
-                      }
-                      mergeStepData({
-                        customFields: [...existingCustom, { id, label, type: newFieldType }],
-                        fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'ai' },
-                        ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
-                      });
-                      setAddFieldOpen(false);
-                      setAddFieldPendingSlot(null);
-                      setNewFieldPreset('');
-                      setNewFieldCustomLabel('');
-                      setNewFieldColumn('');
-                      setNewFieldSourceMode('feed');
-                      setNewFieldStaticValue('');
-                      setAskAlliTargetField(id);
-                      setAskAlliOpen(true);
-                    }}
-                  >
-                    Generate via Ask Alli →
-                  </div>
-                )}
-
-                {/* Slot assignment (optional) */}
-                {discoveredSlots.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest shrink-0">Zone</span>
-                      <select
-                        value={addFieldPendingSlot ?? ''}
-                        onChange={(e) => { setAddFieldPendingSlot(e.target.value || null); setAddFieldSelectingSlot(false); }}
-                        className="flex-1 px-2 py-1 rounded-xl border-2 border-gray-100 focus:border-blue-400 outline-none text-[9px] font-medium text-gray-700 bg-white"
-                      >
-                        <option value="">— Skip for now —</option>
-                        {discoveredSlots.map((slot) => (
-                          <option key={slot.slotId} value={slot.slotId}>
-                            {slot.isKnown ? slot.label : slot.slotId} ({slot.slotId})
-                          </option>
-                        ))}
-                      </select>
-                      {/* Cursor — click a zone in the preview to assign */}
-                      <button
-                        type="button"
-                        title={addFieldSelectingSlot ? 'Cancel — click preview to assign zone' : 'Click a zone in the preview to assign'}
-                        onClick={() => setAddFieldSelectingSlot((v) => !v)}
-                        className={cn(
-                          'shrink-0 transition-colors',
-                          addFieldSelectingSlot ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500'
-                        )}
-                      >
-                        <CursorArrowRaysIcon className="h-3.5 w-3.5" />
-                      </button>
-                      {/* Paintbrush — style the pending zone */}
-                      <button
-                        type="button"
-                        title="Edit zone styles"
-                        disabled={!addFieldPendingSlot}
-                        onClick={() => setAddFieldStyleOpen((v) => !v)}
-                        className={cn(
-                          'shrink-0 transition-colors disabled:opacity-30',
-                          addFieldStyleOpen ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'
-                        )}
-                      >
-                        <PaintBrushIcon className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    {addFieldSelectingSlot && (
-                      <p className="text-[8px] font-bold text-blue-600 uppercase tracking-widest">
-                        Click a zone in the preview →
-                      </p>
-                    )}
-                    {addFieldStyleOpen && addFieldPendingSlot && (
-                      <ZoneStyleToolbar
-                        slotId={addFieldPendingSlot}
-                        current={stepData.zoneStyles?.[addFieldPendingSlot]}
-                        onChange={handleZoneStyleChange}
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={
-                      !newFieldPreset ||
-                      (newFieldPreset === '__custom__' && !newFieldCustomLabel.trim()) ||
-                      (newFieldSourceMode === 'feed' && !newFieldColumn) ||
-                      (newFieldSourceMode === 'static' && !newFieldStaticValue.trim()) ||
-                      newFieldSourceMode === 'ai'
-                    }
-                    onClick={() => {
-                      const id =
-                        newFieldPreset === '__custom__'
-                          ? newFieldCustomLabel.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
-                          : newFieldPreset;
-                      const label =
-                        newFieldPreset === '__custom__'
-                          ? newFieldCustomLabel.trim()
-                          : ({ headline_2: 'Headline 2', callout: 'Callout', price: 'Price', background_image: 'Background Image', cta: 'CTA' } as Record<string, string>)[newFieldPreset] ?? newFieldPreset;
-
-                      const existingCustom = stepData.customFields ?? [];
-                      if (existingCustom.some((f) => f.id === id) || requirements.some((r) => r.id === id)) {
-                        setAddFieldError(`"${label}" already exists — use a different name.`);
-                        return;
-                      }
-                      setAddFieldError(null);
-                      mergeStepData({
-                        customFields: [...existingCustom, { id, label, type: newFieldType }],
-                        ...(newFieldSourceMode === 'feed'
-                          ? { feedMappings: { ...feedMappings, [id]: newFieldColumn } }
-                          : { fieldSourceMode: { ...(stepData.fieldSourceMode ?? {}), [id]: 'static' },
-                              staticValues: { ...(stepData.staticValues ?? {}), [id]: newFieldStaticValue } }),
-                        ...(addFieldPendingSlot ? { slotMappings: { ...(stepData.slotMappings ?? {}), [id]: addFieldPendingSlot } } : {}),
-                      });
-                      setAddFieldOpen(false);
-                      setAddFieldPendingSlot(null);
-                      setNewFieldPreset('');
-                      setNewFieldCustomLabel('');
-                      setNewFieldColumn('');
-                      setNewFieldSourceMode('feed');
-                      setNewFieldStaticValue('');
-                      setAddFieldSelectingSlot(false);
-                      setAddFieldStyleOpen(false);
-                    }}
-                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:bg-gray-100 disabled:text-gray-300 transition-all"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAddFieldOpen(false);
-                      setAddFieldPendingSlot(null);
-                      setAddFieldError(null);
-                      setNewFieldPreset('');
-                      setNewFieldCustomLabel('');
-                      setNewFieldColumn('');
-                      setNewFieldSourceMode('feed');
-                      setNewFieldStaticValue('');
-                      setAddFieldSelectingSlot(false);
-                      setAddFieldStyleOpen(false);
-                    }}
-                    className="py-2 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {addFieldError && (
-                  <p className="text-[9px] font-bold text-red-500 mt-1">{addFieldError}</p>
-                )}
-              </div>
-            )}
-          </div>
+          <FieldMappingPanel
+            stepData={stepData}
+            mergeStepData={mergeStepData}
+            allFields={allFields}
+            feedColumns={feedColumns}
+            feedSampleData={feedSampleData}
+            discoveredSlots={discoveredSlots}
+            activeSlotField={activeSlotField}
+            setActiveSlotField={setActiveSlotField}
+            styleOpenFieldId={styleOpenFieldId}
+            setStyleOpenFieldId={setStyleOpenFieldId}
+            zoneCoverageStyleSlot={zoneCoverageStyleSlot}
+            setZoneCoverageStyleSlot={setZoneCoverageStyleSlot}
+            onZoneStyleChange={handleZoneStyleChange}
+            getEffectiveSlotId={getEffectiveSlotId}
+            slotUseCounts={slotUseCounts}
+            onOpenAskAlli={(fieldId) => { setAskAlliTargetField(fieldId); setAskAlliOpen(true); }}
+            addFieldOpen={addFieldOpen}
+            setAddFieldOpen={setAddFieldOpen}
+            addFieldSelectingSlot={addFieldSelectingSlot}
+            setAddFieldSelectingSlot={setAddFieldSelectingSlot}
+            addFieldPendingSlot={addFieldPendingSlot}
+            setAddFieldPendingSlot={setAddFieldPendingSlot}
+            overflowZoneIds={overflowZoneIds}
+            feedOverflowRisk={feedOverflowRisk}
+            highlightedCoverageSlot={hoveredField}
+            onCoverageSlotHighlight={setHoveredField}
+          />
         )}
 
-        {/* Brand overrides (collapsible) */}
+        {/* Brand overrides (collapsible) — full-form stays in left panel */}
         <div className="space-y-3">
           <button
             type="button"
@@ -1255,336 +690,66 @@ function DesignStepBody({
         </div>
       </div>
 
-      {/* ── Right panel (60%) ─────────────────────────────────────────── */}
-      <div className="flex-1 px-6 py-6 overflow-y-auto max-h-[calc(100vh-200px)]">
-
-        {/* Social + wireframe selected → FilledTemplatePreview + optional Ask Alli panel */}
-        {isSocial && hasWireframe && wireframe && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {wireframe.name} — Live Mapped Preview
-                </span>
-                <button
-                  type="button"
-                  onClick={() => mergeStepData({ selectedWireframeId: undefined, wireframeFile: undefined })}
-                  className="text-[9px] font-bold text-gray-300 hover:text-blue-500 transition-colors underline underline-offset-2"
-                >
-                  Change
-                </button>
-              </div>
-              {Object.keys(stepData.aiSuggestedMappings ?? {}).length > 0 && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 border border-purple-100 rounded-full">
-                  <SparklesIconSolid className="h-3 w-3 text-purple-600" />
-                  <span className="text-[8px] font-black text-purple-700 uppercase tracking-widest">
-                    Claude auto-mapped {Object.keys(stepData.aiSuggestedMappings ?? {}).length} of {allFields.length} fields
-                  </span>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setBrandKitOpen((v) => !v)}
-                className="relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-gray-200 text-[10px] font-black text-gray-500 uppercase tracking-widest hover:border-blue-400 transition-colors"
-              >
-                <SwatchIcon className="h-3.5 w-3.5 shrink-0" />
-                Brand Kit
-                <span
-                  className={cn(
-                    'absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full',
-                    brandKitReady ? 'bg-green-500' : 'bg-amber-400'
-                  )}
-                />
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAskAlliTargetField(null); setAskAlliOpen((v) => !v); }}
-                className="inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 pl-2 pr-3 py-1 text-white shadow-lg shadow-indigo-500/30 text-[10px] font-semibold hover:from-indigo-600 hover:to-violet-700 transition-all"
-              >
-                <SparklesIconSolid className="h-3.5 w-3.5 shrink-0" />
-                Ask Alli
-              </button>
-            </div>
-
-            {/* Ratio toggle — only shown when multiple ratios are selected in setup */}
-            {(stepData.ratios?.length ?? 0) > 1 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest shrink-0">Preview ratio</span>
-                {(stepData.ratios ?? []).map((ratio, i) => (
-                  <button
-                    key={ratio}
-                    type="button"
-                    onClick={() => setPreviewRatioIndex(i)}
-                    className={cn(
-                      'px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all',
-                      previewRatioIndex === i
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                    )}
-                  >
-                    {ratio}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className={cn('flex gap-4', askAlliOpen ? 'items-stretch' : '')}>
-              <div
-                className={cn(
-                  'relative bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex items-center justify-center overflow-hidden transition-all',
-                  askAlliOpen ? 'flex-1' : 'w-full'
-                )}
-                style={{
-                  // Landscape ratios: clip the card to show the correct proportion
-                  // Portrait/square: show full wireframe, no artificial clipping
-                  maxHeight: previewContainerH < previewBaseSize
-                    ? `${previewContainerH + 48}px`
-                    : undefined,
-                }}
-              >
-                {/* Inner wrapper sized exactly to the preview so CanvasOverlay inset:0 aligns with iframe coordinates */}
-                <div style={{ position: 'relative', width: `${previewBaseSize}px`, height: `${previewBaseSize}px`, flexShrink: 0 }}>
-                <FilledTemplatePreview
-                  templateFile={wireframe.file}
-                  name={wireframe.name}
-                  scale={previewBaseSize / previewAdSize}
-                  adSize={previewAdSize}
-                  injections={injections}
-                  cssOverrides={cssOverrides}
-                  slotOverrides={stepData.slotMappings}
-                  zoneStyles={stepData.zoneStyles}
-                  slotSelectionMode={activeSlotField !== null || addFieldSelectingSlot}
-                  highlightSlot={
-                    activeSlotField !== null
-                      ? getEffectiveSlotId(activeSlotField)
-                      : addFieldSelectingSlot && addFieldPendingSlot
-                      ? addFieldPendingSlot
-                      : hoveredField !== null
-                      ? getEffectiveSlotId(hoveredField)
-                      : null
-                  }
-                  onSlotClick={(slotId) => {
-                    if (activeSlotField) {
-                      mergeStepData({ slotMappings: { ...(stepData.slotMappings ?? {}), [activeSlotField]: slotId } });
-                      setActiveSlotField(null);
-                    } else if (addFieldSelectingSlot) {
-                      setAddFieldPendingSlot(slotId);
-                      setAddFieldSelectingSlot(false);
-                    } else {
-                      setAddFieldPendingSlot(slotId);
-                      setAddFieldOpen(true);
-                    }
-                  }}
-                />
-                <CanvasOverlay
-                  zoneBounds={zoneBounds}
-                  adSize={previewAdSize}
-                  displaySize={previewBaseSize}
-                  selectedZoneId={selectedZoneId}
-                  onZoneSelect={(slotId) => {
-                    setSelectedZoneId(slotId);
-                    const fieldId = Object.entries(stepData.slotMappings ?? {}).find(([, s]) => s === slotId)?.[0];
-                    if (fieldId) setStyleOpenFieldId(fieldId);
-                  }}
-                  onResizeDetected={() => setZoneBounds({})}
-                />
-                </div>{/* end inner preview wrapper */}
-              {activeSlotField !== null && (
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-2.5 bg-blue-600/90 backdrop-blur-sm" style={{ borderRadius: '0 0 1.5rem 1.5rem' }}>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white">
-                    Click a zone → "{allFields.find((r) => r.id === activeSlotField)?.label ?? activeSlotField}"
-                  </span>
-                  <button type="button" onClick={() => setActiveSlotField(null)} className="text-blue-200 hover:text-white text-[9px] font-bold uppercase tracking-widest ml-4 shrink-0">
-                    Cancel
-                  </button>
-                </div>
-              )}
-              </div>
-
-              {askAlliOpen && (
-                <div className="w-72 rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col" style={{ minHeight: '360px' }}>
-                  <AskAlliPanel
-                    stepData={stepData}
-                    mergeStepData={mergeStepData}
-                    onClose={() => setAskAlliOpen(false)}
-                    targetFieldId={askAlliTargetField}
-                    requirements={requirements}
-                    feedColumns={feedColumns}
-                    brand={assetHouse}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Feed row navigator */}
-            {feedSampleData.length > 0 && (
-              <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => setFeedRowIndex((i) => Math.max(0, i - 1))}
-                  disabled={feedRowIndex === 0}
-                  className="text-[8px] font-black text-gray-400 uppercase tracking-widest disabled:opacity-30 hover:text-blue-600 transition-colors"
-                >
-                  ← Prev
-                </button>
-                <span className="text-[8px] font-medium text-gray-400">
-                  Row {feedRowIndex + 1} of {feedSampleData.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setFeedRowIndex((i) => Math.min(feedSampleData.length - 1, i + 1))}
-                  disabled={feedRowIndex >= feedSampleData.length - 1}
-                  className="text-[8px] font-black text-blue-600 uppercase tracking-widest disabled:opacity-30 hover:text-blue-800 transition-colors"
-                >
-                  Next →
-                </button>
-              </div>
-            )}
-
-            {/* Compact brand overrides */}
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2.5">
-              <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Brand Overrides</label>
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-medium text-gray-500">Colors</span>
-                <div className="flex gap-1.5">
-                  <input
-                    type="color"
-                    value={stepData.backgroundColor || '#2563eb'}
-                    onChange={(e) => mergeStepData({ backgroundColor: e.target.value })}
-                    title="Background color"
-                    className="h-6 w-6 rounded-full cursor-pointer border-0 p-0"
-                    style={{ borderRadius: '50%' }}
-                  />
-                  <input
-                    type="color"
-                    value={stepData.accentColor || '#1f2937'}
-                    onChange={(e) => mergeStepData({ accentColor: e.target.value })}
-                    title="Accent color"
-                    className="h-6 w-6 rounded-full cursor-pointer border-0 p-0"
-                    style={{ borderRadius: '50%' }}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-medium text-gray-500">Font</span>
-                <span className="text-[9px] font-black text-gray-900 truncate max-w-[120px]">
-                  {stepData.fontFamily ?? assetHouse?.fontPrimary ?? 'Inter'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-medium text-gray-500">Logo</span>
-                <div className="flex gap-1">
-                  {(['primary', 'inverse'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => mergeStepData({ logoVariant: v })}
-                      className={cn(
-                        'px-2 py-0.5 rounded text-[7px] font-black uppercase transition-colors',
-                        (stepData.logoVariant ?? 'primary') === v
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-200 text-gray-500 hover:border-gray-300'
-                      )}
-                    >
-                      {v === 'primary' ? 'Color' : 'White'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Portrait ratio note — wireframes are 1:1; production ads will use ratio-specific layouts */}
-            {previewContainerH > previewBaseSize && (stepData.ratios?.length ?? 0) > 1 && (
-              <p className="text-[8px] font-medium text-gray-300 text-center">
-                Preview shows 1:1 wireframe — {selectedRatioStr} ads will use a portrait-optimized layout
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Social + no wireframe → Wireframe picker + CandidatePreview */}
-        {isSocial && !hasWireframe && (
-          <div className="space-y-6">
-            {/* Wireframe library picker */}
-            <div className="space-y-3">
-              <div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                  Choose a Social Template
-                </h4>
-                <p className="text-[9px] font-medium text-gray-300 mt-0.5">
-                  Select one to load it into the live preview and start mapping your feed columns
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {SOCIAL_WIREFRAMES.map((wf) => (
-                  <button
-                    key={wf.id}
-                    type="button"
-                    onClick={() =>
-                      mergeStepData({
-                        selectedWireframeId: wf.id,
-                        wireframeFile: wf.file,
-                      })
-                    }
-                    className={cn(
-                      'rounded-xl border-2 p-2 transition-all text-left',
-                      stepData.selectedWireframeId === wf.id
-                        ? 'border-blue-600'
-                        : 'border-gray-200 hover:border-blue-300'
-                    )}
-                  >
-                    <TemplatePreview
-                      templateFile={wf.file}
-                      name={wf.name}
-                      scale={0.15}
-                      adSize={wf.adSize || 1024}
-                    />
-                    <p className="mt-1 text-[9px] font-bold text-center text-gray-600 truncate">
-                      {wf.name}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* AI-recommended wireframes are shown as thumbnails in the left-panel
-                candidate cards — the abstract CandidatePreview here is removed. */}
-          </div>
-        )}
-
-        {/* Non-Social → CandidatePreview only */}
-        {!isSocial && activeCandidate && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 bg-blue-500 rounded-full" />
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {activeCandidate.name} — Live Preview
-              </span>
-            </div>
-            <CandidatePreview
-              candidate={activeCandidate}
-              feedSampleData={feedSampleData}
-              feedMappings={feedMappings}
-              assetHouse={assetHouse}
-              logoVariant={stepData.logoVariant}
-              accentColor={stepData.accentColor}
-              backgroundColor={stepData.backgroundColor}
-              ratios={stepData.ratios}
-            />
-          </div>
-        )}
-
-        {/* Empty state when no candidate yet */}
-        {!activeCandidate && !isLoadingCandidates && (
-          <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center border-2 border-dashed border-gray-100 rounded-3xl">
-            <SparklesIcon className="h-8 w-8 text-gray-200 mb-3" />
-            <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
-              Select a layout candidate to preview
-            </p>
-          </div>
-        )}
-      </div>
+      {/* ── Right panel (60%) — Task 12: PreviewPanel ─────────────────── */}
+      <PreviewPanel
+        stepData={stepData}
+        mergeStepData={mergeStepData}
+        allFields={allFields}
+        feedSampleData={feedSampleData}
+        feedMappings={feedMappings}
+        feedColumns={feedColumns}
+        injections={injections}
+        cssOverrides={cssOverrides}
+        wireframe={wireframe}
+        activeCandidate={activeCandidate}
+        isSocial={isSocial}
+        hasWireframe={hasWireframe}
+        previewBaseSize={previewBaseSize}
+        previewAdSize={previewAdSize}
+        previewContainerH={previewContainerH}
+        previewRatioIndex={previewRatioIndex}
+        setPreviewRatioIndex={setPreviewRatioIndex}
+        selectedRatioStr={selectedRatioStr}
+        feedRowIndex={feedRowIndex}
+        setFeedRowIndex={setFeedRowIndex}
+        zoneBounds={zoneBounds}
+        selectedZoneId={selectedZoneId}
+        setSelectedZoneId={setSelectedZoneId}
+        activeSlotField={activeSlotField}
+        setActiveSlotField={setActiveSlotField}
+        addFieldSelectingSlot={addFieldSelectingSlot}
+        setAddFieldSelectingSlot={setAddFieldSelectingSlot}
+        addFieldPendingSlot={addFieldPendingSlot}
+        setAddFieldPendingSlot={setAddFieldPendingSlot}
+        setAddFieldOpen={setAddFieldOpen}
+        hoveredField={hoveredField}
+        getEffectiveSlotId={getEffectiveSlotId}
+        setStyleOpenFieldId={setStyleOpenFieldId}
+        askAlliOpen={askAlliOpen}
+        onAskAlliToggle={() => { setAskAlliTargetField(null); setAskAlliOpen((v) => !v); }}
+        askAlliTargetField={askAlliTargetField}
+        setAskAlliOpen={setAskAlliOpen}
+        onBrandKitOpen={() => setBrandKitOpen((v) => !v)}
+        brandKitReady={brandKitReady}
+        assetHouse={assetHouse}
+        onResizeDetected={() => setZoneBounds({})}
+        onZoneMove={handleZoneMove}
+        onZoneResize={handleZoneResize}
+        onZoneCreate={handleZoneCreate}
+        onZoneReset={handleZoneReset}
+        onZoneDelete={handleZoneDelete}
+        onZoneAsset={handleZoneAsset}
+        onZoneContentUpdate={handleZoneContentUpdate}
+        onZoneStyleUpdate={handleZoneStyleChange}
+        clientSlug={clientSlug ?? ''}
+        overflowZoneIds={overflowZoneIds}
+        mappedZoneIds={mappedZoneIds}
+        zoneFieldMap={zoneFieldMap}
+        canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
+        onUndo={() => undoFnRef.current()}
+        onRedo={() => redoFnRef.current()}
+      />
     </div>
 
     <BrandKitDrawer
@@ -1605,10 +770,6 @@ const validate: TemplateBuilderStep<TemplateBuilderStepData>['validate'] = (data
     ? { ok: true }
     : { ok: false, reason: 'Map at least one field to continue' };
 };
-
-// Layout generation and mapping suggestions now live in a useEffect inside
-// DesignStepBody (above). onEnter fired before the component mounted so
-// _designCtx was always null — moved to mount-time effect instead.
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
